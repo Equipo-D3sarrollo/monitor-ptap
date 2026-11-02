@@ -86,6 +86,13 @@ module.exports = ({ config }) => ({
           usesCleartextTraffic: false,
           enableProguardInReleaseBuilds: true,
           enableShrinkResources: true,
+          // WorkManager 2.9.x/Room create these objects by reflection during Android startup.
+          // AGP 9's R8 full mode otherwise removes their no-argument constructors.
+          // Keep the constructors through every prebuild (expo/expo#51337).
+          extraProguardRules: [
+            '-keep class * extends androidx.room.RoomDatabase { <init>(); }',
+            '-keep class * extends androidx.work.InputMerger { <init>(); }',
+          ].join('\n'),
           // SOLO arm64. Sin esto el APK pesa 92 MB en vez de 35: el prebuild deja el valor por
           // defecto de React Native (armeabi-v7a, arm64-v8a, x86, x86_64) y las cuatro ABIs suman
           // 72 MB de librerias nativas, de las cuales x86 y x86_64 (40 MB) solo sirven para

@@ -41,3 +41,13 @@ test('matching public Firebase configuration is included with shared FCM default
   assert.equal(result.plugins.find((plugin: any) => plugin[0] === 'expo-notifications')[1].defaultChannel, CANAL_AVISOS);
   assert.equal(result.plugins.find((plugin: any) => plugin[0] === 'expo-build-properties')[1].android.compileSdkVersion, 37);
 });
+
+test('release config preserves reflective WorkManager constructors across prebuild without disabling shrinking', () => {
+  const android = config(androidConfig).plugins.find((plugin: any) => plugin[0] === 'expo-build-properties')[1].android;
+  for (const base of ['androidx.room.RoomDatabase', 'androidx.work.InputMerger']) {
+    assert.ok(android.extraProguardRules.includes(`-keep class * extends ${base} { <init>(); }`),
+      `${base} subclasses need their no-argument constructors at Android startup`);
+  }
+  assert.equal(android.enableProguardInReleaseBuilds, true);
+  assert.equal(android.enableShrinkResources, true);
+});

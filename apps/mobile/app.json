@@ -1,8 +1,8 @@
 {
   "expo": {
-    "name": "Monitor PTAP",
+    "name": "Aquora",
     "slug": "monitor-ptap",
-    "version": "1.4.0",
+    "version": "1.4.1",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
@@ -19,7 +19,7 @@
         "monochromeImage": "./assets/android-icon-monochrome.png"
       },
       "package": "com.ptap.monitor",
-      "versionCode": 9
+      "versionCode": 10
     },
     "web": {
       "bundler": "metro",
