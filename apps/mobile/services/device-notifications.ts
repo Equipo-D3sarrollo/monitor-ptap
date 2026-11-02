@@ -194,10 +194,13 @@ export async function presentNotification(
   body: string,
   data?: Record<string, unknown>,
   critica = false,
+  isCurrent: () => boolean = () => true,
 ): Promise<boolean> {
   try {
+    if (!isCurrent()) return false;
     if (!isSupported()) return false;
     if ((await getPermission()) !== 'granted') return false;
+    if (!isCurrent()) return false;
 
     if (isWeb) {
       const n = new window.Notification(title, {
@@ -231,6 +234,7 @@ export async function presentNotification(
     const tag = typeof data?.tag === 'string' ? data.tag : null;
     await ensureAndroidChannel();
     const Notifications = await nativeModule();
+    if (!isCurrent()) return false;
     await Notifications.scheduleNotificationAsync({
       ...(tag?.startsWith('n-') ? { identifier: tag } : {}),
       content: {

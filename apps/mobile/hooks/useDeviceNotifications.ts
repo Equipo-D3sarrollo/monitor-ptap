@@ -16,6 +16,7 @@ import {
 } from '../services/notification-sync';
 import { escucharCambiosDeToken, probarPush, registrarPush } from '../services/push-registration';
 import type { EstadoPush } from '../services/push-rules';
+import { isNotificationSession, notificationSession } from '../services/notification-session';
 
 /**
  * Notificaciones del sistema operativo: permiso, push y sincronización de respaldo.
@@ -86,7 +87,10 @@ export function useDeviceNotifications(): {
   // día la marca que lee la consulta de respaldo— y cuando FCM rota el token. Si el registro falla, la
   // marca se quita y la consulta de respaldo sigue publicando: el teléfono nunca queda mudo.
   useEffect(() => {
-    if (!token || permission !== 'granted' || !recibeAvisos || Platform.OS !== 'android') return;
+    if (!token || permission !== 'granted' || !recibeAvisos || (Platform.OS !== 'android' && Platform.OS !== 'web')) {
+      setPush('pendiente');
+      return;
+    }
     let vivo = true;
     let retry: ReturnType<typeof setTimeout> | undefined;
     let failures = 0;
@@ -129,9 +133,8 @@ export function useDeviceNotifications(): {
     return () => sub.remove();
   }, [permission]);
 
-  // En WEB no hay tarea en segundo plano —WorkManager no existe y el equivalente exige una PWA
-  // instalada—, así que la pestaña abierta es el único canal. Sin esto, quien deja la web abierta en
-  // otra pestaña no recibía nada hasta volver a mirarla, que es justo cuando ya no hace falta.
+  // En web, la consulta con pestaña abierta respalda Web Push cuando el navegador o el servidor
+  // todavía no pueden enviarlo. Con push activo sólo actualiza el puntero, sin repetir el aviso.
   useEffect(() => {
     if (permission !== 'granted' || Platform.OS !== 'web') return;
     const id = setInterval(() => void syncNotificationsToDevice(), WEB_POLL_MS);
@@ -197,7 +200,15 @@ export function useDeviceNotifications(): {
   }, []);
 
   const ask = useCallback(async () => {
-    setPermission(await requestPermission());
+    const session = notificationSession();
+    const next = await requestPermission();
+    if (!session || !isNotificationSession(session)) return;
+    setPermission(next);
+    // Keep explicit activation available for browsers that require a user gesture to subscribe.
+    if (next === 'granted') {
+      const result = await registrarPush();
+      if (isNotificationSession(session)) setPush(result);
+    }
   }, []);
 
   const probar = useCallback(() => probarPush(), []);

@@ -9,7 +9,7 @@ import React, {
 } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { setLastDataSession } from '../services/last-snapshot-store';
-import { AppState } from 'react-native';
+import { AppState, Platform } from 'react-native';
 import type { AuthUser, Permission } from '@ptap/shared';
 import { hasPermission as checkPermission } from '@ptap/shared';
 import { setAuthToken, setOnUnauthorized, invalidateAuthRequests } from '../services/api';
@@ -52,6 +52,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     logoutTransition.current = expected;
     invalidateSessionRestoration();
     invalidateAuthRequests();
+    // Revoke other web tabs synchronously; the outgoing JWT remains in memory for device removal.
+    if (Platform.OS === 'web') localStorage.removeItem(TOKEN_KEY);
     // Revoke visible data synchronously, before slow device/network cleanup.
     const clearing = setLastDataSession(null);
     void queryClient.cancelQueries();
@@ -155,6 +157,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const expected = ++transition.current;
       invalidateSessionRestoration();
       invalidateAuthRequests();
+      if (Platform.OS === 'web') localStorage.removeItem(TOKEN_KEY);
+      const revokingWebPush = Platform.OS === 'web'
+        ? import('../services/web-push-registration').then((web) => web.invalidarWebPushLocal())
+        : Promise.resolve();
       const clearing = setLastDataSession(null);
       void queryClient.cancelQueries();
       queryClient.clear();
@@ -164,7 +170,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       sessionWrites.current = sessionWrites.current
         .catch(() => undefined)
         .then(async () => {
-          await clearing;
+          await Promise.all([clearing, revokingWebPush]);
           if (expected !== transition.current) return;
           await Promise.all([
             storage.setItem(TOKEN_KEY, newToken),

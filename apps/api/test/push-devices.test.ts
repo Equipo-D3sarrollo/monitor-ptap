@@ -63,6 +63,11 @@ function fakePool(inicial: Record<string, string> = {}) {
       if (/SELECT token FROM device_push_token WHERE user_id = \?/i.test(sql)) {
         return [[...tabla].filter(([, u]) => u === params[0]).map(([token]) => ({ token })), undefined];
       }
+      if (/SELECT u.role, u.plant/i.test(sql)) {
+        assert.match(sql, /t\.token = \? AND t\.user_id = \? AND u\.is_active = 1/);
+        const [token, userId] = params as string[];
+        return [tabla.get(token) === userId && CUENTAS[userId] ? [CUENTAS[userId]] : [], undefined];
+      }
       return [[], undefined];
     },
   } as unknown as Pool;
@@ -255,6 +260,28 @@ test('prueba con el push apagado: lo dice, sin intentar nada', async () => {
       .set('Authorization', bearer('u-op'))
       .expect(201);
     assert.deepEqual(res.body, { pushActivo: false, telefonos: 0, enviados: 0, fallidos: 0 });
+  } finally {
+    await app.close();
+  }
+});
+
+test('prueba: rechazo FCM tardío conserva un token reasignado durante el envío', async () => {
+  const { pool, tabla } = fakePool({ 'tok-reasignado': 'u-op' });
+  const sender: PushSender = {
+    project: 'p',
+    send: async () => {
+      tabla.set('tok-reasignado', 'u-otro');
+      throw Object.assign(new Error('not registered'), { code: 'messaging/registration-token-not-registered' });
+    },
+  };
+  const { app, bearer } = await buildApp(pool, sender);
+  try {
+    const res = await request(app.getHttpServer())
+      .post('/api/notifications/devices/prueba')
+      .set('Authorization', bearer('u-op'))
+      .expect(201);
+    assert.equal(res.body.enviados, 0);
+    assert.equal(tabla.get('tok-reasignado'), 'u-otro');
   } finally {
     await app.close();
   }

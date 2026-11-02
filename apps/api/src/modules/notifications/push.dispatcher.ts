@@ -204,13 +204,23 @@ export function mensajeDePrueba(plantId: string): PushMessage {
  * Orden ascendente por id: si salen varios, el más reciente queda arriba en el panel.
  */
 export function planDeMensajes(avisos: readonly AvisoPush[], prefs: NotificationPrefsDto, ahora: Date): PushMessage[] {
+  return planDeEnvios(avisos, prefs, ahora).map((envio) => envio.mensaje);
+}
+
+interface EnvioConAmbito {
+  mensaje: PushMessage;
+  plantIds: string[];
+}
+
+function planDeEnvios(avisos: readonly AvisoPush[], prefs: NotificationPrefsDto, ahora: Date): EnvioConAmbito[] {
   const unicos = [...new Map(avisos.map((a) => [a.id, a])).values()].sort((a, b) => a.id - b.id);
   const suenan = unicos.filter((n) => debeSonar(n, prefs, ahora));
   const criticos = suenan.filter((n) => n.severity === 'critical');
   const resto = suenan.filter((n) => n.severity !== 'critical');
-  const mensajes = criticos.map(mensajeDeAviso);
-  if (resto.length > 2) mensajes.push(mensajeDeResumen(resto));
-  else mensajes.push(...resto.map(mensajeDeAviso));
+  const individual = (n: AvisoPush): EnvioConAmbito => ({ mensaje: mensajeDeAviso(n), plantIds: [n.plantId] });
+  const mensajes = criticos.map(individual);
+  if (resto.length > 2) mensajes.push({ mensaje: mensajeDeResumen(resto), plantIds: [...new Set(resto.map((n) => n.plantId))] });
+  else mensajes.push(...resto.map(individual));
   return mensajes;
 }
 
@@ -420,8 +430,8 @@ export class PushDispatcher implements OnModuleInit, OnModuleDestroy {
     const mensaje = mensajeDePrueba(plantId);
     const desenlaces = await Promise.all(
       tokens.map(async (token) => {
-        const d = await this.enviarUno(sender, { ...mensaje, token }, []);
-        if (d.clase === 'token-muerto') await this.borrarToken(token, d.codigo);
+        const d = await this.enviarUno(sender, { ...mensaje, token }, [], userId, [plantId]);
+        if (d.clase === 'token-muerto') await this.borrarToken(token, userId, d.codigo);
         return d;
       }),
     );
@@ -447,9 +457,9 @@ export class PushDispatcher implements OnModuleInit, OnModuleDestroy {
     const ahora = horaDeColombia(this.now());
     const trabajos: Promise<{ enviados: number; fallidos: number; borrado: boolean }>[] = [];
     for (const [userId, u] of porUsuario) {
-      const mensajes = planDeMensajes(u.avisos, await this.prefs.get(userId), ahora);
+      const mensajes = planDeEnvios(u.avisos, await this.prefs.get(userId), ahora);
       if (mensajes.length === 0) continue;
-      for (const token of u.tokens) trabajos.push(this.enviarATelefono(sender, token, mensajes));
+      for (const token of u.tokens) trabajos.push(this.enviarATelefono(sender, token, userId, mensajes));
     }
 
     const resultados = await Promise.all(trabajos);
@@ -475,30 +485,42 @@ export class PushDispatcher implements OnModuleInit, OnModuleDestroy {
   private async enviarATelefono(
     sender: PushSender,
     token: string,
-    mensajes: PushMessage[],
+    userId: string,
+    mensajes: EnvioConAmbito[],
   ): Promise<{ enviados: number; fallidos: number; borrado: boolean }> {
     let enviados = 0;
     let fallidos = 0;
-    for (const m of mensajes) {
-      const d = await this.enviarUno(sender, { ...m, token }, this.retryDelaysMs);
+    for (const { mensaje, plantIds } of mensajes) {
+      const d = await this.enviarUno(sender, { ...mensaje, token }, this.retryDelaysMs, userId, plantIds);
       if (d.clase === 'enviado') {
         enviados++;
         continue;
       }
       fallidos++;
       if (d.clase === 'token-muerto') {
-        await this.borrarToken(token, d.codigo);
-        return { enviados, fallidos, borrado: true };
+        const borrado = await this.borrarToken(token, userId, d.codigo);
+        return { enviados, fallidos, borrado };
       }
     }
     return { enviados, fallidos, borrado: false };
   }
 
   /** UN mensaje a UN teléfono: tiempo máximo por envío y reintentos con espera creciente ante 429/5xx. */
-  private async enviarUno(sender: PushSender, mensaje: TokenMessage, esperas: readonly number[]): Promise<Desenlace> {
+  private async enviarUno(
+    sender: PushSender,
+    mensaje: TokenMessage,
+    esperas: readonly number[],
+    userId: string,
+    plantIds: readonly string[],
+  ): Promise<Desenlace> {
     for (let intento = 0; ; intento++) {
       try {
-        await this.conTiempoMaximo(Promise.resolve().then(() => sender.send(mensaje)));
+        // No reutilizar la autorización de la selección inicial: preferencias, mensajes previos y
+        // esperas de reintento pueden haber permitido un logout, reasignación o cambio de rol.
+        if (!(await this.devices.puedeRecibir(mensaje.token, userId, plantIds))) {
+          return { clase: 'fallo', codigo: 'destinatario-no-autorizado' };
+        }
+        await this.conTiempoMaximo(sender.send(mensaje));
         return { clase: 'enviado' };
       } catch (err) {
         const { clase, codigo } = clasificarError(err);
@@ -532,12 +554,14 @@ export class PushDispatcher implements OnModuleInit, OnModuleDestroy {
     }
   }
 
-  private async borrarToken(token: string, codigo: string): Promise<void> {
+  private async borrarToken(token: string, userId: string, codigo: string): Promise<boolean> {
     try {
-      await this.devices.borrarToken(token);
-      this.logger.warn(`push: token ${colaDe(token)} borrado (${codigo}): ese teléfono ya no está registrado en FCM`);
+      const borrado = (await this.devices.borrarToken(token, userId)) > 0;
+      if (borrado) this.logger.warn(`push: token ${colaDe(token)} borrado (${codigo}): ese teléfono ya no está registrado en FCM`);
+      return borrado;
     } catch (err) {
       this.logger.error(`push: no se pudo borrar el token ${colaDe(token)}: ${err instanceof Error ? err.message : err}`);
+      return false;
     }
   }
 }

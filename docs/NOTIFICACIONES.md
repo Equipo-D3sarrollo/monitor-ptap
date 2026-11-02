@@ -1,5 +1,11 @@
 # Sistema de notificaciones — informe técnico
 
+> **Actualización 2026-11-02:** el informe/PDF de septiembre describe la versión 1.3.0.
+> El código actual incorpora FCM para Android y Web Push para navegador con página cerrada.
+> Configuración y aceptación real: [Android](./ANDROID_PUSH_PRODUCCION.md) y
+> [Web Push](./WEB_PUSH_PRODUCCION.md). Las consultas periódicas quedan como respaldo;
+> un build o una prueba simulada no demuestra recepción en un dispositivo físico.
+
 > **El entregable es el PDF**, no este archivo: `Sistema-Notificaciones-Aquora.pdf`.
 > Aquí solo está el índice y el resumen, para no abrir 21 páginas cada vez que alguien
 > pregunta cómo avisa la plataforma.
@@ -31,8 +37,8 @@ página nueva.
 ## Lo que hay que saber sin leerlo
 
 - **7 tipos de aviso**, 3 gravedades, 5 detectores. Todo el catálogo está en §03 con sus umbrales.
-- **No hay servidor de push.** El dispositivo pregunta cada ~15 min; la entrega es «lo mejor
-  posible» y está documentada como tal. En web las notificaciones siguen **bloqueadas** por HTTPS.
+- **En la versión histórica 1.3.0 no había servidor de push.** El dispositivo consultaba cada
+  ~15 min. Ver la actualización anterior para la implementación y configuración actuales.
 - **Las tres reglas que no se tocan:** silenciar no borra; las maniobras de válvula y el aviso de
   libro de firmas roto no se pueden callar por ningún camino; la preferencia es lista negra, no
   lista blanca.

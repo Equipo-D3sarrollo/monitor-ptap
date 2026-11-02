@@ -102,6 +102,8 @@ function montar(opts: {
   prefs?: Record<string, NotificationPrefsDto>;
   sender?: ReturnType<typeof emisor>;
   options?: Partial<PushOptions>;
+  beforePrefs?: (userId: string) => void | Promise<void>;
+  puedeRecibir?: (token: string, userId: string, plantIds: readonly string[]) => Promise<boolean>;
 }): Montaje {
   const borrados: string[] = [];
   const consultas: string[] = [];
@@ -111,8 +113,14 @@ function montar(opts: {
       consultas.push(plantId);
       return opts.destinatarios[plantId] ?? [];
     },
-    borrarToken: async (token: string) => {
+    puedeRecibir: opts.puedeRecibir ?? (async (token: string, userId: string, plantIds: readonly string[]) =>
+      plantIds.every((plantId) => (opts.destinatarios[plantId] ?? []).some((d) => d.userId === userId && d.tokens.includes(token)))),
+    borrarToken: async (token: string, userId: string) => {
+      const propios = Object.values(opts.destinatarios).flat().filter((d) => d.userId === userId && d.tokens.includes(token));
+      if (!propios.length) return 0;
+      propios.forEach((d) => { d.tokens = d.tokens.filter((t) => t !== token); });
       borrados.push(token);
+      return 1;
     },
     tokensDe: async (userId: string) =>
       Object.values(opts.destinatarios)
@@ -121,7 +129,10 @@ function montar(opts: {
         .flatMap((d) => d.tokens),
   } as unknown as DevicePushTokenRepository;
   const prefs = {
-    get: async (userId: string) => opts.prefs?.[userId] ?? NOTIFICATION_PREFS_DEFAULT,
+    get: async (userId: string) => {
+      await opts.beforePrefs?.(userId);
+      return opts.prefs?.[userId] ?? NOTIFICATION_PREFS_DEFAULT;
+    },
   } as unknown as NotificationPrefsRepository;
   const notifications = { onCreated: () => undefined } as unknown as NotificationRepository;
   const dispatcher = new PushDispatcher(devices, prefs, notifications, {
@@ -137,6 +148,20 @@ function montar(opts: {
 }
 
 const UN_TELEFONO = (userId: string, ...tokens: string[]): Destinatario => ({ userId, tokens });
+
+function autorizacionActual() {
+  const cuenta = { role: 'operador', plant: 'km18', is_active: 1 };
+  const registro = { token: 'tok', userId: 'u1' };
+  const pool = {
+    query: async (sql: string, params: unknown[]) => {
+      assert.match(sql, /JOIN users u ON u.id = t.user_id/);
+      assert.match(sql, /t.token = \? AND t.user_id = \? AND u.is_active = 1/);
+      return [[...(params[0] === registro.token && params[1] === registro.userId && cuenta.is_active === 1 ? [cuenta] : [])], undefined];
+    },
+  } as unknown as Pool;
+  const repository = new DevicePushTokenRepository(pool);
+  return { cuenta, registro, puedeRecibir: repository.puedeRecibir.bind(repository) };
+}
 
 const esperar = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
 
@@ -205,6 +230,108 @@ test('destinatarios: cada uno con SUS preferencias — un tipo silenciado no se 
     ['tok-b'],
     'a quien lo silenció no le llega; al resto sí',
   );
+});
+
+test('autorización por intento: dueño actual, cuenta activa, rol y todas las plantas del mensaje', async () => {
+  const { cuenta, registro, puedeRecibir } = autorizacionActual();
+  assert.equal(await puedeRecibir('tok', 'u1', ['km18']), true);
+  assert.equal(await puedeRecibir('tok', 'u1', []), false);
+  assert.equal(await puedeRecibir('tok', 'u1', ['km18', 'cascajal']), false);
+  cuenta.role = 'admin';
+  assert.equal(await puedeRecibir('tok', 'u1', ['km18', 'cascajal']), true);
+  cuenta.role = 'civil';
+  assert.equal(await puedeRecibir('tok', 'u1', ['km18']), false);
+  cuenta.role = 'operador';
+  cuenta.plant = 'cascajal';
+  assert.equal(await puedeRecibir('tok', 'u1', ['km18']), false);
+  cuenta.plant = 'km18';
+  cuenta.is_active = 0;
+  assert.equal(await puedeRecibir('tok', 'u1', ['km18']), false);
+  cuenta.is_active = 1;
+  registro.userId = 'u2';
+  assert.equal(await puedeRecibir('tok', 'u1', ['km18']), false);
+  assert.equal(await puedeRecibir('tok', 'u2', ['km18']), true);
+});
+
+test('reasignación mientras se leen preferencias: no envía avisos del dueño anterior', async () => {
+  const destinatarios = { km18: [UN_TELEFONO('u1', 'tok')] };
+  const { dispatcher, sender } = montar({
+    destinatarios,
+    beforePrefs: async () => { destinatarios.km18 = [UN_TELEFONO('u2', 'tok')]; },
+  });
+  dispatcher.enqueue(aviso(1));
+  assert.equal((await dispatcher.flush()).enviados, 0);
+  assert.equal(sender.envios.length, 0);
+});
+
+test('cada reintento revalida reasignación, baja, rol y planta; no reusa destinatarios iniciales', async () => {
+  const cambios = [
+    ({ registro }: ReturnType<typeof autorizacionActual>) => { registro.userId = 'u2'; },
+    ({ registro }: ReturnType<typeof autorizacionActual>) => { registro.token = 'eliminado'; },
+    ({ cuenta }: ReturnType<typeof autorizacionActual>) => { cuenta.is_active = 0; },
+    ({ cuenta }: ReturnType<typeof autorizacionActual>) => { cuenta.role = 'civil'; },
+    ({ cuenta }: ReturnType<typeof autorizacionActual>) => { cuenta.plant = 'cascajal'; },
+  ];
+  for (const cambiar of cambios) {
+    const actual = autorizacionActual();
+    const sender = emisor(() => {
+      cambiar(actual);
+      throw errorFcm('messaging/server-unavailable', 503);
+    });
+    const { dispatcher } = montar({ destinatarios: { km18: [UN_TELEFONO('u1', 'tok')] }, sender, puedeRecibir: actual.puedeRecibir });
+    dispatcher.enqueue(aviso(1));
+    const resultado = await dispatcher.flush();
+    assert.equal(sender.envios.length, 1, 'el reintento pierde autorización y no llega a FCM');
+    assert.equal(resultado.enviados, 0);
+  }
+});
+
+test('tras un primer mensaje aceptado, el siguiente vuelve a comprobar el dueño', async () => {
+  const destinatarios = { km18: [UN_TELEFONO('u1', 'tok')] };
+  const sender = emisor(() => { destinatarios.km18 = [UN_TELEFONO('u2', 'tok')]; });
+  const { dispatcher } = montar({ destinatarios, sender });
+  dispatcher.enqueue(aviso(1, { severity: 'critical' }));
+  dispatcher.enqueue(aviso(2, { severity: 'critical' }));
+  assert.equal((await dispatcher.flush()).enviados, 1);
+  assert.equal(sender.envios.length, 1);
+});
+
+test('resumen de varias plantas conserva todo su ámbito para revalidarlo', async () => {
+  const actual = autorizacionActual();
+  actual.cuenta.role = 'admin';
+  const { dispatcher, sender } = montar({
+    destinatarios: { km18: [UN_TELEFONO('u1', 'tok')], cascajal: [UN_TELEFONO('u1', 'tok')] },
+    beforePrefs: () => { actual.cuenta.role = 'operador'; },
+    puedeRecibir: actual.puedeRecibir,
+  });
+  dispatcher.enqueue(aviso(1));
+  dispatcher.enqueue(aviso(2));
+  dispatcher.enqueue(aviso(3, { plantId: 'cascajal' }));
+  await dispatcher.flush();
+  assert.equal(sender.envios.length, 0, 'no filtra Cascajal dentro de un resumen con plantId vacío');
+});
+
+test('prueba dirigida revalida al dueño y la cuenta después de obtener sus tokens', async () => {
+  const cambios = [
+    ({ registro }: ReturnType<typeof autorizacionActual>) => { registro.userId = 'u2'; },
+    ({ registro }: ReturnType<typeof autorizacionActual>) => { registro.token = 'eliminado'; },
+    ({ cuenta }: ReturnType<typeof autorizacionActual>) => { cuenta.is_active = 0; },
+    ({ cuenta }: ReturnType<typeof autorizacionActual>) => { cuenta.role = 'civil'; },
+    ({ cuenta }: ReturnType<typeof autorizacionActual>) => { cuenta.plant = 'cascajal'; },
+  ];
+  for (const cambiar of cambios) {
+    const actual = autorizacionActual();
+    const { dispatcher, sender } = montar({
+      destinatarios: { km18: [UN_TELEFONO('u1', 'tok')] },
+      puedeRecibir: async (...args) => {
+        cambiar(actual);
+        return actual.puedeRecibir(...args);
+      },
+    });
+    const respuesta = await dispatcher.sendTest('u1', 'km18');
+    assert.equal(respuesta.enviados, 0);
+    assert.equal(sender.envios.length, 0);
+  }
 });
 
 test('«no molestar» en hora de COLOMBIA: calla lo normal, lo crítico lo atraviesa', async () => {
@@ -400,6 +527,20 @@ test('token NO registrado (UNREGISTERED): se borra y no se le manda nada más; l
   assert.equal(sender.envios.filter((e) => e.token === 'tok-muerto').length, 1, 'tras el primer rechazo, nada más');
   assert.equal(sender.envios.filter((e) => e.token === 'tok-vivo').length, 2);
   assert.equal(r.tokensBorrados, 1);
+});
+
+test('rechazo tardío de un token reasignado no borra el teléfono del nuevo dueño', async () => {
+  const destinatarios = { km18: [UN_TELEFONO('u1', 'tok')] };
+  const sender = emisor(() => {
+    destinatarios.km18 = [UN_TELEFONO('u2', 'tok')];
+    throw errorFcm('messaging/registration-token-not-registered', 404);
+  });
+  const { dispatcher, borrados } = montar({ destinatarios, sender });
+  dispatcher.enqueue(aviso(1));
+  const resultado = await dispatcher.flush();
+  assert.deepEqual(borrados, []);
+  assert.equal(resultado.tokensBorrados, 0);
+  assert.deepEqual(destinatarios.km18, [UN_TELEFONO('u2', 'tok')]);
 });
 
 test('INVALID_ARGUMENT: solo se borra el token si el error habla del token, no si el mensaje está mal', () => {

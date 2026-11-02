@@ -10,6 +10,9 @@ import { CommandLogRepository } from '../commands/command-log.repository';
 import { DevicePushTokenRepository } from './device-push-token.repository';
 import { NotificationsController } from './notifications.controller';
 import { PushDispatcher } from './push.dispatcher';
+import { WebPushController } from './web-push.controller';
+import { WebPushRepository } from './web-push.repository';
+import { WebPushDispatcher } from './web-push.dispatcher';
 import { StaleDataDetector } from './stale-data.detector';
 import { TankAutonomyDetector } from './tank-autonomy.detector';
 import { TankOverflowDetector } from './tank-overflow.detector';
@@ -27,7 +30,7 @@ import { ValveStateObserver } from './valve-state.observer';
   // (material de diagnóstico), no a la bandeja. Sin este import Nest no arranca — y `tsc` no lo
   // detecta, porque la inyección se resuelve en runtime.
   imports: [ConnectivityModule, DatabaseModule, AuthModule, AuditModule],
-  controllers: [NotificationsController],
+  controllers: [NotificationsController, WebPushController],
   providers: [
     NotificationRepository,
     NotificationPrefsRepository,
@@ -46,6 +49,8 @@ import { ValveStateObserver } from './valve-state.observer';
     // Sin la clave de Firebase arranca apagado (lo dice el log) y no rompe nada.
     DevicePushTokenRepository,
     PushDispatcher,
+    WebPushRepository,
+    WebPushDispatcher,
   ],
   exports: [NotificationRepository],
 })

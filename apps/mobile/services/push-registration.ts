@@ -20,8 +20,8 @@ import { tokenExpiryMs } from './session-store';
  * fallo, cierre de sesión—: un teléfono que se creyera atendido por push sin estarlo se quedaría sin
  * ningún aviso, y eso es peor que un aviso repetido (que Android, además, reemplaza por su etiqueta).
  *
- * Solo Android: el token de iPhone es de APNs, no de FCM; y en web no hay push. Ahí todo esto es un
- * no-op y los avisos siguen llegando como antes.
+ * Android usa FCM; en web se delega al registro Web Push del navegador. El token de iPhone es de
+ * APNs, no de FCM, así que allí continúa la sincronización de respaldo.
  */
 
 const PUSH_ACTIVO_KEY = 'ptap_push_activo';
@@ -60,6 +60,7 @@ async function enviar<T>(path: string, body: unknown, bearer: string, timeoutMs:
 
 /** ¿Recibe este teléfono los avisos por push? Lo consulta `notification-sync` antes de publicar. */
 export async function pushActivo(): Promise<boolean> {
+  if (Platform.OS === 'web') return (await import('./web-push-registration')).webPushActivo();
   try {
     return (await AsyncStorage.getItem(PUSH_ACTIVO_KEY)) === '1';
   } catch {
@@ -137,6 +138,7 @@ const registrosEnCurso = new Map<number, Promise<EstadoPush>>();
  * Nunca lanza.
  */
 export function registrarPush(): Promise<EstadoPush> {
+  if (Platform.OS === 'web') return import('./web-push-registration').then(web => web.registrarWebPush());
   const session = sesionActual();
   if (!session) return Promise.resolve('pendiente');
   const existing = registrosEnCurso.get(session.generation);
@@ -225,6 +227,7 @@ export function escucharCambiosDeToken(alCambiar?: (estado: EstadoPush) => void)
  * en cada envío.
  */
 export async function desregistrarPush(): Promise<void> {
+  if (Platform.OS === 'web') return (await import('./web-push-registration')).desregistrarWebPush();
   // Queue synchronously before reading storage so the following login cannot overtake cleanup.
   // AuthContext retains the outgoing JWT during cleanup; that must not allow a new registration.
   stoppedGeneration = getAuthGeneration();
@@ -260,5 +263,6 @@ export async function desregistrarPush(): Promise<void> {
 
 /** «Enviar aviso de prueba» de Ajustes: el servidor lo manda solo a los teléfonos de quien lo pide. */
 export function probarPush(): Promise<PruebaPushDto> {
+  if (Platform.OS === 'web') return import('./web-push-registration').then(web => web.probarWebPush());
   return postJson<PruebaPushDto>('/api/notifications/devices/prueba', {});
 }

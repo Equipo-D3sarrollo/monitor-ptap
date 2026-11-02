@@ -129,6 +129,13 @@ export function scopeFilter(scope: NotificationScope): { sql: string; params: (s
 export class NotificationRepository {
   private readonly logger = new Logger('Notifications');
   private listener: NotificationListener | null = null;
+  private readonly subscribers = new Set<NotificationListener>();
+
+  /** Independent transports can subscribe without replacing the legacy FCM listener. */
+  subscribeCreated(listener: NotificationListener): () => void {
+    this.subscribers.add(listener);
+    return () => { this.subscribers.delete(listener); };
+  }
 
   constructor(@Inject(MYSQL_POOL) private readonly pool: Pool) {}
 
@@ -177,8 +184,9 @@ export class NotificationRepository {
    * pase con el push puede convertir eso en un fallo.
    */
   private announce(input: NewNotification, resultado: unknown): void {
-    const listener = this.listener;
-    if (!listener) return;
+    const listeners = [...this.subscribers];
+    if (this.listener) listeners.push(this.listener);
+    if (!listeners.length) return;
     try {
       const cabecera = Array.isArray(resultado) ? (resultado[0] as Partial<ResultSetHeader> | undefined) : undefined;
       const id = Number(cabecera?.insertId);
@@ -190,11 +198,13 @@ export class NotificationRepository {
       }
       const creado: CreatedNotification = { ...input, id, createdAt: new Date().toISOString() };
       setImmediate(() => {
-        Promise.resolve()
-          .then(() => listener(creado))
-          .catch((err: unknown) => {
-            this.logger.error(`el oyente de avisos nuevos falló con el aviso ${id}: ${err instanceof Error ? err.message : err}`);
-          });
+        for (const listener of listeners) {
+          Promise.resolve()
+            .then(() => listener(creado))
+            .catch((err: unknown) => {
+              this.logger.error(`el oyente de avisos nuevos falló con el aviso ${id}: ${err instanceof Error ? err.message : err}`);
+            });
+        }
       });
     } catch (err) {
       this.logger.error(`no se pudo anunciar el aviso nuevo: ${err instanceof Error ? err.message : err}`);

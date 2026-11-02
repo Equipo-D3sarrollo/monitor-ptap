@@ -3,11 +3,12 @@ import { Platform } from 'react-native';
 import { cuerpoDeAviso, debeSonar, ETIQUETA_RESUMEN, etiquetaDeAviso, resumenDeAvisos } from '@ptap/shared';
 import { fetchNotifications, type AppNotification } from './notifications';
 import { ensureAndroidChannel, getPermission, presentNotification } from './device-notifications';
-import { getNotificationPrefs, loadNotificationPrefs } from './notification-prefs';
+import { loadNotificationPrefs } from './notification-prefs';
 import { fetchAppRelease, runningVersionCode } from './app-release';
 import { decidirAvisoActualizacion } from './app-release-compare';
 import { punteroConPush, siguientePuntero } from './notification-pointer';
 import { pushActivo } from './push-registration';
+import { isNotificationSession, notificationSession, type NotificationSession } from './notification-session';
 
 /**
  * Lleva los avisos del servidor al panel de notificaciones del dispositivo.
@@ -56,9 +57,9 @@ const MAX_DIFERIDOS = 30;
 /** Mínimo que Android respeta de verdad; pedir menos no lo acelera. */
 const INTERVAL_MINUTES = 15;
 
-async function lastNotifiedId(): Promise<number> {
+async function lastNotifiedId(session: NotificationSession): Promise<number> {
   try {
-    const raw = await AsyncStorage.getItem(LAST_NOTIFIED_KEY);
+    const raw = await AsyncStorage.getItem(`${LAST_NOTIFIED_KEY}:${session.scope}`);
     const n = raw ? Number(raw) : 0;
     return Number.isFinite(n) ? n : 0;
   } catch {
@@ -66,17 +67,17 @@ async function lastNotifiedId(): Promise<number> {
   }
 }
 
-async function rememberNotifiedId(id: number): Promise<void> {
+async function rememberNotifiedId(session: NotificationSession, id: number): Promise<void> {
   try {
-    await AsyncStorage.setItem(LAST_NOTIFIED_KEY, String(id));
+    await AsyncStorage.setItem(`${LAST_NOTIFIED_KEY}:${session.scope}`, String(id));
   } catch {
     /* si el storage falla, a lo sumo se repite un aviso */
   }
 }
 
-async function diferidos(): Promise<number[]> {
+async function diferidos(session: NotificationSession): Promise<number[]> {
   try {
-    const raw = await AsyncStorage.getItem(DEFERRED_KEY);
+    const raw = await AsyncStorage.getItem(`${DEFERRED_KEY}:${session.scope}`);
     const v: unknown = raw ? JSON.parse(raw) : [];
     return Array.isArray(v) ? v.filter((n): n is number => typeof n === 'number') : [];
   } catch {
@@ -84,9 +85,9 @@ async function diferidos(): Promise<number[]> {
   }
 }
 
-async function recordarDiferidos(ids: number[]): Promise<void> {
+async function recordarDiferidos(session: NotificationSession, ids: number[]): Promise<void> {
   try {
-    await AsyncStorage.setItem(DEFERRED_KEY, JSON.stringify(ids.slice(-MAX_DIFERIDOS)));
+    await AsyncStorage.setItem(`${DEFERRED_KEY}:${session.scope}`, JSON.stringify(ids.slice(-MAX_DIFERIDOS)));
   } catch {
     /* si el storage falla, a lo sumo un aviso diferido no vuelve a intentarse */
   }
@@ -159,7 +160,7 @@ async function recordarAvisoActualizacion(versionCode: number): Promise<void> {
  * módulo para que lo compartan todos los llamadores de este proceso, incluida la tarea de fondo si
  * la app está viva.
  */
-let enCurso: Promise<number> | null = null;
+const enCurso = new Map<number, Promise<number>>();
 
 /**
  * Consulta la bandeja y lleva al panel lo que sea nuevo. Devuelve cuántos avisos mostró.
@@ -170,18 +171,22 @@ let enCurso: Promise<number> | null = null;
  * Una sola a la vez: si ya hay una en marcha, se devuelve esa misma promesa en vez de empezar otra.
  */
 export function syncNotificationsToDevice(): Promise<number> {
-  if (enCurso) return enCurso;
-  enCurso = sincronizar().finally(() => {
-    enCurso = null;
-  });
-  return enCurso;
+  const session = notificationSession();
+  if (!session) return Promise.resolve(0);
+  const existing = enCurso.get(session.generation);
+  if (existing) return existing;
+  const result = sincronizar(session).finally(() => enCurso.delete(session.generation));
+  enCurso.set(session.generation, result);
+  return result;
 }
 
-async function sincronizar(): Promise<number> {
+async function sincronizar(session: NotificationSession): Promise<number> {
+  const actual = () => isNotificationSession(session);
   // El permiso se mira ANTES que nada, porque sin él no se puede publicar y el puntero no podría
   // avanzar nunca: todo lo acumulado mientras tanto saldría de golpe el día que se concediera. Ver
   // la rama `!conPermiso` más abajo.
   const conPermiso = (await getPermission()) === 'granted';
+  if (!actual()) return 0;
 
   // La actualización se comprueba PRIMERO y por separado: es independiente de los avisos de planta
   // y no comparte ni su idempotencia ni sus preferencias de silencio. Va con su propio try/catch
@@ -189,9 +194,11 @@ async function sincronizar(): Promise<number> {
   // intenta: no recordaría la versión, y avisará de ella en cuanto se conceda.
   const avisosActualizacion = conPermiso ? await avisarSiHayActualizacion() : 0;
 
-  const [previo, pendientes] = await Promise.all([lastNotifiedId(), diferidos()]);
-  const [{ notifications }] = await Promise.all([fetchNotifications(), loadNotificationPrefs()]);
-  const prefs = getNotificationPrefs();
+  if (!actual()) return 0;
+  const [previo, pendientes] = await Promise.all([lastNotifiedId(session), diferidos(session)]);
+  if (!actual()) return 0;
+  const [{ notifications }, prefs] = await Promise.all([fetchNotifications(), loadNotificationPrefs()]);
+  if (!actual()) return 0;
 
   // Solo lo NO VISTO y más nuevo que lo ya anunciado, MÁS lo que quedó pendiente de una franja de
   // silencio anterior. Orden ascendente para que, si hay varios, el más reciente quede arriba.
@@ -209,7 +216,7 @@ async function sincronizar(): Promise<number> {
   // por el filtro `!n.seen`.
   if (!conPermiso) {
     const tope = Math.max(previo, ...candidatos.map((n) => n.id));
-    if (tope > previo) await rememberNotifiedId(tope);
+    if (tope > previo) await rememberNotifiedId(session, tope);
     return 0;
   }
 
@@ -218,11 +225,13 @@ async function sincronizar(): Promise<number> {
   // puntero —si el push se corta, la consulta retoma desde aquí sin soltar días de avisos viejos— y se
   // vacía la lista de diferidos: con push, lo que cae en el «no molestar» se queda en la bandeja y nadie
   // lo vuelve a sonar después, igual que decide el servidor.
-  if (await pushActivo()) {
+  const conPush = await pushActivo();
+  if (!actual()) return 0;
+  if (conPush) {
     const tope = punteroConPush(previo, candidatos.map((n) => n.id));
     await Promise.all([
-      tope > previo ? rememberNotifiedId(tope) : Promise.resolve(),
-      pendientes.length > 0 ? recordarDiferidos([]) : Promise.resolve(),
+      tope > previo ? rememberNotifiedId(session, tope) : Promise.resolve(),
+      pendientes.length > 0 ? recordarDiferidos(session, []) : Promise.resolve(),
     ]);
     return avisosActualizacion;
   }
@@ -240,6 +249,7 @@ async function sincronizar(): Promise<number> {
 
   if (nuevos.length > 0) {
     await ensureAndroidChannel();
+    if (!actual()) return 0;
 
     // LO CRÍTICO NUNCA SE RESUME. Antes, tres avisos de golpe se colapsaban en «3 avisos nuevos» sin
     // severidad ni planta, y un tanque rebosando se leía igual que tres sensores parados. Ahora lo
@@ -251,11 +261,13 @@ async function sincronizar(): Promise<number> {
     // Título, texto y etiqueta salen de `@ptap/shared`, los mismos que usa el push del servidor: un
     // aviso se lee igual llegue por donde llegue, y la etiqueta `n-<id>` hace que uno reemplace al otro.
     for (const n of criticos) {
+      if (!actual()) return 0;
       const ok = await presentNotification(
         n.title,
         cuerpoDeAviso(n),
         { tag: etiquetaDeAviso(n.id), plantId: n.plantId, subject: n.subject },
         true,
+        actual,
       );
       if (ok) publicados.push(n.id);
     }
@@ -264,15 +276,17 @@ async function sincronizar(): Promise<number> {
     // resumen cubre TODO `resto`: si sale, todos quedan anunciados; si falla, ninguno.
     if (resto.length > 2) {
       const { titulo, cuerpo } = resumenDeAvisos(resto);
-      const ok = await presentNotification(titulo, cuerpo, { tag: ETIQUETA_RESUMEN });
+      if (!actual()) return 0;
+      const ok = await presentNotification(titulo, cuerpo, { tag: ETIQUETA_RESUMEN }, false, actual);
       if (ok) publicados.push(...resto.map((n) => n.id));
     } else {
       for (const n of resto) {
+        if (!actual()) return 0;
         const ok = await presentNotification(n.title, cuerpoDeAviso(n), {
           tag: etiquetaDeAviso(n.id),
           plantId: n.plantId,
           subject: n.subject,
-        });
+        }, false, actual);
         if (ok) publicados.push(n.id);
       }
     }
@@ -290,9 +304,10 @@ async function sincronizar(): Promise<number> {
   // reintentarlo, en vez de perderlo por el camino.
   const fallidosYaPasados = ids.filter((id) => id <= puntero && !resueltos.has(id));
 
+  if (!actual()) return 0;
   await Promise.all([
-    recordarDiferidos([...aplazados, ...fallidosYaPasados]),
-    puntero > previo ? rememberNotifiedId(puntero) : Promise.resolve(),
+    recordarDiferidos(session, [...aplazados, ...fallidosYaPasados]),
+    puntero > previo ? rememberNotifiedId(session, puntero) : Promise.resolve(),
   ]);
 
   return publicados.length + avisosActualizacion;

@@ -113,12 +113,18 @@ test('in-flight hydration cannot resurrect snapshots after logout', async () => 
   assert.equal(disk.size, 0);
 });
 
-function authFixture(store: Record<string, (...args: any[]) => any>) {
+function authFixture(store: Record<string, (...args: any[]) => any>, options: {
+  platform?: string; disk?: Map<string, string>; initialToken?: string; blockWebRevocation?: boolean;
+} = {}) {
   const queryClient = new QueryClient();
   const effects: (() => void)[] = [];
   const state: unknown[] = [];
   let pushDone: () => void = () => undefined;
-  let authToken: string | null = 'old';
+  let webDone: () => void = () => undefined;
+  let webRevocations = 0;
+  let authToken: string | null = options.initialToken ?? 'old';
+  const disk = options.disk ?? new Map([['ptap_auth_token', authToken]]);
+  const unregisterSnapshots: { persisted: string | null; outgoing: string | null }[] = [];
   let restore: ((value: string | null) => void)[] = [];
   const source = readFileSync(
     new URL('../context/AuthContext.tsx', import.meta.url),
@@ -126,7 +132,21 @@ function authFixture(store: Record<string, (...args: any[]) => any>) {
   ).replace(/^import\b[\s\S]*?;\r?\n/gm, '');
   const context = vm.createContext({
     exports: {},
-    require: () => ({ jsx: (_type: unknown, props: any) => props.value }),
+    require: (name: string) => {
+      if (name === 'react/jsx-runtime') return { jsx: (_type: unknown, props: any) => props.value };
+      if (name === '../services/web-push-registration') return {
+        invalidarWebPushLocal: () => {
+          webRevocations++;
+          return options.blockWebRevocation ? new Promise<void>(resolve => { webDone = resolve; }) : Promise.resolve();
+        },
+      };
+      throw new Error(`Unexpected AuthContext import ${name}`);
+    },
+    Platform: { OS: options.platform ?? 'android' },
+    localStorage: {
+      getItem: (key: string) => disk.get(key) ?? null,
+      removeItem: (key: string) => disk.delete(key),
+    },
     createContext: () => ({ Provider: {} }),
     useCallback: (fn: unknown) => fn,
     useMemo: (fn: () => unknown) => fn(),
@@ -147,23 +167,25 @@ function authFixture(store: Record<string, (...args: any[]) => any>) {
     useQueryClient: () => queryClient,
     storage: {
       getItem: () => new Promise<string | null>((resolve) => restore.push(resolve)),
-      setItem: async () => {},
-      deleteItem: async () => {},
+      setItem: async (key: string, value: string) => { disk.set(key, value); },
+      deleteItem: async (key: string) => { disk.delete(key); },
     },
     invalidateSessionRestoration: () => {},
     resumeSessionRestoration: () => {},
-    TOKEN_KEY: 'token',
-    USER_KEY: 'user',
+    TOKEN_KEY: 'ptap_auth_token',
+    USER_KEY: 'ptap_auth_user',
     tokenExpiryMs: () => Date.now() + 60_000,
     setAuthToken: (value: string | null) => {
       authToken = value;
     },
     setOnUnauthorized: () => {},
     invalidateAuthRequests: () => {},
-    desregistrarPush: () =>
-      new Promise<void>((resolve) => {
+    desregistrarPush: () => {
+      unregisterSnapshots.push({ persisted: disk.get('ptap_auth_token') ?? null, outgoing: authToken });
+      return new Promise<void>((resolve) => {
         pushDone = resolve;
-      }),
+      });
+    },
     resetSocket: () => {},
     setLastDataSession: store.setLastDataSession,
     checkPermission: () => true,
@@ -185,7 +207,11 @@ function authFixture(store: Record<string, (...args: any[]) => any>) {
     effects,
     state,
     token: () => authToken,
+    disk,
+    unregisterSnapshots,
+    webRevocations: () => webRevocations,
     finishPush: () => pushDone(),
+    finishWebRevocation: () => webDone(),
     finishRestore: () => {
       restore[0]('old');
       restore[1](JSON.stringify(alice));
@@ -204,6 +230,43 @@ test('logout immediately removes query data and fallback before push unregister 
   assert.equal(store.getLastSnapshot('a'), null);
   auth.finishPush();
   await logout;
+});
+
+test('web logout revokes another tab before starting slow device removal and retains only the outgoing memory credential', async () => {
+  const { store } = fixture();
+  const token = `h.${Buffer.from(JSON.stringify({ sub: 'alice', role: 'operador', plant: 'a', exp: Date.now() / 1000 + 60 })).toString('base64url')}.s`;
+  const disk = new Map([['ptap_auth_token', token]]);
+  const source = readFileSync(new URL('./notification-session.ts', import.meta.url), 'utf8')
+    .replace(/^import\b[\s\S]*?;\r?\n/gm, '');
+  const tab = vm.createContext({ exports: {}, Platform: { OS: 'web' }, atob,
+    getAuthToken: () => token, getAuthGeneration: () => 1,
+    localStorage: { getItem: (key: string) => disk.get(key) ?? null } });
+  vm.runInContext(ts.transpileModule(source, {
+    compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 },
+  }).outputText, tab);
+  const otherTab = tab.exports as Record<string, (...args: any[]) => any>;
+  assert.ok(otherTab.notificationSession());
+  const auth = authFixture(store, { platform: 'web', disk, initialToken: token });
+  const logout = auth.auth.logout();
+  assert.equal(otherTab.notificationSession(), null, 'shared credential is revoked before any cleanup await');
+  assert.deepEqual(auth.unregisterSnapshots, [{ persisted: null, outgoing: token }]);
+  assert.equal(auth.token(), token, 'outgoing credential is available for authenticated removal');
+  auth.finishPush(); await logout;
+  assert.equal(auth.token(), null);
+});
+
+test('web login removes the previous shared credential immediately and waits for worker revocation before persisting the next account', async () => {
+  const { store } = fixture();
+  const auth = authFixture(store, { platform: 'web', blockWebRevocation: true });
+  const login = auth.auth.login('new', bob);
+  assert.equal(auth.disk.get('ptap_auth_token'), undefined);
+  await tick();
+  assert.equal(auth.webRevocations(), 1);
+  assert.equal(auth.disk.get('ptap_auth_token'), undefined, 'next account cannot appear before worker ownership is cleared');
+  assert.equal(auth.token(), 'old');
+  auth.finishWebRevocation(); await login;
+  assert.equal(auth.disk.get('ptap_auth_token'), 'new');
+  assert.equal(auth.token(), 'new');
 });
 
 test('late persisted-session restoration cannot revive a session after logout', async () => {

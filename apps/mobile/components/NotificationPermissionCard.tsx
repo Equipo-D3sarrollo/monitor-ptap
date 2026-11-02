@@ -8,6 +8,20 @@ import { toast } from '../services/toast-store';
 
 /** Qué se le dice a la persona según en qué quedó el push de su teléfono. */
 function textoDeEstado(push: EstadoPush): { titulo: string; texto: string } {
+  if (Platform.OS === 'web') {
+    if (push === 'activo') return {
+      titulo: 'Avisos del navegador activos',
+      texto: 'Pueden llegar aunque cierres la pestaña. La entrega y el sonido dependen del navegador, sus permisos y el sistema. Usa la prueba para comprobarlos.',
+    };
+    return {
+      titulo: 'Avisos con la pestaña abierta',
+      texto: push === 'servidor-apagado'
+        ? 'El servidor todavía no envía avisos Web Push. Mientras tanto se revisan con esta pestaña abierta.'
+        : push === 'no-disponible'
+          ? 'Este navegador no admite Web Push aquí. Se revisan los avisos mientras esta pestaña permanezca abierta.'
+          : 'Todavía no se activó Web Push. Se reintentará al volver a la aplicación; mientras tanto se revisan los avisos con esta pestaña abierta.',
+    };
+  }
   switch (push) {
     case 'activo':
       return {
@@ -60,7 +74,10 @@ export function NotificationPermissionCard() {
   async function enviarPrueba(): Promise<void> {
     setProbando(true);
     try {
-      const t = textoDePrueba(await probar());
+      const result = await probar();
+      const t = Platform.OS !== 'web' ? textoDePrueba(result) : result.enviados > 0
+        ? { tipo: 'success' as const, titulo: 'Aviso de prueba enviado', mensaje: 'El proveedor aceptó el envío. Comprueba que aparece también después de cerrar esta pestaña.' }
+        : { tipo: 'error' as const, titulo: 'No se pudo enviar la prueba', mensaje: result.pushActivo ? 'Vuelve a abrir la aplicación para registrar este navegador.' : 'El servidor todavía no tiene Web Push activo.' };
       toast[t.tipo](t.titulo, t.mensaje);
     } catch (err) {
       toast.error('No se pudo pedir el aviso de prueba', err instanceof Error ? err.message : undefined);
@@ -83,14 +100,18 @@ export function NotificationPermissionCard() {
 
   if (permission === 'granted') {
     const { titulo, texto } = textoDeEstado(push);
-    // La prueba solo tiene sentido donde puede haber push: Android con una APK que trae Firebase.
-    const puedeProbar = Platform.OS === 'android' && push !== 'no-disponible';
+    const puedeProbar = (Platform.OS === 'android' || Platform.OS === 'web') && push === 'activo';
     return (
       <View style={[styles.card, styles.cardOk]}>
         <Ionicons name={push === 'activo' ? 'flash' : 'notifications'} size={20} color={Colors.success} />
         <View style={styles.body}>
           <Text style={styles.title}>{titulo}</Text>
           <Text style={styles.text}>{texto}</Text>
+          {Platform.OS === 'web' && push !== 'activo' && push !== 'no-disponible' && (
+            <TouchableOpacity style={styles.enlace} onPress={() => void ask()} accessibilityRole="button">
+              <Text style={styles.enlaceTexto}>Activar avisos con la pestaña cerrada</Text>
+            </TouchableOpacity>
+          )}
           {puedeProbar && (
             <TouchableOpacity
               style={styles.enlace}
@@ -99,7 +120,7 @@ export function NotificationPermissionCard() {
               hitSlop={8}
               accessibilityRole="button"
               accessibilityState={{ disabled: probando, busy: probando }}
-              accessibilityLabel="Enviar un aviso de prueba a este teléfono"
+              accessibilityLabel="Enviar un aviso de prueba a este dispositivo"
             >
               {probando ? (
                 <ActivityIndicator size="small" color={Colors.primary} />

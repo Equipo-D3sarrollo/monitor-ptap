@@ -24,7 +24,14 @@ test('signer check fails closed for missing, malformed or ambiguous signer outpu
   assert.equal(signer(line), fingerprint);
   assert.throws(() => signer('No certificate'));
   assert.throws(() => signer('Signer #1 certificate SHA-256 digest: abcd'));
-  assert.throws(() => signer(`${line}\n${line}`));
+  assert.equal(signer(`${line}\n${line}`), fingerprint);
+  assert.equal(signer(`V2 Signer: certificate SHA-256 digest: ${fingerprint}`), fingerprint);
+  assert.equal(signer(['V1', 'V2', 'V3', 'V3.1'].map(scheme => `${scheme} Signer: certificate SHA-256 digest: ${fingerprint}`).join('\r\n')), fingerprint);
+  assert.equal(signer(`${line}\nV3 Signer: certificate SHA-256 digest: ${fingerprint.toUpperCase()}`), fingerprint);
+  assert.throws(() => signer(`${line}\nSigner #2 certificate SHA-256 digest: ${'b'.repeat(64)}`));
+  assert.throws(() => signer(`${line}\nV3 Signer: certificate SHA-256 digest: ${'b'.repeat(64)}`));
+  assert.throws(() => signer(`${line}\nV2 Signer: certificate SHA-256 digest: abcd`));
+  assert.throws(() => signer(`${line}\nUnknown certificate SHA-256 digest: ${fingerprint}`));
 });
 
 test('invalid Firebase JSON never appears in diagnostic messages', () => {

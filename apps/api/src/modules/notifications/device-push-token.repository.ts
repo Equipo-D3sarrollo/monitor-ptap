@@ -69,9 +69,25 @@ export class DevicePushTokenRepository {
     return res.affectedRows ?? 0;
   }
 
-  /** Baja porque FCM dijo que el token ya no vale (app desinstalada, datos borrados, token rotado). */
-  async borrarToken(token: string): Promise<void> {
-    await this.pool.query('DELETE FROM device_push_token WHERE token = ?', [token]);
+  /** Un rechazo tardío de FCM no puede borrar el registro de un nuevo dueño del teléfono. */
+  async borrarToken(token: string, userId: string): Promise<number> {
+    return this.quitar(token, userId);
+  }
+
+  /** Revalida dueño, cuenta y ámbito inmediatamente antes de cada intento de envío. */
+  async puedeRecibir(token: string, userId: string, plantIds: readonly string[]): Promise<boolean> {
+    if (plantIds.length === 0) return false;
+    const [rows] = await this.pool.query<RowDataPacket[]>(
+      `SELECT u.role, u.plant
+         FROM device_push_token t
+         JOIN users u ON u.id = t.user_id
+        WHERE t.token = ? AND t.user_id = ? AND u.is_active = 1
+        LIMIT 1`,
+      [token, userId],
+    );
+    const user = rows[0];
+    return Boolean(user) && plantIds.every((plantId) =>
+      recibeAvisosDe(String(user.role), (user.plant as string | null) ?? null, plantId));
   }
 
   /** Teléfonos de un usuario concreto: el aviso de prueba va solo a los de quien lo pide. */

@@ -23,9 +23,14 @@ function firebaseMatches(config, packageName, expectedProject) {
 }
 
 function signer(output) {
-  const matches = [...output.matchAll(/^Signer #\d+ certificate SHA-256 digest: ([a-f0-9]{64})$/gmi)].map(match => match[1].toLowerCase());
-  if (matches.length !== 1) throw new Error('No se pudo verificar exactamente un certificado firmante SHA256.');
-  return matches[0];
+  // Build-tools 37 labels scheme-specific results "V2 Signer:"; older versions use
+  // "Signer #1". The same certificate can appear for V1/V2/V3 without being multiple signers.
+  const lines = output.split(/\r?\n/).filter(line => /certificate SHA-256 digest:/i.test(line));
+  const certificates = lines.map(line => line.match(/^(?:(?:V[123](?:\.1)? )?Signer(?: #\d+)?):? certificate SHA-256 digest: ([a-f0-9]{64})$/i)?.[1]?.toLowerCase());
+  if (!certificates.length || certificates.some(value => !value) || new Set(certificates).size !== 1) {
+    throw new Error('No se pudo verificar exactamente un certificado firmante SHA256.');
+  }
+  return certificates[0];
 }
 
 function main() {

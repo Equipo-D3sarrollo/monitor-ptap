@@ -1078,7 +1078,11 @@ test('sostenida + push LENTO: la orden responde igual de rápido, y el aviso sal
     },
   };
   const push = new PushDispatcher(
-    { destinatarios: async () => [{ userId: 'u-jefe', tokens: ['tok-jefe'] }] } as unknown as DevicePushTokenRepository,
+    {
+      destinatarios: async (plantId: string) => plantId === 'voragine' ? [{ userId: 'u-jefe', tokens: ['tok-jefe'] }] : [],
+      puedeRecibir: async (token: string, userId: string, plantIds: readonly string[]) =>
+        token === 'tok-jefe' && userId === 'u-jefe' && plantIds.length === 1 && plantIds[0] === 'voragine',
+    } as unknown as DevicePushTokenRepository,
     { get: async () => NOTIFICATION_PREFS_DEFAULT } as unknown as NotificationPrefsRepository,
     avisos,
     { sender: fcmLento, windowMs: 0 },
