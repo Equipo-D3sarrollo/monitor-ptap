@@ -146,7 +146,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 6,
     paddingVertical: 2,
   },
-  rangeTagText: { fontSize: 11, fontWeight: '700', color: Colors.danger, letterSpacing: 0.5 },
+  rangeTagText: { fontSize: 11, fontWeight: '700', color: '#FCA5A5', letterSpacing: 0.5 },
   frozenTag: {
     backgroundColor: Colors.textSecondary + '22',
     borderColor: Colors.textSecondary,

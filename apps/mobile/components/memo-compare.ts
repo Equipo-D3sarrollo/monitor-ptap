@@ -131,6 +131,11 @@ export function sameTankCard(a: TankCardProps, b: TankCardProps): boolean {
     // y comparar por referencia haría re-render en cada frame, que es justo lo que este memo evita.
     x.autonomy?.hoursTo0 === y.autonomy?.hoursTo0 &&
     x.autonomy?.hoursTo50 === y.autonomy?.hoursTo50 &&
+    x.autonomy?.flowLps === y.autonomy?.flowLps &&
+    x.autonomy?.hoursToReserve === y.autonomy?.hoursToReserve &&
+    x.autonomy?.reserveLevelM === y.autonomy?.reserveLevelM &&
+    x.autonomy?.reserveBasis === y.autonomy?.reserveBasis &&
+    x.autonomy?.limitation === y.autonomy?.limitation &&
     x.autonomy?.basis === y.autonomy?.basis
   );
 }

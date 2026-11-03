@@ -33,6 +33,8 @@ import {
 } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import request from 'supertest';
+import type { TankAutonomyDto } from '@ptap/shared';
+import type { ConnectivityAdapter } from '../src/infrastructure/connectivity/ports/connectivity-adapter.port';
 import { SimulatorBridgeAdapter } from '../src/infrastructure/connectivity/adapters/simulator/simulator-bridge.adapter';
 import { PlantPipelineService } from '../src/infrastructure/connectivity/pipeline/plant-pipeline.service';
 import { PlantCache } from '../src/infrastructure/connectivity/pipeline/plant-cache';
@@ -245,5 +247,60 @@ test('REST desde cache NO consulta el PLC ni cuando la planta aún no tiene snap
     pipeline.onModuleDestroy();
     await adapter.stop();
     if (app) await app.close();
+  }
+});
+
+test('sin frames: el barrido publica cambios completos de autonomía y su retirada en cache y snapshots', async () => {
+  const config = makeConfig();
+  config.liveness.sweepMs = 10;
+  const adapter = {
+    onFrame: () => undefined,
+    onStatusChange: () => undefined,
+    getBridgeStatus: () => 'Connected',
+  } as unknown as ConnectivityAdapter;
+  const cache = new PlantCache();
+  const store = new TankAutonomyStore();
+  const pipeline = new PlantPipelineService(adapter, config, cache, store);
+  const controller = new CacheReadController(cache, pipeline);
+  const plantId = 'voragine';
+  const emitted: Array<{ sequence: number; autonomy?: TankAutonomyDto[] }> = [];
+  const subscription = pipeline.snapshot$.subscribe((snapshot) => {
+    if (snapshot.plantId === plantId) emitted.push(snapshot);
+  });
+  pipeline.onModuleInit();
+  try {
+    assert.equal(await waitFor(() => emitted.length === 1), true);
+    const initialSignals = cache.get(plantId)!.signals;
+    let autonomy: TankAutonomyDto = {
+      tankN: 1, hoursTo0: 8, hoursTo50: 3, flowLps: 2, basis: 'vaciado_real',
+    };
+    async function publish(next: TankAutonomyDto[]): Promise<void> {
+      const previousSequence = cache.get(plantId)!.sequence;
+      store.set(plantId, next);
+      assert.equal(await waitFor(() => cache.get(plantId)!.sequence > previousSequence), true);
+      assert.deepEqual(cache.get(plantId)!.autonomy ?? [], next);
+      assert.deepEqual(emitted.at(-1)!.autonomy ?? [], next, 'el stream recibe lo mismo que REST');
+      const response = controller.snapshot(plantId);
+      assert.deepEqual('autonomy' in response ? response.autonomy : [], next);
+      assert.deepEqual(cache.get(plantId)!.signals, initialSignals, 'sin cambios de señales');
+    }
+    await publish([autonomy]);
+    autonomy = { ...autonomy, hoursTo0: 7, hoursTo50: 2 };
+    await publish([autonomy]);
+    autonomy = { ...autonomy, basis: 'tendencia_volumen' };
+    await publish([autonomy]);
+    autonomy = { ...autonomy, limitation: 'multiple_tanks' };
+    await publish([autonomy]);
+    autonomy = { ...autonomy, flowLps: 1.5, hoursToReserve: 1, reserveLevelM: 1, reserveBasis: 'op_min' };
+    await publish([autonomy]);
+    const unchangedSequence = cache.get(plantId)!.sequence;
+    store.set(plantId, [{ ...autonomy }]);
+    await delay(40);
+    assert.equal(cache.get(plantId)!.sequence, unchangedSequence, 'mismo contenido no se vuelve a publicar');
+    await publish([]);
+    assert.equal('autonomy' in cache.get(plantId)!, false, 'la autonomía retirada no permanece en cache');
+  } finally {
+    pipeline.onModuleDestroy();
+    subscription.unsubscribe();
   }
 });

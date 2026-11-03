@@ -278,30 +278,26 @@ export interface PlantSnapshotDto {
   integrationPending?: true;
 }
 
-/**
- * Autonomía de un tanque: cuánto falta para el 50 % y para quedarse vacío.
- *
- * El cliente lo pidió (2026-08-20) para poder decidir ANTES de cerrar la entrada. El número lo
- * calcula el backend con un temporizador estable —banda muerta de 0,2 l/s y salto de régimen de
- * 0,6 l/s— porque recalcularlo con el caudal instantáneo lo hacía saltar de 5 h a 3 h y volver, y
- * así no sirve para decidir nada.
- */
+/** Estimación individual desde el descenso observado; distingue mínimo operativo y vacío. */
 export interface TankAutonomyDto {
+  /** Identidad de señal, también para tanques externos retransmitidos por otra planta. */
+  tankKey?: string;
   /** Número de tanque, para casarlo con `tank<N>Level` del mismo snapshot. */
   tankN: number;
   /** Horas hasta bajar al 50 %. 0 si ya está por debajo; null si no se puede calcular. */
   hoursTo50: number | null;
   /** Horas hasta quedar vacío. null si no se puede calcular. */
   hoursTo0: number | null;
-  /** Caudal (l/s) con el que se fijó el temporizador. */
+  /** Vaciado neto estimado (l/s). 0 si se estima solo por nivel sin conversión a volumen. */
   flowLps: number;
-  /**
-   * Qué SIGNIFICA el número, que no es lo mismo según el estado de la entrada:
-   *  - `vaciado_real`: la entrada está cerrada y el tanque se vacía de verdad. Es una cuenta atrás.
-   *  - `proyeccion_24h`: la entrada está abierta y el tanque NO se vacía. Es un supuesto —«si
-   *    cerraras ahora»— con el consumo medio del día. Presentarlo como cuenta atrás sería mentir.
-   */
-  basis: 'vaciado_real' | 'proyeccion_24h';
+  /** Método de estimación. Las proyecciones antiguas se mantienen por compatibilidad. */
+  basis: 'vaciado_real' | 'proyeccion_24h' | 'proyeccion_actual' | 'tendencia_volumen' | 'tendencia_nivel';
+  /** Tiempo hasta el mínimo de servicio; no equivale al vaciado físico. */
+  hoursToReserve?: number | null;
+  reserveLevelM?: number | null;
+  reserveBasis?: 'op_min' | '50_percent' | null;
+  /** Sin asociación hidráulica verificada no se reparte el caudal de planta entre tanques. */
+  limitation?: 'multiple_tanks' | 'multiple_flows' | 'unmapped_flow' | null;
 }
 
 /**

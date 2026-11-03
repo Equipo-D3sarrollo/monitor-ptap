@@ -50,6 +50,7 @@ export class PlantPipelineService implements OnModuleInit, OnModuleDestroy {
   // completo aunque el frame coalescido traiga solo los buffers que cambiaron).
   private readonly latestBuffers = new Map<string, Map<string, RawBufferSample>>();
   private readonly lastSignature = new Map<string, string>();
+  private readonly lastAutonomySignature = new Map<string, string>();
   private readonly lastLivenessState = new Map<string, LivenessState>();
 
   private sweepTimer: NodeJS.Timeout | null = null;
@@ -206,12 +207,13 @@ export class PlantPipelineService implements OnModuleInit, OnModuleDestroy {
     return this.adapter.getBridgeStatus() === 'Connected';
   }
 
-  /** Re-evalúa liveness de todas las plantas conocidas; emite si el estado cambió. */
+  /** Publica cambios de liveness o autonomía incluso cuando no llegan frames del PLC. */
   private sweepLiveness(): void {
     const healthy = this.isSourceHealthy();
     for (const p of this.mapping.plants) {
       const state = this.liveness.get(p.plantId, healthy).state;
-      if (state !== this.lastLivenessState.get(p.plantId)) {
+      const autonomySignature = JSON.stringify(this.autonomia.get(p.plantId));
+      if (state !== this.lastLivenessState.get(p.plantId) || autonomySignature !== this.lastAutonomySignature.get(p.plantId)) {
         this.rebuildAndMaybeEmit(p.plantId);
       }
     }
@@ -243,7 +245,7 @@ export class PlantPipelineService implements OnModuleInit, OnModuleDestroy {
 
     // Diff: firma sin sequence. No emitir snapshots idénticos (PASO 3.7). Firma BARATA (sin
     // JSON.stringify de todo el objeto en CADA frame): solo los campos que cambian en runtime
-    // distinguen un snapshot — value/quality/usable/reason/ts por señal + liveness + bridge. Los
+    // distinguen un snapshot — señales + liveness + bridge + autonomía. Los
     // estáticos del mapping (unit/label/mappingStatus/confidence/opMin/opMax/stateEncoding, y el
     // `integrationPending` de la planta) no cambian sin reiniciar, así que omitirlos NO altera la
     // decisión de diff, y se ahorra CPU en el hot path. Un estático no se pierde por quedar fuera:
@@ -253,6 +255,11 @@ export class PlantPipelineService implements OnModuleInit, OnModuleDestroy {
       const sig = candidate.signals[key];
       signature += `|${key}=${String(sig.value)}:${sig.quality}:${sig.usable ? 1 : 0}:${sig.reason ?? ''}:${sig.ts ?? ''}`;
     }
+    // Array pequeño (un registro por tanque): incluirlo completo conserva también cambios de
+    // método, reserva, limitaciones y su retirada, aunque las señales sigan idénticas.
+    const autonomySignature = JSON.stringify(autonomy);
+    signature += `|autonomy=${autonomySignature}`;
+    this.lastAutonomySignature.set(plantId, autonomySignature);
     const prevLivenessState = this.lastLivenessState.get(plantId);
     this.lastLivenessState.set(plantId, liveness.state);
 

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import {
   View,
   Text,
@@ -58,6 +58,7 @@ export default function RegisterScreen() {
   const [showPassword, setShowPassword] = useState(false);
   const [showPlantPicker, setShowPlantPicker] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const submitting = useRef(false);
 
   const plantLabel = PLANTS.find((p) => p.id === plant)?.name ?? plant;
   const strength = passwordStrength(password);
@@ -83,11 +84,13 @@ export default function RegisterScreen() {
   }
 
   async function handleRegister() {
+    if (submitting.current) return;
     const error = validate();
     if (error) {
       toast.error('Revisa los datos', error);
       return;
     }
+    submitting.current = true;
     setIsLoading(true);
     try {
       // No hay token: la cuenta queda pendiente de aprobación → de vuelta al login.
@@ -106,6 +109,7 @@ export default function RegisterScreen() {
     } catch (err) {
       toast.error('No se pudo crear la cuenta', err instanceof Error ? err.message : 'Intenta de nuevo.');
     } finally {
+      submitting.current = false;
       setIsLoading(false);
     }
   }
@@ -253,6 +257,8 @@ export default function RegisterScreen() {
             <TextInput
               style={[styles.input, styles.passwordInput]}
               value={passwordConfirm}
+              returnKeyType="go"
+              onSubmitEditing={handleRegister}
               onChangeText={setPasswordConfirm}
               placeholder="Escríbela de nuevo"
               placeholderTextColor={Colors.textSecondary}
@@ -275,6 +281,8 @@ export default function RegisterScreen() {
             autoCorrect={false}
             autoCapitalize="none"
             importantForAccessibility="no-hide-descendants"
+            accessible={false}
+            tabIndex={-1}
           />
 
           <TouchableOpacity

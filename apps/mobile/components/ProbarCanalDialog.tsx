@@ -12,7 +12,7 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { useWebEscape } from '../hooks/useWebEscape';
+import { useReducedMotion } from '../hooks/useReducedMotion';
 import {
   SOSTENIDOS_MS,
   probarCanal,
@@ -83,7 +83,7 @@ export function ProbarCanalDialog({
   const [enCurso, setEnCurso] = useState(false);
   const [resultado, setResultado] = useState<ProbeResult | null>(null);
 
-  useWebEscape(true, onCerrar);
+  const reducedMotion = useReducedMotion();
 
   const parsed = parsearValorComando(valor);
   const listo = parsed !== 'error';
@@ -101,7 +101,7 @@ export function ProbarCanalDialog({
   }
 
   return (
-    <Modal visible transparent animationType="fade" onRequestClose={onCerrar}>
+    <Modal visible transparent animationType={reducedMotion ? 'none' : 'fade'} onRequestClose={onCerrar}>
       <Pressable style={styles.overlay} onPress={onCerrar} accessibilityLabel="Cerrar el probador">
         <Pressable style={styles.hoja} onPress={() => {}} accessibilityViewIsModal>
           <View style={styles.cabecera}>

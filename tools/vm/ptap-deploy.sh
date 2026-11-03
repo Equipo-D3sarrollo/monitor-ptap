@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
 #
-# Despliegue COMPLETO de la VM, sin una sola pregunta. Corre como `xpertic_app`, sin privilegios
-# propios: lo único con root es `/usr/local/sbin/ptap-web-publish`, autorizado con NOPASSWD.
+# Despliegue del backend como `xpertic_app` mediante --sin-web.
+# La publicación web privilegiada queda bloqueada hasta separar las identidades.
 #
-#   USO:  bash ~/deploy-scripts/ptap-deploy.sh [rama]        (por defecto: yosh)
-#         bash ~/deploy-scripts/ptap-deploy.sh --sin-web     (solo backend)
+#   USO:  bash ~/deploy-scripts/ptap-deploy.sh --sin-web [rama] (por defecto: yosh)
+#         Sin --sin-web se rechaza antes de modificar la aplicación.
 #
 # Recoge en un solo sitio los cuatro tropiezos que costaron caídas de verdad:
 #
@@ -34,6 +34,13 @@ for arg in "$@"; do
     *) RAMA="$arg" ;;
   esac
 done
+
+if [[ "$CON_WEB" -eq 1 ]]; then
+  echo "Despliegue cancelado antes de modificar la aplicación: publicación web privilegiada suspendida." >&2
+  echo "Primero separa runtime, publicador sin sudo y administrador; no autentiques sudo antes de compilar." >&2
+  echo "--sin-web conserva únicamente el flujo de backend; no sustituye esa separación de cuentas." >&2
+  exit 78
+fi
 
 cd "$REPO"
 echo "=== 1/6  traer $RAMA ==="
@@ -135,26 +142,13 @@ if [[ "$CODIGO" != "200" ]]; then
   echo "  ================================================================" >&2
   echo "  La API no respondió 200 en $((SECONDS - INICIO)) s. NO se publica la web." >&2
   echo "  El backend YA está actualizado y compilado; lo único que falta es" >&2
-  echo "  el bundle. Cuando la API responda, publica con:" >&2
-  echo "      cd ~/monitor-ptap/apps/mobile && API_BASE_URL= npx expo export -p web --clear" >&2
-  echo "      sudo -n /usr/local/sbin/ptap-web-publish" >&2
+  echo "  el bundle. La publicación web privilegiada está suspendida hasta separar cuentas." >&2
   echo "  ================================================================" >&2
   exit 1
 fi
 
 echo ""
-if [[ "$CON_WEB" -eq 1 ]]; then
-  echo "=== 6/6  bundle web y publicación ==="
-  # API_BASE_URL vacío = mismo origen. No hay URL horneada, así que la web solo se recompila cuando
-  # cambia el código, nunca por el dominio.
-  ( cd apps/mobile && API_BASE_URL= npx expo export -p web --clear )
-  # La única llamada con privilegios. `-n` = no interactivo: si la regla de sudoers no está puesta,
-  # falla en el momento con un mensaje claro en vez de quedarse esperando una contraseña que nadie
-  # va a escribir.
-  sudo -n /usr/local/sbin/ptap-web-publish
-else
-  echo "=== 6/6  web omitida (--sin-web) ==="
-fi
+echo "=== 6/6  web omitida (--sin-web) ==="
 
 echo ""
 echo "=== comprobación final ==="

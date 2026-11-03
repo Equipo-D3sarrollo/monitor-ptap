@@ -1,4 +1,18 @@
-# Desplegar sin escribir la contraseña
+# Despliegue: autenticación obligatoria desde 2026-11-02
+
+> **La receta histórica de abajo está retirada. No reinstalar `NOPASSWD`.**
+> En la VM se cambió el publicador a `PASSWD` y se retiró el grupo `lxd` de
+> `xpertic_app`. El instalador heredado está deshabilitado en esta copia del repositorio.
+> `ptap-deploy.sh` bloquea la publicación web privilegiada antes de modificar código, migrar
+> o reiniciar servicios (salida 78). Se retiró la preautenticación sudo: dejaba un ticket
+> disponible durante la ejecución de dependencias y builds con una cuenta administrativa.
+> `--sin-web` conserva el flujo de backend; no resuelve compartir cuenta entre runtime y sudo.
+> La publicación debe migrar a una cuenta sin sudo y estáticos de solo lectura para nginx.
+> No guardar contraseñas en scripts ni restaurar permisos
+> sin una revisión explícita. Estos cambios locales deben incorporarse al flujo de entrega;
+> editar este repositorio no actualiza por sí solo los scripts instalados en la VM.
+
+## Referencia histórica — no seguir sus instrucciones de instalación
 
 > Estado: **listo para instalar**. Scripts en [`tools/vm/`](../tools/vm/), versionados con el
 > repositorio. Requiere **un** comando con contraseña, una sola vez en la vida de la máquina.

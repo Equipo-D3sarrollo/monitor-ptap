@@ -22,12 +22,9 @@ interface Props {
 /**
  * Una fila de electroválvula: su estado, y el mando SOLO si de verdad puede salir.
  *
- * **La regla que gobierna este componente:** el icono con forma de interruptor se dibuja
- * únicamente cuando la válvula se puede accionar. Antes era un `Ionicons name="toggle"` usado como
- * indicador de estado — un dibujo de interruptor, en verde, del tamaño de uno, que no respondía al
- * pulsarlo. Engañó incluso a quien había quitado el mando cinco horas antes; un operario habría
- * concluido que la app está rota o, peor, que la orden salió. Cuando no hay acción se usa un icono
- * que no invita a tocarlo y se dice POR QUÉ.
+ * Un solo botón propone la acción correspondiente al estado actual. El icono de agua
+ * identifica el equipo sin aparentar un interruptor interactivo. Si no se conoce el estado,
+ * se explica el bloqueo en lugar de elegir una dirección sin evidencia.
  *
  * Qué acción hay disponible lo decide `accionDisponible` en `services/valves.ts`, que está probada
  * sin UI: aquí solo se pinta su veredicto.
@@ -38,27 +35,19 @@ interface Props {
  * consigna aún no se puede enviar y la fila lo dice con el motivo de `setpoint-pending`.
  */
 function ValveItemBase({ valve, onToggle, frozen = false, busy = false }: Props) {
-  // Estado EFECTIVO: el que sigue al caudal si se detectó operación manual, para no mandar "abrir"
-  // a algo que ya abrieron a mano.
-  const shown = valve.effectiveState;
   const evidence = presentacionDeValvula(valve);
   const color = evidence.kind === 'fault' ? Colors.danger : evidence.physicalState === 'open' ? Colors.success : evidence.physicalState === 'closed' ? Colors.danger : Colors.neutral;
 
   const accion = accionDisponible(valve, frozen);
   // El mando exige LAS DOS cosas: que la válvula lo permita y que el rol tenga el permiso (sin
   // `onToggle` la pantalla ya decidió que esta persona no acciona).
-  const actions = (['open', 'close'] as const).filter((verb) =>
-    accionDisponible(valve, frozen, verb).kind === 'command',
-  );
-  const accionable = actions.length > 0 && Boolean(onToggle);
+  const accionable = accion.kind === 'command' && Boolean(onToggle);
 
   return (
     <View style={[styles.row, frozen && styles.rowFrozen]}>
       <View style={[styles.iconWrap, { backgroundColor: color + '18' }]}>
         <Ionicons
-          // El interruptor exige mando y posición leída. El flujo lleva un icono de agua;
-          // las acciones autorizadas siguen siendo los botones explícitos de esta fila.
-          name={accionable && evidence.kind === 'physical' ? (shown === 'open' ? 'toggle' : 'toggle-outline') : 'water-outline'}
+          name="water-outline"
           size={22}
           color={color}
         />
@@ -104,29 +93,28 @@ function ValveItemBase({ valve, onToggle, frozen = false, busy = false }: Props)
           <Text style={[styles.badgeText, { color }]}>{evidence.label}</Text>
         </View>
 
-        {accionable && onToggle && actions.map((verb) => (
+        {accion.kind === 'command' && onToggle && (
           <TouchableOpacity
-            key={verb}
             style={[styles.toggleBtn, { backgroundColor: Colors.primary + '15', opacity: busy ? 0.5 : 1 }]}
-            onPress={() => onToggle(valve, verb)}
+            onPress={() => onToggle(valve, accion.verb)}
             activeOpacity={0.7}
             disabled={busy}
             accessibilityRole="button"
-            accessibilityState={{ disabled: busy }}
-            accessibilityLabel={`${verb === 'close' ? 'Cerrar' : 'Abrir'} ${valve.name}. Pedirá confirmación.`}
+            accessibilityState={{ disabled: busy, busy }}
+            accessibilityLabel={`${accion.verb === 'close' ? 'Cerrar' : 'Abrir'} ${valve.name}. Pedirá confirmación.`}
           >
             {busy ? <ActivityIndicator size="small" color={Colors.primary} /> : (
               <Ionicons
-                name={verb === 'close' ? 'close-circle-outline' : 'checkmark-circle-outline'}
+                name={accion.verb === 'close' ? 'close-circle-outline' : 'checkmark-circle-outline'}
                 size={16}
                 color={Colors.primary}
               />
             )}
             <Text style={[styles.toggleText, { color: Colors.primary }]}>
-              {verb === 'close' ? 'Cerrar' : 'Abrir'}
+              {busy ? 'Enviando…' : accion.verb === 'close' ? 'Cerrar' : 'Abrir'}
             </Text>
           </TouchableOpacity>
-        ))}
+        )}
 
         {/* Sin acción: se dice el motivo. Un hueco mudo se lee como un fallo de la app o como un
             permiso que falta, y casi nunca es ninguna de las dos cosas. */}
@@ -198,8 +186,11 @@ const styles = StyleSheet.create({
   toggleBtn: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 10,
-    paddingVertical: 6,
+    justifyContent: 'center',
+    minHeight: 44,
+    minWidth: 104,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
     borderRadius: 10,
     gap: 4,
   },

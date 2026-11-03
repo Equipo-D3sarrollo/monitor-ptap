@@ -1,5 +1,11 @@
 # Roadmap — septiembre a noviembre de 2026
 
+> **Continuidad actualizada el 2026-11-02:** el estado operativo y los pendientes
+> actuales se conservan en [PENDIENTES.md](./PENDIENTES.md#estado-vigente-y-próxima-continuación--2026-11-02).
+> La mejora visual integral continúa pendiente. Las fechas y versiones de este
+> roadmap son históricas y deben reprogramarse al retomar cada fase; no acreditan
+> entrega ni autorizan cambios de infraestructura o maniobras.
+
 > **El entregable para el cliente es el PDF**, no este archivo: `Roadmap-Aquora.pdf`.
 > Aquí solo está el índice, para no tener que abrirlo cada vez que alguien pregunta qué toca esta semana.
 >

@@ -2,7 +2,7 @@ import { useEffect } from 'react';
 import { Modal, View, Text, StyleSheet, TouchableOpacity, ScrollView, Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import Colors from '../constants/colors';
-import { useWebEscape } from '../hooks/useWebEscape';
+import { useReducedMotion } from '../hooks/useReducedMotion';
 import type { CommandVerdict } from '../services/valves';
 import { HapticFeedback } from '../services/haptics';
 
@@ -33,8 +33,7 @@ interface Props {
 }
 
 export function ValveResultDialog({ verdict, onClose }: Props) {
-  const visible = verdict !== null;
-  useWebEscape(visible, onClose);
+  const reducedMotion = useReducedMotion();
 
   useEffect(() => {
     if (verdict) {
@@ -51,7 +50,7 @@ export function ValveResultDialog({ verdict, onClose }: Props) {
   const { color, icon } = TONO[verdict.tone];
 
   return (
-    <Modal visible transparent animationType="fade" onRequestClose={onClose}>
+    <Modal visible transparent animationType={reducedMotion ? 'none' : 'fade'} onRequestClose={onClose}>
       <View style={styles.backdrop}>
         <View
           style={styles.card}

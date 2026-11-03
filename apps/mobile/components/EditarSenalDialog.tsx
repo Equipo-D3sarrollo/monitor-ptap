@@ -12,7 +12,7 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { useWebEscape } from '../hooks/useWebEscape';
+import { useReducedMotion } from '../hooks/useReducedMotion';
 import { aplicarCorreccion, valoresDe, type SenalEditable } from '../services/mapping-edit';
 import {
   CAMPOS,
@@ -81,7 +81,7 @@ export function EditarSenalDialog({
   const [guardando, setGuardando] = useState(false);
   const [errorServidor, setErrorServidor] = useState<string | null>(null);
 
-  useWebEscape(true, onCerrar);
+  const reducedMotion = useReducedMotion();
 
   const { patch, errores } = useMemo(() => parsearBorrador(borrador, actual), [borrador, actual]);
   const mando = useMemo(
@@ -145,7 +145,7 @@ export function EditarSenalDialog({
   }
 
   return (
-    <Modal visible transparent animationType="fade" onRequestClose={onCerrar}>
+    <Modal visible transparent animationType={reducedMotion ? 'none' : 'fade'} onRequestClose={onCerrar}>
       <Pressable style={styles.overlay} onPress={onCerrar} accessibilityLabel="Cerrar sin guardar">
         <Pressable style={styles.hoja} onPress={() => {}} accessibilityViewIsModal>
           <View style={styles.cabecera}>

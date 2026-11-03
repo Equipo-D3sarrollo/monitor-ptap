@@ -3,12 +3,96 @@
 > **Único tracker de pendientes.** Fusiona los tres que existían por separado (`PENDIENTES_VPN.md`,
 > `PENDIENTE_DESPLIEGUE.md`, `SEMANA1-4_PENDIENTES.md`) y que se contradecían entre sí.
 >
-> Última revisión: **2026-08-11**.
+> Última consolidación: **2026-11-02**, por solicitud del usuario de conservar los
+> pendientes de Aquora, incluida la mejora visual y los planes futuros.
+> El estado vigente está en la sección siguiente. Las secciones numeradas originales
+> conservan evidencia histórica: sus versiones, fechas, accesos y checkboxes requieren
+> contrastarse antes de ejecutar acciones o darlos por pendientes actuales.
 >
 > Incidente abierto aparte: [`INCIDENTE_CONEXION_PLC.md`](./INCIDENTE_CONEXION_PLC.md).
 > Checklist de endurecimiento: [`CHECKLIST_PRODUCCION.md`](./CHECKLIST_PRODUCCION.md).
 
 ---
+
+## Estado vigente y próxima continuación — 2026-11-02
+
+Este documento sigue siendo el tracker único. Conservar el trabajo pendiente entre
+sesiones; no iniciar implementaciones, publicaciones ni vigilancia automática por
+el solo hecho de figurar aquí. Las fechas del roadmap de septiembre son planificación
+histórica, no nuevos compromisos. Trabajar una fase a la vez.
+
+### Completado y comprobado en esta sesión
+
+- [x] Revisión con las seis skills CSS/JavaScript y correcciones de preferencias,
+      movimiento reducido, foco, formularios y diálogo en ventanas pequeñas.
+- [x] 253 pruebas móviles aprobadas, typecheck, exportación web y lint sin errores.
+- [x] Publicación web en la VM el 2026-11-02 a las 18:29 de Bogotá; páginas HTTP 200 y
+      hashes HTTPS coincidentes. API, BD y OPC sanos, sin reiniciar la API.
+      [Evidencia y alcance](./CSS_JS_REVIEW_2026-11-02.md).
+
+La revisión técnica CSS/JS **no cierra el rediseño visual integral**, ni actualiza por
+sí sola la APK. No volver a poner el despliegue de esas correcciones web como pendiente.
+
+### Prioridad de continuación: mejora visual y accesibilidad
+
+- [ ] Recuperar y contrastar la dirección visual, tokens y guía previstos en el
+      [roadmap](./ROADMAP.md) y su referencia histórica a `estilos-1.4`, antes de
+      reemplazar estilos existentes. No asumir que esa rama está disponible o fusionada.
+- [ ] Unificar tipografía, espaciado, densidad, colores, tarjetas, jerarquía de datos,
+      navegación y estados de carga/vacío/error, conservando la claridad operativa.
+- [ ] Revisar el tablero autenticado y las pantallas de válvulas, notificaciones,
+      reportes y ajustes en tamaños estrechos, intermedios y amplios; incluir textos
+      largos, zoom, teclado y movimiento reducido. Las comprobaciones puntuales ya
+      hechas no equivalen a revisar todas las pantallas.
+- [ ] Retomar la auditoría Lighthouse cuando se solicite: medir `/login` y `/tablero`
+      oficiales, móvil y escritorio, y archivar evidencia revisada. Revalidar el
+      reporte de hidratación, el tamaño del icono de marca y el layout shift.
+      [Auditoría conservada](./LIGHTHOUSE_PENDIENTES_2026-10-31.md).
+- [ ] Definir aceptación visual y funcional de esa fase y publicar la web y, cuando
+      corresponda, una nueva APK con firma y comprobación en dispositivo real.
+
+### Planes futuros conservados
+
+| Frente | Trabajo por retomar o confirmar | Dependencia / criterio |
+| --- | --- | --- |
+| Revisión por planta | Informe de diagnóstico y frescura por señal, fase A de la consola. | Contrastar con diagnóstico y editor ya existentes; no reconstruir funciones entregadas. |
+| Filtros | Búsqueda/filtros del tablero y orden/filtros de bandeja, incluidos no vistos. | Inventariar lo existente antes de concretar el alcance faltante. |
+| Ayuda | Preguntas frecuentes y tutorial guiado híbrido, fases B1 y B2. | Recorridos acordes con las pantallas finales y permisos de cada rol. |
+| Alarmas | Configuración de límites y reglas operativas. | Resolver alcance de D3; distinguir alarmas existentes, preferencias personales y motor configurable. |
+| Historial | Series y tendencias persistidas de alcance acotado. | **D1 del cliente:** señales, resolución, retención y coste; no cambiar RAM-only sin esa decisión. |
+| Consola / Git | Llevar las correcciones de mapping a Git, fase C.4. | Acceso limitado al repositorio, revisión y trazabilidad; no confundir guardar en caliente con publicar en Git. |
+| Producto | Formalizar Expo web como entregable web. | Decisión documental D2 con cliente/dirección. |
+| Turbiedad | Protocolo de cierre acordado, aún sujeto a viabilidad de campo. | Topología, instrumentación, válvula adecuada y autorización operativa; no habilitar automatismos desde este backlog. |
+| Integración | Cabuyo, La Luisa, La Leonera y Gloria; calidad/frescura y heartbeat de sitios. | Trabajo y evidencia del integrador; revalidar incidencias antiguas antes de escalarlas. |
+
+Detalle histórico en [ROADMAP.md](./ROADMAP.md),
+[consola](./PLAN_CONSOLA_ADMIN_1.4.0.md) y
+[roadmap para el cliente](./roadmap/ROADMAP-AQUORA.html).
+Reprogramar fechas y versiones al elegir cada fase; no regenerar ni enviar el
+entregable del cliente sin revisar su estado.
+
+### Validaciones y mantenimiento abiertos
+
+- [ ] Contrastar la evidencia de notificaciones ya implementadas y desplegadas antes
+      de repetir pruebas. Conservar como aceptación pendiente lo no demostrado en
+      Android físico y en cada escenario de app/navegador cerrado; una respuesta del
+      proveedor no prueba recepción. [Plan](./superpowers/plans/2026-11-02-notificaciones-reales.md).
+- [ ] Validar autonomía de tanques con datos de campo, mínimos y calidad de señal;
+      no inventar asociaciones hidráulicas. Conservar la distinción entre estimación
+      por tendencia y garantía de servicio. [Diseño](./AUTONOMIA_TANQUES.md).
+- [ ] Revisar advertencias de lint, incluida `RegistroIntegridadCard.tsx`, y revalidar
+      deuda antigua: cobertura OPC, tipos de tests/scripts y portabilidad Windows/Linux.
+- [ ] Reconciliar documentación, fuentes y publicaciones con el árbol de trabajo
+      existente antes de un commit o merge; conservar cambios previos y evidencias.
+- [ ] Revalidar los pendientes históricos de TLS/renovación, NTP, exposición HMI,
+      firewall, binding local de API y credenciales/SMTP. No tratar la fecha antigua
+      de vencimiento ni las IP/puertos antiguos como descripción actual de la VM.
+- [ ] Contrastar D4 con la recarga de mapping ya presente y probada; cerrar la
+      decisión documental o delimitar lo que falta, en lugar de implementarla dos veces.
+
+---
+
+## Registro histórico — secciones originales por revalidar
 
 ## 1. Bloqueado por infraestructura (VPN + SSH a la VM)
 

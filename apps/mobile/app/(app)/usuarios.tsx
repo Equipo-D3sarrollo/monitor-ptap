@@ -313,7 +313,7 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.surface, borderRadius: 10, paddingHorizontal: 12, paddingVertical: 10,
     borderWidth: 1, borderColor: Colors.divider,
   },
-  searchInput: { flex: 1, fontSize: 14, color: Colors.textPrimary, outlineStyle: 'none' as never },
+  searchInput: { flex: 1, minWidth: 0, fontSize: 14, color: Colors.textPrimary },
   chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   chip: {
     paddingHorizontal: 12, paddingVertical: 6, borderRadius: 999,

@@ -74,7 +74,7 @@ Secuencia para el responsable, después de integrar y revisar el commit y el loc
 GRADLE_USER_HOME=/home/xpertic_app/android-build/gradle-home \
   /home/xpertic_app/android-build/gradle-9.4.1/bin/gradle \
   assembleRelease --no-daemon --max-workers=1 --console=plain \
-  '-Dorg.gradle.jvmargs=-Xmx1024m -XX:MaxMetaspaceSize=384m' \
+  '-Dorg.gradle.jvmargs=-Xmx1536m -XX:MaxMetaspaceSize=768m -XX:+ExitOnOutOfMemoryError' \
   -Pkotlin.compiler.execution.strategy=in-process
 ```
 

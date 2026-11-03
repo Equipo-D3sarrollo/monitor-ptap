@@ -1,10 +1,11 @@
 import { View, Text, StyleSheet, Animated, Easing } from 'react-native';
 import { memo, useEffect, useRef, useState } from 'react';
-import type { TankAutonomyDto } from '../services/api';
+import { tankAutonomyText } from '../services/tank-autonomy';
 import type { TankView } from '../services/tanks';
 import Colors from '../constants/colors';
 import { BotonSilencio } from './BotonSilencio';
 import { sameTankCard } from './memo-compare';
+import { useReducedMotion } from '../hooks/useReducedMotion';
 
 /** Cambio de nivel por debajo del cual no vale la pena animar (en puntos porcentuales).
  *  La animación de ancho NO puede usar el driver nativo, así que cada tween corre en el hilo de
@@ -44,6 +45,7 @@ function statusLabel(pct: number): string {
 }
 
 function TankGaugeCardBase({ tank, frozen = false, plantId }: Props) {
+  const reducedMotion = useReducedMotion();
   // percentage llega null hasta que la planta confirme la capacidad real del tanque;
   // en ese caso NO se dibuja % de llenado (sería inventado), solo nivel y volumen reales.
   //
@@ -61,7 +63,7 @@ function TankGaugeCardBase({ tank, frozen = false, plantId }: Props) {
     tank.outOfRange ||
     (hasLevel && (tank.levelM as number) < 0) ||
     (tank.percentage !== null && (tank.percentage < 0 || tank.percentage > 100));
-  const autonomia = autonomiaTexto(tank.autonomy);
+  const autonomia = tankAutonomyText(tank.autonomy, frozen);
   const color = outOfRange ? Colors.danger : pct !== null ? waterColor(pct) : Colors.textSecondary;
   const sujeto = sujetoDelTanque(tank.id);
   const [fillAnim] = useState(() => new Animated.Value(0));
@@ -69,24 +71,30 @@ function TankGaugeCardBase({ tank, frozen = false, plantId }: Props) {
   const shownPct = useRef<number | null>(null);
 
   useEffect(() => {
-    if (pct === null) return;
+    if (pct === null) {
+      shownPct.current = null;
+      fillAnim.setValue(0);
+      return;
+    }
     const previous = shownPct.current;
     shownPct.current = pct;
     // Congelado: saltar al valor sin animar (el dato es viejo, no debe "moverse" en pantalla).
     // Primer render o cambio imperceptible: también se salta, para no gastar el hilo de JS en un
     // tween que nadie distingue (la barra de ancho no admite driver nativo).
-    if (frozen || previous === null || Math.abs(pct - previous) < MIN_DELTA_PCT) {
+    if (reducedMotion || frozen || previous === null || Math.abs(pct - previous) < MIN_DELTA_PCT) {
       fillAnim.setValue(pct);
       return;
     }
     // Tween corto para que la barra acompañe al número sin quedar 900 ms por detrás.
-    Animated.timing(fillAnim, {
+    const animation = Animated.timing(fillAnim, {
       toValue: pct,
       duration: 350,
       easing: Easing.out(Easing.cubic),
       useNativeDriver: false,
-    }).start();
-  }, [pct, frozen, fillAnim]);
+    });
+    animation.start();
+    return () => animation.stop();
+  }, [pct, frozen, fillAnim, reducedMotion]);
 
   const fillWidth = fillAnim.interpolate({
     inputRange: [0, 100],
@@ -156,7 +164,7 @@ function TankGaugeCardBase({ tank, frozen = false, plantId }: Props) {
         <InfoRow label="Volumen" value={tank.volumeM3 !== null ? `${tank.volumeM3.toFixed(1)} m³` : 'Sin dato'} />
         {autonomia && (
           <InfoRow
-            label={autonomia.basis === 'vaciado_real' ? 'Autonomía' : 'Autonomía si cierras'}
+            label={autonomia.label}
             value={autonomia.texto}
             hint={autonomia.pie}
           />
@@ -181,37 +189,6 @@ function InfoRow({ label, value, hint }: { label: string; value: string; hint?: 
       {hint ? <Text style={styles.infoHint}>{hint}</Text> : null}
     </View>
   );
-}
-
-/** Horas y minutos como los diría un operador: «3 h 20 min», «45 min». */
-function humanHoras(horas: number): string {
-  if (horas < 1) return `${Math.max(1, Math.round(horas * 60))} min`;
-  const h = Math.floor(horas);
-  const min = Math.round((horas - h) * 60);
-  return min === 0 ? `${h} h` : `${h} h ${min} min`;
-}
-
-/**
- * Texto de la autonomía, o `null` si no hay nada honesto que decir.
- *
- * El número lo calcula el BACKEND con un temporizador estable; aquí solo se redacta. Los dos casos
- * se distinguen a propósito porque significan cosas distintas: con la entrada cerrada es una cuenta
- * atrás real, y con la entrada abierta es un supuesto —«si cerraras ahora»— con el consumo medio del
- * día. Enseñar ambos igual haría creer al operario que el tanque se está vaciando cuando no.
- */
-function autonomiaTexto(a: TankAutonomyDto | null): { texto: string; pie: string; basis: TankAutonomyDto['basis'] } | null {
-  if (!a || a.hoursTo0 === null) return null;
-  // Separador de punto medio y no una coma: «15 h 58 min, 7 h 58 min» con coma se lee como una sola
-  // cifra con decimales, y son dos duraciones distintas.
-  const hasta50 = a.hoursTo50 !== null && a.hoursTo50 > 0 ? ` · ${humanHoras(a.hoursTo50)} al 50 %` : '';
-  return {
-    basis: a.basis,
-    texto: `${humanHoras(a.hoursTo0)}${hasta50}`,
-    pie:
-      a.basis === 'vaciado_real'
-        ? `Entrada cerrada · vaciándose a ${a.flowLps.toFixed(1)} l/s`
-        : `Proyección con el consumo medio del día (${a.flowLps.toFixed(1)} l/s)`,
-  };
 }
 
 const styles = StyleSheet.create({

@@ -16,7 +16,7 @@ import { useAuth } from '../../context/AuthContext';
 import { useUnseenNotifications } from '../../hooks/useNotifications';
 import { NotificationOptIn } from '../../components/NotificationOptIn';
 import { usePendingUsers } from '../../hooks/usePendingUsers';
-import { useWebEscape } from '../../hooks/useWebEscape';
+import { useReducedMotion } from '../../hooks/useReducedMotion';
 import { ROLE_LABELS, ROLE_COLORS, type AuthUser } from '@ptap/shared';
 
 /**
@@ -75,11 +75,11 @@ function AlertBell() {
       onPress={() => router.push('/(app)/alertas')}
       accessibilityRole="button"
       accessibilityLabel={
-        unseen > 0 ? `Notificaciones: ${unseen} sin ver` : 'Notificaciones: ninguna sin ver'
+        unseen > 0 ? `Notificaciones: ${unseen > 9 ? '9+' : unseen} sin ver` : 'Notificaciones: ninguna sin ver'
       }
     >
       <View>
-        <Ionicons name="notifications-outline" size={24} color="#fff" />
+        <Ionicons name="notifications-outline" size={24} color="#fff" aria-hidden />
         {unseen > 0 && (
           <View style={styles.notifBadge}>
             <Text style={styles.notifText}>{unseen > 9 ? '9+' : unseen}</Text>
@@ -149,12 +149,10 @@ function MenuModal({
 
   const roleColor = user ? ROLE_COLORS[user.role] : Colors.primary;
 
-  // `onRequestClose` solo dispara en Android. En web, Escape no cerraba el menú: había que
-  // acertarle al fondo con el ratón.
-  useWebEscape(visible, onClose);
+  const reducedMotion = useReducedMotion();
 
   return (
-    <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
+    <Modal visible={visible} transparent animationType={reducedMotion ? 'none' : 'fade'} onRequestClose={onClose}>
       <Pressable
         style={styles.overlay}
         onPress={onClose}
@@ -233,7 +231,7 @@ export default function AppLayout() {
   // y los conteos viven ahora dentro de `<AlertBell/>` y `<MenuButton/>`, no aquí.
   const HEADER_OPTS = useMemo(
     () => ({
-      headerStyle: { backgroundColor: Colors.primary },
+      headerStyle: { backgroundColor: '#2563EB' },
       headerTintColor: '#fff',
       headerTitle: () => <BrandTitle />,
       // Se conserva aunque el título de arriba sea un componente: cuatro pantallas
@@ -475,7 +473,7 @@ const styles = StyleSheet.create({
     position: 'absolute',
     top: -4,
     right: -6,
-    backgroundColor: Colors.danger,
+    backgroundColor: '#B91C1C',
     borderRadius: 8,
     minWidth: 16,
     height: 16,

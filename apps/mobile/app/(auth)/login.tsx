@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useRef, useState, type ComponentRef } from 'react';
 import {
   View,
   Text,
@@ -26,8 +26,11 @@ export default function LoginScreen() {
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const { login } = useAuth();
+  const passwordInput = useRef<ComponentRef<typeof TextInput>>(null);
+  const submitting = useRef(false);
 
   async function handleLogin() {
+    if (submitting.current) return;
     if (!email.trim() || !password.trim()) {
       toast.error('Campos requeridos', 'Por favor completa todos los campos.');
       return;
@@ -36,6 +39,7 @@ export default function LoginScreen() {
       toast.error('Correo inválido', 'Escribe un correo con formato válido.');
       return;
     }
+    submitting.current = true;
     setIsLoading(true);
     try {
       const { token, user } = await apiLogin(email.trim(), password);
@@ -46,6 +50,7 @@ export default function LoginScreen() {
       // Decir siempre "credenciales inválidas" manda a la gente a revisar lo que no falla.
       toast.error('Error de acceso', err instanceof Error ? err.message : 'No se pudo iniciar sesión.');
     } finally {
+      submitting.current = false;
       setIsLoading(false);
     }
   }
@@ -68,7 +73,7 @@ export default function LoginScreen() {
               resizeMode="contain"
               accessibilityLabel="Aquora, creado por Xpertic"
             />
-            <Text style={styles.subtitle}>Ingresa a tu cuenta de operador</Text>
+            <Text accessibilityRole="header" style={styles.subtitle}>Ingresa a tu cuenta de operador</Text>
           </View>
 
           {/* Email */}
@@ -76,6 +81,8 @@ export default function LoginScreen() {
           <View style={styles.inputRow}>
             <Ionicons name="mail-outline" size={20} color={Colors.textSecondary} />
             <TextInput
+              accessibilityLabel="Correo electrónico"
+              autoComplete="email"
               style={styles.input}
               placeholder="operador@acueducto.co"
               placeholderTextColor={Colors.textSecondary}
@@ -85,6 +92,8 @@ export default function LoginScreen() {
               autoCapitalize="none"
               autoCorrect={false}
               maxLength={255}
+              returnKeyType="next"
+              onSubmitEditing={() => passwordInput.current?.focus()}
             />
           </View>
 
@@ -93,6 +102,9 @@ export default function LoginScreen() {
           <View style={styles.inputRow}>
             <Ionicons name="lock-closed-outline" size={20} color={Colors.textSecondary} />
             <TextInput
+              ref={passwordInput}
+              accessibilityLabel="Contraseña"
+              autoComplete="current-password"
               style={styles.input}
               placeholder="••••••••"
               placeholderTextColor={Colors.textSecondary}
@@ -101,6 +113,8 @@ export default function LoginScreen() {
               secureTextEntry={!showPassword}
               autoCapitalize="none"
               maxLength={200}
+              returnKeyType="go"
+              onSubmitEditing={handleLogin}
             />
             <TouchableOpacity
               onPress={() => setShowPassword(v => !v)}
@@ -119,6 +133,9 @@ export default function LoginScreen() {
           {/* Primary button */}
           <TouchableOpacity
             style={[styles.btnPrimary, isLoading && styles.btnDisabled]}
+            accessibilityRole="button"
+            accessibilityLabel="Ingresar"
+            accessibilityState={{ disabled: isLoading, busy: isLoading }}
             onPress={handleLogin}
             disabled={isLoading}
             activeOpacity={0.85}
@@ -133,6 +150,8 @@ export default function LoginScreen() {
               potestad de un administrador. Ver app/(auth)/register.tsx. */}
           <TouchableOpacity
             style={styles.btnOutline}
+            accessibilityRole="button"
+            accessibilityLabel="Crear cuenta nueva"
             onPress={() => router.push('/(auth)/register')}
             activeOpacity={0.8}
           >
@@ -196,13 +215,14 @@ const styles = StyleSheet.create({
   },
   input: {
     flex: 1,
+    minWidth: 0,
     fontSize: 15,
     color: Colors.textPrimary,
   },
   btnPrimary: {
     marginTop: 22,
     height: 52,
-    backgroundColor: Colors.primary,
+    backgroundColor: '#2563EB',
     borderRadius: 14,
     alignItems: 'center',
     justifyContent: 'center',

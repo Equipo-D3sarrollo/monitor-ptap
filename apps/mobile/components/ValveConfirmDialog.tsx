@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react';
-import { Modal, View, Text, StyleSheet, TouchableOpacity, ActivityIndicator, Platform } from 'react-native';
+import { Modal, View, Text, ScrollView, StyleSheet, TouchableOpacity, ActivityIndicator, Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import Colors from '../constants/colors';
-import { useWebEscape } from '../hooks/useWebEscape';
+import { useReducedMotion } from '../hooks/useReducedMotion';
 import { HapticFeedback } from '../services/haptics';
 
 /**
@@ -53,6 +53,7 @@ export function ValveConfirmDialog({
   onCancel,
 }: Props) {
   const [restante, setRestante] = useState(ESPERA_SEGUNDOS);
+  const reducedMotion = useReducedMotion();
 
   // El contador se reinicia en CADA apertura: si no, la segunda maniobra de la sesión saldría
   // sin espera y se perdería justamente la protección contra el toque por inercia.
@@ -80,17 +81,15 @@ export function ValveConfirmDialog({
 
   // Escape cancela — pero NUNCA con una orden en vuelo: cerrar el diálogo no la detendría, y
   // dejaría al operador creyendo que canceló algo que ya salió al PLC.
-  useWebEscape(visible && !busy, onCancel);
-
   const handleConfirm = () => {
     HapticFeedback.criticalConfirm();
     onConfirm();
   };
 
   return (
-    <Modal visible={visible} transparent animationType="fade" onRequestClose={busy ? undefined : onCancel}>
+    <Modal visible={visible} transparent animationType={reducedMotion ? 'none' : 'fade'} onRequestClose={busy ? undefined : onCancel}>
       <View style={styles.backdrop}>
-        <View style={styles.card} accessibilityViewIsModal accessibilityRole="alert">
+        <ScrollView style={styles.card} contentContainerStyle={styles.content} accessibilityViewIsModal accessibilityRole="alert">
           <View style={styles.headerRow}>
             <View style={styles.warnIcon}>
               <Ionicons name="warning-outline" size={24} color={Colors.warning} />
@@ -175,7 +174,7 @@ export function ValveConfirmDialog({
           {!listo && !busy && (
             <Text style={styles.pie}>El botón se habilita en {restante} s. Tómese ese momento para verificar.</Text>
           )}
-        </View>
+        </ScrollView>
       </View>
     </Modal>
   );
@@ -192,16 +191,17 @@ const styles = StyleSheet.create({
   card: {
     width: '100%',
     maxWidth: 420,
+    maxHeight: '100%',
+    flexGrow: 0,
     backgroundColor: Colors.bg,
     borderRadius: 16,
-    padding: 18,
-    gap: 14,
     // La sombra se declara distinto por plataforma; en web `elevation` no hace nada.
     ...Platform.select({
       web: { boxShadow: '0 10px 30px rgba(0,0,0,0.25)' } as object,
       default: { elevation: 8, shadowColor: '#000', shadowOpacity: 0.25, shadowRadius: 16, shadowOffset: { width: 0, height: 8 } },
     }),
   },
+  content: { padding: 18, gap: 14 },
   headerRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   warnIcon: {
     width: 42,
