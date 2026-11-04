@@ -9,7 +9,6 @@ import {
   ScrollView,
   ActivityIndicator,
   StyleSheet,
-  Image,
   useWindowDimensions,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -17,6 +16,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { AppUpdateBanner } from '../../components/AppUpdateBanner';
 import { WaterBackground } from '../../components/WaterBackground';
+import { LogoRipples } from '../../components/LogoRipples';
 import { useAuth } from '../../context/AuthContext';
 import { apiLogin } from '../../services/auth';
 import { toast } from '../../services/toast-store';
@@ -57,15 +57,6 @@ export default function LoginScreen() {
       setIsLoading(false);
     }
   }
-
-  const logo = (
-    <Image
-      source={require('../../assets/aquora-logo.png')}
-      style={styles.logo}
-      resizeMode="contain"
-      accessibilityLabel="Aquora, creado por Xpertic"
-    />
-  );
 
   const form = (
     <View style={styles.form}>
@@ -156,7 +147,7 @@ export default function LoginScreen() {
           <View style={styles.wideRow}>
             <View style={styles.wideWater}>
               <WaterBackground level={0.34} />
-              {logo}
+              <LogoRipples width={200} />
               <Text style={styles.tagline}>El agua de 12 plantas, en una sola pantalla.</Text>
               <Text style={styles.taglineSub}>
                 Caudal, presión, niveles y calidad del agua en tiempo real.
@@ -174,7 +165,7 @@ export default function LoginScreen() {
           <ScrollView contentContainerStyle={styles.narrowScroll} keyboardShouldPersistTaps="handled">
             <View style={styles.narrowWater}>
               <WaterBackground level={0.2} />
-              {logo}
+              <LogoRipples width={152} />
             </View>
             <View style={styles.narrowForm}>{form}</View>
           </ScrollView>
@@ -236,10 +227,6 @@ const styles = StyleSheet.create({
   narrowForm: { paddingHorizontal: 24, paddingTop: 28, paddingBottom: 20 },
 
   form: { width: '100%', maxWidth: 400 },
-  logo: {
-    width: 152,
-    height: (152 * 459) / 545,
-  },
   hint: {
     fontSize: 13,
     color: Colors.textSecondary,
