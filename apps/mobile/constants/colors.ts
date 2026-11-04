@@ -12,6 +12,29 @@ const Colors = {
   divider: '#2A3244',
   accentInlet: '#F97316',
   accentOutlet: '#38BDF8',
+  // Paleta del login "el tanque se llena" (tema oscuro). Agrupada para no chocar con los
+  // tokens de arriba, que usan las demás pantallas.
+  login: {
+    pageBg: '#04101A',
+    waterPanel: '#061827',
+    field: '#0A1C2A',
+    fieldBorder: '#24384A',
+    fieldBorderFocus: '#2491CC',
+    focusHalo: 'rgba(36,145,204,0.22)',
+    waveBack: '#0B3A5C',
+    waveMid: '#12608F',
+    waveFront: '#2491CC',
+    button: '#1C6FA0',
+    buttonPressed: '#1A6390',
+    buttonText: '#FFFFFF',
+    text: '#F2F7FA',
+    textSecondary: '#A9C0CF',
+    placeholder: '#7B8C99',
+    telcobrasGreen: '#88BD4C',
+    linkGreen: '#A6D46E',
+    brandBlue: '#2491CC',
+    brandYellow: '#F3CB35',
+  },
 } as const;
 
 export default Colors;
