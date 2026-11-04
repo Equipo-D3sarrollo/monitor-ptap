@@ -35,6 +35,28 @@ const Colors = {
     brandBlue: '#2491CC',
     brandYellow: '#F3CB35',
   },
+  // Colorimetría Telcobras + superficies de Aquora para el tablero. Todo color de texto de aquí
+  // da ≥ 4,5:1 sobre page/panel/card (medido); el blanco sobre `blue` NO (3,5:1): los botones
+  // con texto blanco usan `action`.
+  brand: {
+    blue: '#2491CC',
+    green: '#88BD4C',
+    yellow: '#F3CB35',
+    gray: '#888D91',
+    white: '#FFFFFF',
+    black: '#000000',
+    page: '#04101A',
+    panel: '#061827',
+    card: '#0A1C2A',
+    cardBorder: '#24384A',
+    action: '#1C6FA0',
+    actionPressed: '#1A6390',
+    text: '#F2F7FA',
+    textSecondary: '#A9C0CF',
+    // Entrada y salida se distinguen con icono + etiqueta + dos azules; el verde es solo "OK".
+    inflow: '#7CC8F0',
+    outflow: '#2491CC',
+  },
 } as const;
 
 export default Colors;
