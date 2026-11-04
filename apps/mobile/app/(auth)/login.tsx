@@ -3,7 +3,6 @@ import {
   View,
   Text,
   TextInput,
-  TouchableOpacity,
   Pressable,
   KeyboardAvoidingView,
   Platform,
@@ -23,6 +22,8 @@ import { WaterBackground } from '../../components/WaterBackground';
 import { LogoRipples } from '../../components/LogoRipples';
 import { useAuth } from '../../context/AuthContext';
 import { useReduceMotion } from '../../hooks/useReduceMotion';
+import { checkServerHealth } from '../../services/api';
+import { runningVersion } from '../../services/app-release';
 import { apiLogin } from '../../services/auth';
 import { validateLogin, type LoginFieldErrors } from '../../services/login-validation';
 import { toast } from '../../services/toast-store';
@@ -47,6 +48,16 @@ export default function LoginScreen() {
   const [fontsLoaded, fontError] = usePoppins();
   const reduce = useReduceMotion();
   const appear = useRef(new Animated.Value(0)).current;
+  // null = comprobando. Nunca se asume "en línea" sin respuesta real del backend.
+  const [serverUp, setServerUp] = useState<boolean | null>(null);
+
+  useEffect(() => {
+    let alive = true;
+    checkServerHealth().then(ok => alive && setServerUp(ok));
+    return () => {
+      alive = false;
+    };
+  }, []);
 
   // El formulario entra con fade + subida de 16 px mientras el agua sube.
   useEffect(() => {
@@ -88,6 +99,14 @@ export default function LoginScreen() {
 
   // Poppins carga en milisegundos desde el paquete; si falla, se sigue con la fuente del sistema.
   if (!fontsLoaded && !fontError) return <View style={styles.safe} />;
+
+  const version = runningVersion();
+  const serverLabel =
+    serverUp === null
+      ? 'Comprobando el servidor…'
+      : serverUp
+        ? 'Servidor en línea'
+        : 'Sin conexión con el servidor';
 
   const form = (
     <Animated.View
@@ -179,22 +198,53 @@ export default function LoginScreen() {
         <Text style={styles.btnPrimaryText}>{isLoading ? 'Ingresando…' : 'Ingresar'}</Text>
       </Pressable>
 
+      <Pressable
+        onPress={() =>
+          // No hay endpoint de recuperación de contraseña: el acceso lo restablece un administrador.
+          toast.info('¿Problemas para ingresar?', 'Contacta al administrador de Aquora para recuperar tu acceso.')
+        }
+        accessibilityRole="button"
+        style={styles.linkTap}
+      >
+        <Text style={styles.linkMuted}>¿Problemas para ingresar?</Text>
+      </Pressable>
+
+      <View style={styles.divider} />
+
       {/* El alta crea SIEMPRE una cuenta Civil (solo consulta); elevar el rol es
           potestad de un administrador. Ver app/(auth)/register.tsx. */}
-      <TouchableOpacity
-        style={styles.btnOutline}
-        onPress={() => router.push('/(auth)/register')}
-        activeOpacity={0.8}
-      >
-        <Text style={styles.btnOutlineText}>Crear cuenta nueva</Text>
-      </TouchableOpacity>
-      <Text style={styles.hint}>Las cuentas nuevas se crean como Civil (solo consulta).</Text>
+      <View style={styles.registerRow}>
+        <Text style={styles.registerText}>¿Aún no tienes cuenta?</Text>
+        <Pressable
+          onPress={() => router.push('/(auth)/register')}
+          accessibilityRole="link"
+          style={styles.linkTap}
+        >
+          <Text style={styles.linkGreen}>Solicitar acceso</Text>
+        </Pressable>
+      </View>
+      <Text style={styles.hint}>
+        Las cuentas nuevas son de consulta hasta que un administrador las apruebe.
+      </Text>
 
       {/* En WEB ofrece descargar la app (mismo gesto que "crear cuenta nueva"); en la APK avisa
           si la instalada se quedó atrás. El propio componente decide cuál aplica y si mostrarse
           — aquí no hace falta ramificar por plataforma. */}
       <AppUpdateBanner modo="descarga" />
       <AppUpdateBanner modo="actualizacion" />
+
+      <View style={styles.footer} accessible accessibilityLabel={serverLabel}>
+        <View
+          style={[
+            styles.dot,
+            { backgroundColor: serverUp ? L.telcobrasGreen : L.placeholder },
+          ]}
+        />
+        <Text style={styles.footerText}>
+          {serverLabel}
+          {version ? ` · v${version}` : ''}
+        </Text>
+      </View>
     </Animated.View>
   );
 
@@ -403,20 +453,28 @@ const styles = StyleSheet.create({
   },
   btnPrimaryText: { fontFamily: Fonts.semibold, color: L.buttonText, fontSize: 16 },
 
+  linkTap: { minHeight: 44, justifyContent: 'center', alignSelf: 'center', paddingHorizontal: 8 },
+  linkMuted: { fontFamily: Fonts.medium, fontSize: 14, color: L.textSecondary, textDecorationLine: 'underline' },
+  linkGreen: { fontFamily: Fonts.semibold, fontSize: 14, color: L.linkGreen },
+  divider: { height: 1, backgroundColor: L.fieldBorder, marginVertical: 12 },
+  registerRow: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'center' },
+  registerText: { fontFamily: Fonts.regular, fontSize: 14, color: L.textSecondary },
   hint: {
+    fontFamily: Fonts.regular,
     fontSize: 13,
-    color: Colors.textSecondary,
+    lineHeight: 19,
+    color: L.textSecondary,
     textAlign: 'center',
-    marginTop: 20,
+    marginTop: 2,
+    marginBottom: 8,
   },
-  btnOutline: {
-    marginTop: 12,
-    height: 52,
-    borderRadius: 14,
-    borderWidth: 2,
-    borderColor: Colors.primary,
+  footer: {
+    flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
+    gap: 8,
+    marginTop: 24,
   },
-  btnOutlineText: { color: Colors.primary, fontSize: 16, fontWeight: '700' },
+  dot: { width: 8, height: 8, borderRadius: 4 },
+  footerText: { fontFamily: Fonts.regular, fontSize: 13, color: L.textSecondary },
 });

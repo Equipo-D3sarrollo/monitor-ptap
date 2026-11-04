@@ -210,3 +210,20 @@ export interface RouteHistoryResponse {
 export async function fetchRouteHistory(): Promise<RouteHistoryResponse> {
   return getJson<RouteHistoryResponse>('/api/diagnostics/route-history');
 }
+
+/**
+ * ¿Responde el backend? GET /api/health (público, sin JWT). `false` ante error, respuesta no-OK o
+ * si no contesta en `timeoutMs`: el login nunca debe mostrar "en línea" sin haberlo comprobado.
+ */
+export async function checkServerHealth(timeoutMs = 8000): Promise<boolean> {
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), timeoutMs);
+  try {
+    const res = await fetch(`${API_BASE_URL}/api/health`, { signal: ctrl.signal });
+    return res.ok;
+  } catch {
+    return false;
+  } finally {
+    clearTimeout(timer);
+  }
+}
