@@ -1,6 +1,6 @@
 # Catálogo de datos — Monitor PTAP
 
-> **GENERADO** desde `apps/api/config/opc_mapping.json` (v0.14.0). NO editar a mano:
+> **GENERADO** desde `apps/api/config/opc_mapping.json` (v0.15.0). NO editar a mano:
 > se regenera con `npm run generate:catalog -w @ptap/api` (y automáticamente con `generate:mapping`).
 
 Registro de los datos que entrega el backend de telemetría: qué señales existen por
@@ -78,9 +78,10 @@ cliente para las interpretaciones que acuerden (alarmas, avisos de congelado, et
 
 ## Señales disponibles por planta
 
-### La Vorágine (`voragine`) — 8 señales
+### La Vorágine (`voragine`) — 10 señales
 
 Fuente: `INT_OUT_VORAGINE` (Int16[20], nsUri `AQUATECH4`, `g=1505CBA4-0BCF-A4FC-7602-DB5BF940BBC6`)
+Fuente: `INT_IN_VORAGINE` (Int16[20], nsUri `AQUATECH4`, `g=002A5DBD-381A-F691-1071-4BFF23ED007C`)
 Fuente: `REAL_IN_VORAGINE` (Float[50], nsUri `AQUATECH4`, `g=93BAFF92-FF57-4877-74E4-B7CC1EFAE6B3`)
 
 | Índice | domainKey | Señal | Unidad | Validez | Rango operativo | Confianza |
@@ -88,21 +89,24 @@ Fuente: `REAL_IN_VORAGINE` (Float[50], nsUri `AQUATECH4`, `g=93BAFF92-FF57-4877-
 | 0 | `valve1` | Válvula de salida | — | — | — | confirmed |
 | 0 | `inletFlow1` | Caudal de entrada | l/s | 0 a 1000 | — | confirmed |
 | 1 | `valve2` | Válvula de entrada | — | — | — | confirmed |
+| 1 | `valve1State` | Estado válvula de salida | — | — | — | confirmed |
+| 1 | `valve2State` | Estado válvula de entrada | — | — | — | confirmed |
 | 5 | `tank1Level` | Nivel tanque 1 | m | 0 a 5 | 1 a 1.98 | confirmed |
 | 6 | `tank1Volume` | Volumen tanque 1 | m³ | 0 a 10000 | — | confirmed |
 | 7 | `outletFlow1` | Caudal de salida | l/s | 0 a 1000 | 1 a 3 | confirmed |
 | 12 | `inletPressure1` | Presión de entrada | psi | -15 a 232 | — | confirmed |
 | 13 | `outletPressure1` | Presión de salida | psi | -15 a 232 | — | confirmed |
 
-### Soledad (`soledad`) — 19 señales
+### Soledad (`soledad`) — 20 señales
 
 Fuente: `INT_OUT_SOLEDAD` (Int16[20], nsUri `AQUATECH4`, `g=427B2651-37E3-F583-C156-8620EAD41E7A`)
 Fuente: `REAL_IN_SOLEDAD` (Float[50], nsUri `AQUATECH4`, `g=19181A21-F548-3D76-D6D9-EDAA324C20F7`)
 
 | Índice | domainKey | Señal | Unidad | Validez | Rango operativo | Confianza |
 |---|---|---|---|---|---|---|
-| 0 | `valve1` | Válvula de salida 1 | — | — | — | confirmed |
+| 0 | `valve1` | Válvula de salida | — | — | — | confirmed |
 | 0 | `inletFlow1` | Caudal de entrada | l/s | 0 a 1000 | — | confirmed |
+| 1 | `valve2` | Válvula de entrada | — | — | — | confirmed |
 | 2 | `inletTurbidity` | Turbiedad de entrada | NTU | 0 a 1000 | 0.1 a 5 | confirmed |
 | 3 | `inletOxygen` | Oxígeno de entrada | mg/L | 0 a 20 | 4 a 15 | confirmed |
 | 4 | `conductivity` | Conductividad de entrada | µS/cm | 0 a 10000 | 0.1 a 1000 | confirmed |
@@ -121,15 +125,16 @@ Fuente: `REAL_IN_SOLEDAD` (Float[50], nsUri `AQUATECH4`, `g=19181A21-F548-3D76-D
 | 30 | `sanAntonioTankVolume` | Volumen tanque San Antonio | m³ | 0 a 10000 | — | inferred |
 | 31 | `quijoteTankVolume` | Volumen tanque El Quijote | m³ | 0 a 10000 | — | inferred |
 
-### Montebello (`montebello`) — 7 señales
+### Montebello (`montebello`) — 8 señales
 
 Fuente: `INT_OUT_MONTEBELLO` (Int16[20], nsUri `AQUATECH4`, `g=11446A3B-37F5-376F-AB42-70AC9D2FC36B`)
 Fuente: `REAL_IN_MONTEBELLO` (Float[50], nsUri `AQUATECH4`, `g=EBA8E3EB-53A2-0CCD-3912-501C0F7E4C8F`)
 
 | Índice | domainKey | Señal | Unidad | Validez | Rango operativo | Confianza |
 |---|---|---|---|---|---|---|
-| 0 | `valve1` | Válvula 1 | — | — | — | confirmed |
+| 0 | `valve1` | Válvula de salida | — | — | — | confirmed |
 | 0 | `inletFlow1` | Caudal de entrada 1 | l/s | 0 a 1000 | — | confirmed |
+| 1 | `valve2` | Válvula de entrada | — | — | — | confirmed |
 | 5 | `inletFlow2` | Caudal de entrada 2 | l/s | 0 a 1000 | — | confirmed |
 | 10 | `outletFlow1` | Caudal de salida | l/s | 0 a 1000 | — | confirmed |
 | 15 | `inletPressure1` | Presión de entrada 1 | psi | -15 a 232 | — | confirmed |
@@ -144,9 +149,9 @@ Fuente: `REAL_IN_CASCAJAL` (Float[50], nsUri `AQUATECH4`, `g=F0C27430-68DC-74D7-
 
 | Índice | domainKey | Señal | Unidad | Validez | Rango operativo | Confianza |
 |---|---|---|---|---|---|---|
-| 0 | `valve1` | Válvula de salida 1 | — | — | — | confirmed |
+| 0 | `valve1` | Válvula de salida | — | — | — | confirmed |
 | 0 | `outletFlow1` | Caudal de salida 1 | l/s | 0 a 1000 | — | confirmed |
-| 1 | `valve2` | Válvula de salida 2 | — | — | — | confirmed |
+| 1 | `valve2` | Válvula de entrada | — | — | — | confirmed |
 | 1 | `valve1State` | Estado válvula 1 | — | — | — | confirmed |
 | 5 | `tank1Level` | Nivel tanque 1 | m | 0 a 5 | 1 a 3 | confirmed |
 | 6 | `tank1Volume` | Volumen tanque 1 | m³ | 0 a 10000 | — | confirmed |
@@ -156,15 +161,16 @@ Fuente: `REAL_IN_CASCAJAL` (Float[50], nsUri `AQUATECH4`, `g=F0C27430-68DC-74D7-
 | 14 | `inletFlow1` | Caudal de entrada 1 | l/s | 0 a 1000 | — | confirmed |
 | 19 | `inletPressure1` | Presión de entrada | psi | -15 a 232 | — | inferred |
 
-### Km 18 (`km18`) — 9 señales
+### Km 18 (`km18`) — 10 señales
 
 Fuente: `INT_OUT_KM18` (Int16[20], nsUri `AQUATECH4`, `g=77117D1F-7CFD-82DF-66B8-0C1787E6EF62`)
 Fuente: `REAL_IN_KM18` (Float[50], nsUri `AQUATECH4`, `g=1C72A21A-8F36-327C-C0AC-CA7A9AA60D96`)
 
 | Índice | domainKey | Señal | Unidad | Validez | Rango operativo | Confianza |
 |---|---|---|---|---|---|---|
-| 0 | `valve1` | Válvula 1 | — | — | — | confirmed |
+| 0 | `valve1` | Válvula de salida | — | — | — | confirmed |
 | 0 | `inletFlow1` | Caudal de entrada | l/s | 0 a 1000 | — | confirmed |
+| 1 | `valve2` | Válvula de entrada | — | — | — | confirmed |
 | 5 | `tank1Level` | Nivel tanque 1 | m | 0 a 5 | 1 a 2 | confirmed |
 | 6 | `tank1Volume` | Volumen tanque 1 | m³ | 0 a 10000 | — | confirmed |
 | 7 | `outletFlow1` | Caudal de salida | l/s | 0 a 1000 | — | confirmed |
@@ -173,15 +179,16 @@ Fuente: `REAL_IN_KM18` (Float[50], nsUri `AQUATECH4`, `g=1C72A21A-8F36-327C-C0AC
 | 14 | `tank2Level` | Nivel tanque 2 | m | 0 a 5 | 1 a 2 | confirmed |
 | 15 | `tank2Volume` | Volumen tanque 2 | m³ | 0 a 10000 | — | confirmed |
 
-### Alto de los Mangos (`alto-los-mangos`) — 7 señales
+### Alto de los Mangos (`alto-los-mangos`) — 8 señales
 
 Fuente: `INT_OUT_ALTO_MANGOS` (Int16[20], nsUri `AQUATECH4`, `g=51716405-AB9C-568A-24F8-7284365397B8`)
 Fuente: `DATOS_REAL_IN_MANGOS` (Float[50], nsUri `AQUATECH4`, `g=ECA4ABBE-2E70-B864-5B3D-B2E9D1FB7830`)
 
 | Índice | domainKey | Señal | Unidad | Validez | Rango operativo | Confianza |
 |---|---|---|---|---|---|---|
-| 0 | `valve1` | Válvula 1 | — | — | — | confirmed |
+| 0 | `valve1` | Válvula de salida | — | — | — | confirmed |
 | 0 | `inletFlow1` | Caudal de entrada | l/s | 0 a 1000 | — | confirmed |
+| 1 | `valve2` | Válvula de entrada | — | — | — | confirmed |
 | 5 | `tank1Level` | Nivel tanque 1 | m | 0 a 5 | 1 a 2.5 | confirmed |
 | 6 | `tank1Volume` | Volumen tanque 1 | m³ | 0 a 10000 | — | confirmed |
 | 7 | `outletFlow1` | Caudal de salida | l/s | 0 a 1000 | — | confirmed |
@@ -195,9 +202,9 @@ Fuente: `REAL_IN_CAMPOALEGRE` (Float[50], nsUri `AQUATECH4`, `g=E1680D60-7BCD-C8
 
 | Índice | domainKey | Señal | Unidad | Validez | Rango operativo | Confianza |
 |---|---|---|---|---|---|---|
-| 0 | `valve1` | Válvula de salida tanque nuevo | — | — | — | confirmed |
+| 0 | `valve1` | Válvula de salida | — | — | — | confirmed |
 | 0 | `outletFlow1` | Caudal de salida 1 | l/s | 0 a 1000 | — | confirmed |
-| 1 | `valve2` | Válvula de salida 2 - Piamonte | — | — | — | confirmed |
+| 1 | `valve2` | Válvula de entrada | — | — | — | confirmed |
 | 5 | `tank1Level` | Nivel tanque 1 | m | 0 a 20 | ≥ 1 | confirmed |
 | 6 | `tank1Volume` | Volumen tanque 1 | m³ | 0 a 10000 | — | confirmed |
 | 7 | `outletFlow2` | Caudal de salida 2 | l/s | 0 a 1000 | — | confirmed |
@@ -208,26 +215,28 @@ Fuente: `REAL_IN_CAMPOALEGRE` (Float[50], nsUri `AQUATECH4`, `g=E1680D60-7BCD-C8
 | 16 | `tank3Level` | Nivel tanque 3 | m | 0 a 20 | ≥ 1 | confirmed |
 | 17 | `tank3Volume` | Volumen tanque 3 | m³ | 0 a 10000 | — | confirmed |
 
-### Pichindé (`pichinde`) — 3 señales
+### Pichindé (`pichinde`) — 4 señales
 
 Fuente: `INT_OUT_PICHINDE` (Int16[20], nsUri `AQUATECH4`, `g=9FC0167E-8E1C-6CC2-CF08-14AF586F6C15`)
 Fuente: `REAL_IN_PICHINDE` (Float[50], nsUri `AQUATECH4`, `g=C9C97734-E939-9008-A41E-9CA37BB7A2D0`)
 
 | Índice | domainKey | Señal | Unidad | Validez | Rango operativo | Confianza |
 |---|---|---|---|---|---|---|
-| 0 | `valve1` | Válvula 1 | — | — | — | confirmed |
+| 0 | `valve1` | Válvula de salida | — | — | — | confirmed |
+| 1 | `valve2` | Válvula de entrada | — | — | — | confirmed |
 | 10 | `inletPressure1` | Presión de entrada | psi | -15 a 232 | — | inferred |
 | 11 | `outletPressure1` | Presión de salida | psi | -15 a 232 | — | inferred |
 
-### Carbonero (`carbonero`) — 13 señales
+### Carbonero (`carbonero`) — 14 señales
 
 Fuente: `INT_OUT_CARBONERO` (Int16[20], nsUri `AQUATECH4`, `g=BFC8CF7B-FC4C-21FB-16A4-8EF12A2D9F4B`)
 Fuente: `REAL_IN_CARBONERO` (Float[50], nsUri `AQUATECH4`, `g=A1323D1F-4114-A49D-746E-D6DDBB3C7DE3`)
 
 | Índice | domainKey | Señal | Unidad | Validez | Rango operativo | Confianza |
 |---|---|---|---|---|---|---|
-| 0 | `valve1` | Válvula 1 | — | — | — | confirmed |
+| 0 | `valve1` | Válvula de salida | — | — | — | confirmed |
 | 0 | `inletFlow1` | Caudal de entrada | l/s | 0 a 1000 | — | confirmed |
+| 1 | `valve2` | Válvula de entrada | — | — | — | confirmed |
 | 2 | `inletTurbidity` | Turbiedad de entrada | NTU | 0 a 1000 | 0 a 5 | confirmed |
 | 3 | `inletOxygen` | Oxígeno de entrada | mg/L | 0 a 20 | 4 a 15 | confirmed |
 | 4 | `conductivity` | Conductividad | µS/cm | 0 a 10000 | 0.1 a 1000 | confirmed |
@@ -240,17 +249,18 @@ Fuente: `REAL_IN_CARBONERO` (Float[50], nsUri `AQUATECH4`, `g=A1323D1F-4114-A49D
 | 14 | `outletTemperature` | Temperatura de salida | °C | 0 a 50 | 10 a 30 | confirmed |
 | 20 | `outletPressure1` | Presión de salida | psi | -15 a 232 | 1 a 3 | confirmed |
 
-### La Sirena (`sirena`) — 23 señales
+### La Sirena (`sirena`) — 24 señales
 
-Fuente: `INT_IN_SIRENA` (Int16[10], nsUri `AQUATECH4`, `g=184E4071-DC15-213A-3DE8-442A4E0A354B`)
 Fuente: `INT_OUT_SIRENA` (Int16[20], nsUri `AQUATECH4`, `g=4AB6ECB4-D019-D4F1-A8A8-6177C3FE3278`)
+Fuente: `INT_IN_SIRENA` (Int16[10], nsUri `AQUATECH4`, `g=184E4071-DC15-213A-3DE8-442A4E0A354B`)
 Fuente: `REAL_IN_SIRENA` (Float[50], nsUri `AQUATECH4`, `g=A7B368C5-2F51-723A-8108-500CFEB52374`)
 
 | Índice | domainKey | Señal | Unidad | Validez | Rango operativo | Confianza |
 |---|---|---|---|---|---|---|
+| 0 | `valve1` | Válvula de salida | — | — | — | confirmed |
 | 0 | `valve1State` | Estado de la válvula 1 | — | — | — | inferred |
-| 0 | `valve1` | Válvula 1 | — | — | — | confirmed |
 | 0 | `inletFlow1` | Caudal de entrada | l/s | 0 a 1000 | — | confirmed |
+| 1 | `valve2` | Válvula de entrada | — | — | — | confirmed |
 | 2 | `inletTurbidity` | Turbiedad de entrada | NTU | 0 a 1000 | — | confirmed |
 | 3 | `inletOxygen` | Oxígeno de entrada | mg/L | 0 a 20 | — | confirmed |
 | 4 | `conductivity` | Conductividad de entrada | µS/cm | 0 a 10000 | — | confirmed |
@@ -316,5 +326,6 @@ Fuente: `REAL_IN_SIRENA` (Float[50], nsUri `AQUATECH4`, `g=A7B368C5-2F51-723A-81
 - opMin/opMax = rango OPERATIVO/normativo entregado por el operador (insumo de alarmas futuras). NO confundir con min/max, que son límites de validez física: una lectura fuera de [opMin,opMax] pero dentro de [min,max] es un dato REAL y usable (p. ej. pH de salida 5.8 o tanque en 0.5 m) que la UI debe mostrar, no descartar.
 - Topología de san-antonio y quijote verificada por browse: son sitios mínimos reales (solo un buffer de tanque + MSG_READ). topologyVerified: true.
 - PLANTAS EN INTEGRACIÓN (alta 2026-10-19): cabuyo (Cabuyo), luisa (La Luisa), leonera (La Leonera) y gloria (Gloria) están dadas de alta SIN señales, a la espera de que el integrador las suba al PLC maestro. El browse del 2026-07-12 no trae ningún tag suyo: sin buffer, NodeId ni índice no hay nada que mapear y no se inventa nada (opcBuffers: {}, connection unmapped con DN/ER/TO en null, signals: []). Equipo declarado por el cliente en las cuatro: válvula de entrada on/off, válvula de salida proporcional (% de apertura + consigna 0–100 %), caudal de entrada, caudal de salida y presión de entrada; solo La Leonera tiene además 1 tanque con sensor de nivel, con datos aún desconocidos. Lo que el integrador debe entregar por planta y los pasos para conectarlas: docs/plc/PLANTAS_NUEVAS_CABUYO_LUISA_LEONERA_GLORIA.md.
+- VÁLVULAS, ENTREGA DEL INTEGRADOR DEL 2026-10-23 (corrige la del 2026-10-16): la orden ya no se deja SOSTENIDA (el 1 que dejaba la app chocaba con la HMI); el bit de mando se mantiene en 1 solo hasta que el PLC informa abierta/cerrada (según el verbo) o falla, y vuelve a 0 (pulse.feedback, tope 120 s, minHoldMs 20 s). Solo La Vorágine tiene entregados sus bits de realimentación (INT_IN_VORAGINE[1]): sus dos válvulas pasan a esa forma. Soledad (valve1), Cascajal (valve1, valve2) y Campoalegre (valve1, valve2) quedan en writable: false con _nota hasta que el integrador entregue los suyos; su write sostenido se conserva SOLO para la limpieza de bits huérfanos, que al conectar el puente apaga los bits de mando que sigan puestos sin una orden viva. Sirena, Carbonero y las de pulso de 300 ms (4096) no cambian.
 - displayName es provisional (displayNameProvisional: true) hasta confirmación escrita de la planta.
 - generatedFrom.namespaces es referencia histórica de la captura, NO fuente de verdad para el runtime.

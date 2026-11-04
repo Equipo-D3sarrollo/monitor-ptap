@@ -1194,7 +1194,7 @@
           "index": 0,
           "domainKey": "valve1",
           "label": "Válvula de salida",
-          "flowDomainKey": "outletFlow1",
+          "flowDomainKey": "outletFlow2",
           "mappingStatus": "mapped",
           "confidence": "confirmed",
           "writable": true,
