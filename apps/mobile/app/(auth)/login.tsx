@@ -16,6 +16,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { AppUpdateBanner } from '../../components/AppUpdateBanner';
+import { WaterBackground } from '../../components/WaterBackground';
 import { useAuth } from '../../context/AuthContext';
 import { apiLogin } from '../../services/auth';
 import { toast } from '../../services/toast-store';
@@ -154,6 +155,7 @@ export default function LoginScreen() {
         {isWide ? (
           <View style={styles.wideRow}>
             <View style={styles.wideWater}>
+              <WaterBackground level={0.34} />
               {logo}
               <Text style={styles.tagline}>El agua de 12 plantas, en una sola pantalla.</Text>
               <Text style={styles.taglineSub}>
@@ -170,7 +172,10 @@ export default function LoginScreen() {
           </View>
         ) : (
           <ScrollView contentContainerStyle={styles.narrowScroll} keyboardShouldPersistTaps="handled">
-            <View style={styles.narrowWater}>{logo}</View>
+            <View style={styles.narrowWater}>
+              <WaterBackground level={0.2} />
+              {logo}
+            </View>
             <View style={styles.narrowForm}>{form}</View>
           </ScrollView>
         )}
@@ -191,6 +196,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: 48,
+    paddingBottom: '30%',
     overflow: 'hidden',
   },
   wideFormScroll: {
@@ -224,6 +230,7 @@ const styles = StyleSheet.create({
     backgroundColor: L.waterPanel,
     alignItems: 'center',
     justifyContent: 'center',
+    paddingBottom: 56,
     overflow: 'hidden',
   },
   narrowForm: { paddingHorizontal: 24, paddingTop: 28, paddingBottom: 20 },
