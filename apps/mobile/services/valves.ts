@@ -1,0 +1,205 @@
+import type { PlantSnapshotDto, SignalDto } from './api';
+
+/**
+ * Electroválvulas REALES derivadas del snapshot de dominio (PLC → mapping → snapshot.signals).
+ * Ya no hay mocks: si la planta no tiene válvula mapeada, la lista queda vacía y la pantalla lo dice.
+ *
+ * ESTADO de la válvula — dos métodos, por instrucción del operador (2026-07-30):
+ *   1. `valve1State` (lectura directa de intIn): máscara de bits del PLC → bit0 = abierta(1) /
+ *      cerrada(0), con bit14 = estado válido. Es decir 16384 = CERRADA, 16385 = ABIERTA. Los
+ *      sitios que no siguen esa máscara declaran sus valores literales en `stateEncoding`
+ *      (Cascajal: 251 = CERRADA) — ver `stateFromWord`.
+ *   2. Caudal: si el caudal es <= 0.1 la válvula está CERRADA; por encima, ABIERTA.
+ *
+ * Se muestran AMBOS y se cruzan: el método 1 manda (es la lectura del propio equipo) y el 2 corrobora.
+ * Si discrepan se marca `disagreement` — eso es información valiosa para el operador (sensor de estado
+ * o caudalímetro inconsistente), nunca se oculta eligiendo uno en silencio.
+ */
+
+/** Umbral de caudal por debajo del cual se considera la válvula cerrada (método 2). */
+export const FLOW_CLOSED_THRESHOLD = 0.1;
+
+/** Bits de la palabra de estado (intIn[0]) según la interpretación de válvulas del PLC. */
+const BIT_VALID = 1 << 14; // 16384 — el PLC reporta un estado válido
+const BIT_OPEN = 1 << 0; //     1 — abierta
+
+export type ValveState = 'open' | 'closed' | 'unknown';
+export type ValveStateSource = 'estado' | 'caudal' | 'ninguno';
+
+export interface ValveView {
+  id: string; // domainKey del comando, p. ej. 'valve1'
+  name: string;
+  /** Veredicto final (método 1 si está disponible; si no, método 2). */
+  state: ValveState;
+  /** De dónde salió el veredicto. */
+  source: ValveStateSource;
+  /** Método 1 — lectura directa del PLC (null si no hay dato usable). */
+  byState: ValveState | null;
+  /** Método 2 — inferido del caudal (null si la planta no tiene caudal mapeado). */
+  byFlow: ValveState | null;
+  /** Caudal usado por el método 2 y su unidad (para mostrarlo). */
+  flowValue: number | null;
+  flowUnit: string | null;
+  flowLabel: string | null;
+  /** Los dos métodos dan resultados distintos → avisar, no elegir en silencio. */
+  disagreement: boolean;
+  /**
+   * ¿Se puede accionar desde la app? `false` = la válvula existe y su estado se muestra, pero no
+   * tiene canal de comando en el mapping (la de ENTRADA de La Vorágine, cuya frecuencia de bits aún
+   * no conocemos). Sin esto se le ofrecía al operador un botón que, tras confirmar la maniobra en un
+   * diálogo, solo podía devolver un 404.
+   */
+  commandable: boolean;
+  /** Valor crudo de la palabra de estado (diagnóstico). */
+  rawState: number | null;
+  ts: string | null;
+}
+
+function numeric(signal: SignalDto | undefined): number | null {
+  return signal && typeof signal.value === 'number' && signal.usable ? signal.value : null;
+}
+
+/**
+ * Método 1: decodifica la palabra de estado del PLC.
+ *
+ * Dos convenciones, porque las plantas no son iguales:
+ *
+ *  1. **Valores literales** (`stateEncoding` en el mapping), si el sitio los declara. Cascajal
+ *     reporta `251` = CERRADA en `INT_IN[1]`, verificado en campo por el operador el 2026-08-13.
+ *     Ese valor NO trae el bit14, así que la regla de bits lo descartaba como "sin estado válido"
+ *     y la planta se quedaba muda: por eso los literales mandan cuando existen.
+ *  2. **Máscara de bits** (Vorágine/Sirena): bit14 = estado válido, bit0 = abierta.
+ *
+ * En ambas, un valor que no encaja devuelve `null` y el veredicto cae al caudal. Es deliberado:
+ * más vale no afirmar nada que enseñar una válvula "cerrada" que está abierta.
+ */
+function stateFromWord(
+  word: number | null,
+  encoding?: SignalDto['stateEncoding'],
+  trusted?: boolean,
+): ValveState | null {
+  if (word === null) return null;
+  // El sitio declara que su palabra de estado NO es fiable: se sigue mostrando como diagnóstico
+  // (`rawState`), pero el veredicto lo da el caudal, que es evidencia física. La Sirena está así:
+  // su registro decía CERRADA con 23,33 l/s entrando.
+  if (trusted === false) return null;
+
+  if (encoding && (encoding.closed !== undefined || encoding.open !== undefined)) {
+    if (word === encoding.closed) return 'closed';
+    if (word === encoding.open) return 'open';
+    // El sitio declaró su convención y este valor no es ninguno de los suyos. NO se cae a la regla
+    // de bits: mezclarlas es justo como se inventaron estados falsos antes (ver fix-valve-state).
+    return null;
+  }
+
+  // Sin bit14 el PLC no está reportando un estado válido → no se afirma nada.
+  if ((word & BIT_VALID) === 0) return null;
+  return (word & BIT_OPEN) !== 0 ? 'open' : 'closed';
+}
+
+/** Método 2: caudal <= 0.1 → cerrada; por encima → abierta. */
+function stateFromFlow(flow: number | null): ValveState | null {
+  if (flow === null) return null;
+  return flow <= FLOW_CLOSED_THRESHOLD ? 'closed' : 'open';
+}
+
+/**
+ * Caudal de referencia para el método 2. Se prefiere la SALIDA (lo que la válvula entrega) y, si la
+ * planta no la tiene mapeada, se usa la entrada. Devuelve también su etiqueta para poder mostrar de
+ * dónde salió el veredicto.
+ */
+function referenceFlow(
+  signals: Record<string, SignalDto>,
+  declarado?: string,
+): { value: number | null; unit: string | null; label: string | null } {
+  // Si el mapping declara QUÉ caudal corresponde a esta válvula, manda ese y no se adivina. El
+  // orden de abajo es una SUPOSICIÓN que acierta o falla según dónde esté físicamente la válvula,
+  // y elegir mal miente justo en el caso que importa: una válvula de salida cerrada con la entrada
+  // llenando el tanque, o una de entrada cerrada con el tanque vaciándose aguas abajo. En ambos
+  // hay caudal en el lado que NO manda, y se afirmaría "abierta" con la válvula cerrada.
+  const orden = declarado ? [declarado] : ['outletFlow1', 'outletFlow2', 'inletFlow1', 'inletFlow2'];
+  for (const key of orden) {
+    const sig = signals[key];
+    const value = numeric(sig);
+    if (value !== null) return { value, unit: sig?.unit ?? null, label: sig?.label ?? key };
+  }
+  return { value: null, unit: null, label: null };
+}
+
+export function valvesFromSnapshot(snapshot: PlantSnapshotDto | undefined): ValveView[] {
+  if (!snapshot) return [];
+  const out: ValveView[] = [];
+
+  // Una válvula por cada señal de comando valve<N> presente en el mapping de la planta.
+  const nums = new Set<number>();
+  for (const key of Object.keys(snapshot.signals)) {
+    const m = /^valve(\d+)$/.exec(key);
+    if (m) nums.add(Number(m[1]));
+  }
+
+  for (const n of [...nums].sort((a, b) => a - b)) {
+    const cmd = snapshot.signals[`valve${n}`];
+    // El caudal se resuelve POR VÁLVULA: cada una puede estar en un punto distinto del proceso.
+    const flow = referenceFlow(snapshot.signals, cmd?.flowDomainKey);
+    const stateSig = snapshot.signals[`valve${n}State`];
+    const rawState = numeric(stateSig);
+    const byState = stateFromWord(rawState, stateSig?.stateEncoding, stateSig?.stateTrusted);
+    const byFlow = stateFromFlow(flow.value);
+
+    const state: ValveState = byState ?? byFlow ?? 'unknown';
+    const source: ValveStateSource = byState !== null ? 'estado' : byFlow !== null ? 'caudal' : 'ninguno';
+
+    out.push({
+      id: `valve${n}`,
+      name: cmd?.label ?? `Válvula ${n}`,
+      state,
+      source,
+      byState,
+      byFlow,
+      flowValue: flow.value,
+      flowUnit: flow.unit,
+      flowLabel: flow.label,
+      disagreement: byState !== null && byFlow !== null && byState !== byFlow,
+      // Ausente ⇒ accionable: el backend solo manda el campo cuando vale false, y así una válvula
+      // de las de siempre se comporta igual que antes de que este campo existiera.
+      commandable: cmd?.commandable !== false,
+      rawState,
+      ts: stateSig?.ts ?? cmd?.ts ?? null,
+    });
+  }
+  return out;
+}
+
+/** true si el domainKey lo consume la pantalla de válvulas (para no duplicarlo en el tablero). */
+export function isValveSignal(domainKey: string): boolean {
+  return /^valve\d+(State)?$/.test(domainKey);
+}
+
+// ── Detección de operación MANUAL ─────────────────────────────────────────────────────────────
+
+export type ManualEvent = 'opened' | 'closed' | null;
+
+/**
+ * ¿La válvula se operó A MANO? La pista es física: el estado según el CAUDAL cambió (cruzó el umbral
+ * de 0.1) mientras la lectura eléctrica del PLC NO lo reflejó y nosotros no mandamos ninguna orden.
+ * En ese caso el estado de la app debe seguir al caudal, o quedaría desincronizado y mandaríamos
+ * "abrir" a algo ya abierto.
+ *
+ * @param prevFlow  estado por caudal en la lectura anterior
+ * @param currFlow  estado por caudal ahora
+ * @param prevState estado eléctrico anterior (método 1)
+ * @param currState estado eléctrico ahora (método 1)
+ * @param commandRecently true si NOSOTROS mandamos una orden hace poco (entonces no es manual)
+ */
+export function detectManual(
+  prevFlow: ValveState | null,
+  currFlow: ValveState | null,
+  prevState: ValveState | null,
+  currState: ValveState | null,
+  commandRecently: boolean,
+): ManualEvent {
+  if (commandRecently) return null; // el cambio lo provocamos nosotros
+  if (prevFlow === null || currFlow === null || prevFlow === currFlow) return null; // el caudal no cambió de lado
+  if (prevState !== null && currState !== null && prevState !== currState) return null; // el PLC sí lo reportó → fue eléctrico
+  return currFlow === 'open' ? 'opened' : 'closed';
+}

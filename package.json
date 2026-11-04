@@ -1,0 +1,27 @@
+{
+  "name": "monitor-ptap",
+  "version": "1.0.0",
+  "private": true,
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "start": "npm run dev:api",
+    "dev:mobile": "npm run start -w @ptap/mobile",
+    "dev:api": "npm run start:dev -w @ptap/api",
+    "build": "npm run build -w @ptap/shared && npm run build -w @ptap/api",
+    "lint": "npm run lint --workspaces --if-present",
+    "typecheck": "npm run typecheck --workspaces --if-present",
+    "test": "npm run test --workspaces --if-present",
+    "web": "npm run web -w @ptap/mobile"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.33.0",
+    "eslint": "^9.33.0",
+    "eslint-config-expo": "^10.0.0",
+    "eslint-config-prettier": "^10.1.8",
+    "prettier": "^3.6.2",
+    "typescript": "~6.0.3"
+  }
+}

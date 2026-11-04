@@ -1,0 +1,38 @@
+{
+  "expo": {
+    "name": "Monitor PTAP",
+    "slug": "monitor-ptap",
+    "version": "1.2.4",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "light",
+    "newArchEnabled": true,
+    "scheme": "monitor-ptap",
+    "ios": {
+      "supportsTablet": false,
+      "bundleIdentifier": "com.ptap.monitor"
+    },
+    "android": {
+      "adaptiveIcon": {
+        "backgroundColor": "#1565C0",
+        "foregroundImage": "./assets/android-icon-foreground.png",
+        "backgroundImage": "./assets/android-icon-background.png",
+        "monochromeImage": "./assets/android-icon-monochrome.png"
+      },
+      "package": "com.ptap.monitor",
+      "versionCode": 7
+    },
+    "web": {
+      "bundler": "metro",
+      "favicon": "./assets/favicon.png"
+    },
+    "plugins": [
+      ["expo-router", { "asyncRoutes": "production" }],
+      "expo-status-bar",
+      "expo-secure-store"
+    ],
+    "experiments": {
+      "typedRoutes": true
+    }
+  }
+}

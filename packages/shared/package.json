@@ -1,0 +1,22 @@
+{
+  "name": "@ptap/shared",
+  "version": "1.0.0",
+  "private": true,
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "react-native": "src/index.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "react-native": "./src/index.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "files": ["dist", "src"],
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "lint": "eslint .",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "echo \"No tests configured for @ptap/shared\""
+  }
+}
