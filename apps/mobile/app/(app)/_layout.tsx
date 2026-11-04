@@ -11,6 +11,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import Colors from '../../constants/colors';
+import { usePoppins } from '../../constants/fonts';
 import { useAuth } from '../../context/AuthContext';
 import { useUnseenNotifications } from '../../hooks/useNotifications';
 import { NotificationOptIn } from '../../components/NotificationOptIn';
@@ -188,6 +189,8 @@ function MenuModal({
 export default function AppLayout() {
   const [menuVisible, setMenuVisible] = useState(false);
   const { user, token, isLoading } = useAuth();
+  // Poppins para los componentes del tablero; si falla la carga se sigue con la fuente del sistema.
+  const [fontsLoaded, fontError] = usePoppins();
   const isCivil = user?.role === 'civil';
 
   // Opciones de cabecera ESTABLES: se esparcen en 7 `Tabs.Screen`, así que recrearlas en cada
@@ -211,7 +214,7 @@ export default function AppLayout() {
   //  2. El cierre AUTOMÁTICO a las 8 h (AuthContext vence el token y deja token=null).
   //  3. Un 401 del backend (token revocado/vencido): onUnauthorized hace logout y esto redirige.
   // Mientras se restaura la sesión persistida no se decide nada (evita el parpadeo al login).
-  if (isLoading) {
+  if (isLoading || (!fontsLoaded && !fontError)) {
     return (
       <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: Colors.bg }}>
         <ActivityIndicator size="large" color={Colors.primary} />
