@@ -1,15 +1,19 @@
-import { useState } from 'react';
+import { forwardRef, useEffect, useRef, useState, type ReactNode } from 'react';
 import {
   View,
   Text,
   TextInput,
   TouchableOpacity,
+  Pressable,
   KeyboardAvoidingView,
   Platform,
   ScrollView,
   ActivityIndicator,
   StyleSheet,
+  Animated,
+  Easing,
   useWindowDimensions,
+  type TextInputProps,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -18,9 +22,12 @@ import { AppUpdateBanner } from '../../components/AppUpdateBanner';
 import { WaterBackground } from '../../components/WaterBackground';
 import { LogoRipples } from '../../components/LogoRipples';
 import { useAuth } from '../../context/AuthContext';
+import { useReduceMotion } from '../../hooks/useReduceMotion';
 import { apiLogin } from '../../services/auth';
+import { validateLogin, type LoginFieldErrors } from '../../services/login-validation';
 import { toast } from '../../services/toast-store';
 import Colors from '../../constants/colors';
+import { Fonts, usePoppins } from '../../constants/fonts';
 
 const L = Colors.login;
 /** Desde este ancho el login usa dos columnas (panel de agua + formulario). */
@@ -31,19 +38,40 @@ export default function LoginScreen() {
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [errors, setErrors] = useState<LoginFieldErrors>({});
+  const emailRef = useRef<TextInput>(null);
+  const passwordRef = useRef<TextInput>(null);
   const { login } = useAuth();
   const { width } = useWindowDimensions();
   const isWide = width >= WIDE_BREAKPOINT;
+  const [fontsLoaded, fontError] = usePoppins();
+  const reduce = useReduceMotion();
+  const appear = useRef(new Animated.Value(0)).current;
+
+  // El formulario entra con fade + subida de 16 px mientras el agua sube.
+  useEffect(() => {
+    if (reduce === null) return;
+    if (reduce) {
+      appear.setValue(1);
+      return;
+    }
+    const anim = Animated.timing(appear, {
+      toValue: 1,
+      duration: 700,
+      delay: 500,
+      easing: Easing.out(Easing.cubic),
+      useNativeDriver: Platform.OS !== 'web',
+    });
+    anim.start();
+    return () => anim.stop();
+  }, [reduce, appear]);
 
   async function handleLogin() {
-    if (!email.trim() || !password.trim()) {
-      toast.error('Campos requeridos', 'Por favor completa todos los campos.');
-      return;
-    }
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
-      toast.error('Correo inválido', 'Escribe un correo con formato válido.');
-      return;
-    }
+    const found = validateLogin(email, password);
+    setErrors(found);
+    if (found.email) return emailRef.current?.focus();
+    if (found.password) return passwordRef.current?.focus();
+
     setIsLoading(true);
     try {
       const { token, user } = await apiLogin(email.trim(), password);
@@ -58,65 +86,98 @@ export default function LoginScreen() {
     }
   }
 
+  // Poppins carga en milisegundos desde el paquete; si falla, se sigue con la fuente del sistema.
+  if (!fontsLoaded && !fontError) return <View style={styles.safe} />;
+
   const form = (
-    <View style={styles.form}>
-      {/* Email */}
-      <Text style={styles.label}>Correo electrónico</Text>
-      <View style={styles.inputRow}>
-        <Ionicons name="mail-outline" size={20} color={Colors.textSecondary} />
-        <TextInput
-          style={styles.input}
-          placeholder="operador@acueducto.co"
-          placeholderTextColor={Colors.textSecondary}
-          value={email}
-          onChangeText={setEmail}
-          keyboardType="email-address"
-          autoCapitalize="none"
-          autoCorrect={false}
-          maxLength={255}
-        />
+    <Animated.View
+      style={[
+        styles.form,
+        {
+          opacity: appear,
+          transform: [{ translateY: appear.interpolate({ inputRange: [0, 1], outputRange: [16, 0] }) }],
+        },
+      ]}
+    >
+      <Text style={styles.title} accessibilityRole="header">
+        Ingresa a Aquora
+      </Text>
+      <View style={styles.brandBar} accessible={false}>
+        <View style={[styles.brandSeg, { flex: 55, backgroundColor: L.brandBlue }]} />
+        <View style={[styles.brandSeg, { flex: 30, backgroundColor: L.telcobrasGreen }]} />
+        <View style={[styles.brandSeg, { flex: 15, backgroundColor: L.brandYellow }]} />
       </View>
+      <Text style={styles.subtitle}>Acceso para operadores y personal autorizado.</Text>
 
-      {/* Password */}
-      <Text style={[styles.label, { marginTop: 14 }]}>Contraseña</Text>
-      <View style={styles.inputRow}>
-        <Ionicons name="lock-closed-outline" size={20} color={Colors.textSecondary} />
-        <TextInput
-          style={styles.input}
-          placeholder="••••••••"
-          placeholderTextColor={Colors.textSecondary}
-          value={password}
-          onChangeText={setPassword}
-          secureTextEntry={!showPassword}
-          autoCapitalize="none"
-          maxLength={200}
-        />
-        <TouchableOpacity
-          onPress={() => setShowPassword(v => !v)}
-          hitSlop={8}
-          accessibilityRole="button"
-          accessibilityLabel={showPassword ? 'Ocultar la contraseña' : 'Mostrar la contraseña'}
-        >
-          <Ionicons
-            name={showPassword ? 'eye-off-outline' : 'eye-outline'}
-            size={20}
-            color={Colors.textSecondary}
-          />
-        </TouchableOpacity>
-      </View>
+      <Field
+        ref={emailRef}
+        label="Correo electrónico"
+        icon="mail-outline"
+        error={errors.email}
+        value={email}
+        onChangeText={v => {
+          setEmail(v);
+          if (errors.email) setErrors(e => ({ ...e, email: undefined }));
+        }}
+        placeholder="nombre@empresa.co"
+        keyboardType="email-address"
+        autoComplete="email"
+        textContentType="emailAddress"
+        autoCapitalize="none"
+        autoCorrect={false}
+        maxLength={255}
+        returnKeyType="next"
+        submitBehavior="submit"
+        onSubmitEditing={() => passwordRef.current?.focus()}
+      />
 
-      {/* Primary button */}
-      <TouchableOpacity
-        style={[styles.btnPrimary, isLoading && styles.btnDisabled]}
+      <Field
+        ref={passwordRef}
+        label="Contraseña"
+        icon="lock-closed-outline"
+        error={errors.password}
+        value={password}
+        onChangeText={v => {
+          setPassword(v);
+          if (errors.password) setErrors(e => ({ ...e, password: undefined }));
+        }}
+        secureTextEntry={!showPassword}
+        autoComplete="current-password"
+        textContentType="password"
+        autoCapitalize="none"
+        autoCorrect={false}
+        maxLength={200}
+        returnKeyType="go"
+        onSubmitEditing={handleLogin}
+        accessory={
+          <Pressable
+            onPress={() => setShowPassword(v => !v)}
+            style={styles.eye}
+            accessibilityRole="button"
+            accessibilityLabel={showPassword ? 'Ocultar contraseña' : 'Mostrar contraseña'}
+          >
+            <Ionicons
+              name={showPassword ? 'eye-off-outline' : 'eye-outline'}
+              size={22}
+              color={L.textSecondary}
+            />
+          </Pressable>
+        }
+      />
+
+      <Pressable
         onPress={handleLogin}
         disabled={isLoading}
-        activeOpacity={0.85}
+        accessibilityRole="button"
+        accessibilityState={{ busy: isLoading, disabled: isLoading }}
+        style={({ pressed }) => [
+          styles.btnPrimary,
+          (pressed || isLoading) && { backgroundColor: L.buttonPressed },
+        ]}
       >
-        {isLoading
-          ? <ActivityIndicator color="#fff" />
-          : <Text style={styles.btnPrimaryText}>Ingresar</Text>
-        }
-      </TouchableOpacity>
+        {isLoading && <ActivityIndicator color={L.buttonText} />}
+        <Text style={styles.btnPrimaryText}>{isLoading ? 'Ingresando…' : 'Ingresar'}</Text>
+      </Pressable>
 
       {/* El alta crea SIEMPRE una cuenta Civil (solo consulta); elevar el rol es
           potestad de un administrador. Ver app/(auth)/register.tsx. */}
@@ -134,7 +195,7 @@ export default function LoginScreen() {
           — aquí no hace falta ramificar por plataforma. */}
       <AppUpdateBanner modo="descarga" />
       <AppUpdateBanner modo="actualizacion" />
-    </View>
+    </Animated.View>
   );
 
   return (
@@ -175,6 +236,61 @@ export default function LoginScreen() {
   );
 }
 
+interface FieldProps extends TextInputProps {
+  label: string;
+  icon: keyof typeof Ionicons.glyphMap;
+  error?: string;
+  /** Elemento a la derecha del campo (el ojo de la contraseña). */
+  accessory?: ReactNode;
+}
+
+/** Campo con etiqueta, icono y tres estados: normal, foco (borde azul + halo) y error. */
+const Field = forwardRef<TextInput, FieldProps>(function Field(
+  { label, icon, error, accessory, onFocus, onBlur, ...input },
+  ref,
+) {
+  const [focused, setFocused] = useState(false);
+  return (
+    <View style={styles.field}>
+      <Text style={styles.label}>{label}</Text>
+      {/* El halo es un anillo exterior siempre presente (transparente sin foco): así el foco no
+          mueve el diseño, y se ve igual en iOS, Android y web. */}
+      <View style={[styles.halo, focused && !error && { borderColor: L.focusHalo }]}>
+        <View
+          style={[
+            styles.inputRow,
+            focused && { borderColor: L.fieldBorderFocus },
+            !!error && { borderColor: Colors.danger },
+          ]}
+        >
+          <Ionicons name={icon} size={20} color={L.textSecondary} />
+          <TextInput
+            ref={ref}
+            style={styles.input}
+            placeholderTextColor={L.placeholder}
+            accessibilityLabel={label}
+            aria-invalid={!!error}
+            onFocus={e => {
+              setFocused(true);
+              onFocus?.(e);
+            }}
+            onBlur={e => {
+              setFocused(false);
+              onBlur?.(e);
+            }}
+            {...input}
+          />
+          {accessory}
+        </View>
+      </View>
+      {/* Siempre montado para que el lector de pantalla anuncie el mensaje al aparecer. */}
+      <Text style={styles.fieldError} accessibilityLiveRegion="polite" aria-live="polite">
+        {error ?? ''}
+      </Text>
+    </View>
+  );
+});
+
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: L.pageBg },
   flex: { flex: 1 },
@@ -199,14 +315,16 @@ const styles = StyleSheet.create({
   },
   tagline: {
     marginTop: 28,
+    fontFamily: Fonts.semibold,
     fontSize: 26,
-    lineHeight: 34,
+    lineHeight: 36,
     color: L.text,
     textAlign: 'center',
     maxWidth: 440,
   },
   taglineSub: {
     marginTop: 10,
+    fontFamily: Fonts.regular,
     fontSize: 16,
     lineHeight: 24,
     color: L.textSecondary,
@@ -227,49 +345,70 @@ const styles = StyleSheet.create({
   narrowForm: { paddingHorizontal: 24, paddingTop: 28, paddingBottom: 20 },
 
   form: { width: '100%', maxWidth: 400 },
+  title: { fontFamily: Fonts.semibold, fontSize: 26, lineHeight: 34, color: L.text },
+  brandBar: { flexDirection: 'row', width: 72, height: 4, marginTop: 10, borderRadius: 2, overflow: 'hidden' },
+  brandSeg: { height: '100%' },
+  subtitle: {
+    marginTop: 12,
+    marginBottom: 24,
+    fontFamily: Fonts.regular,
+    fontSize: 15,
+    lineHeight: 22,
+    color: L.textSecondary,
+  },
+
+  field: { marginBottom: 4 },
+  label: { fontFamily: Fonts.medium, fontSize: 14, color: L.text, marginBottom: 6 },
+  halo: { borderWidth: 3, borderColor: 'transparent', borderRadius: 17, margin: -3 },
+  inputRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    height: 52,
+    backgroundColor: L.field,
+    borderRadius: 14,
+    borderWidth: 1.5,
+    borderColor: L.fieldBorder,
+    paddingLeft: 14,
+    gap: 10,
+  },
+  input: {
+    flex: 1,
+    height: '100%',
+    paddingRight: 14,
+    fontFamily: Fonts.regular,
+    fontSize: 16,
+    color: L.text,
+    // En web el navegador dibuja su propio contorno encima del halo: el halo ya marca el foco.
+    ...(Platform.OS === 'web' ? { outlineWidth: 0 } : null),
+  },
+  eye: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center', marginRight: 4 },
+  fieldError: {
+    minHeight: 20,
+    marginTop: 4,
+    fontFamily: Fonts.regular,
+    fontSize: 13,
+    lineHeight: 18,
+    color: Colors.danger,
+  },
+
+  btnPrimary: {
+    marginTop: 12,
+    height: 52,
+    flexDirection: 'row',
+    gap: 10,
+    backgroundColor: L.button,
+    borderRadius: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  btnPrimaryText: { fontFamily: Fonts.semibold, color: L.buttonText, fontSize: 16 },
+
   hint: {
     fontSize: 13,
     color: Colors.textSecondary,
     textAlign: 'center',
     marginTop: 20,
   },
-  label: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: Colors.textPrimary,
-    marginBottom: 8,
-  },
-  inputRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    height: 52,
-    backgroundColor: Colors.surface,
-    borderRadius: 14,
-    borderWidth: 1.5,
-    borderColor: '#E5E7EB',
-    paddingHorizontal: 14,
-    gap: 10,
-  },
-  input: {
-    flex: 1,
-    fontSize: 15,
-    color: Colors.textPrimary,
-  },
-  btnPrimary: {
-    marginTop: 22,
-    height: 52,
-    backgroundColor: Colors.primary,
-    borderRadius: 14,
-    alignItems: 'center',
-    justifyContent: 'center',
-    shadowColor: Colors.primary,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 5,
-  },
-  btnDisabled: { opacity: 0.7 },
-  btnPrimaryText: { color: '#fff', fontSize: 16, fontWeight: '700' },
   btnOutline: {
     marginTop: 12,
     height: 52,
