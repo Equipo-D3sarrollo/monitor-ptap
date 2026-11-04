@@ -10,6 +10,7 @@ import {
   ActivityIndicator,
   StyleSheet,
   Image,
+  useWindowDimensions,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -20,12 +21,18 @@ import { apiLogin } from '../../services/auth';
 import { toast } from '../../services/toast-store';
 import Colors from '../../constants/colors';
 
+const L = Colors.login;
+/** Desde este ancho el login usa dos columnas (panel de agua + formulario). */
+const WIDE_BREAKPOINT = 900;
+
 export default function LoginScreen() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const { login } = useAuth();
+  const { width } = useWindowDimensions();
+  const isWide = width >= WIDE_BREAKPOINT;
 
   async function handleLogin() {
     if (!email.trim() || !password.trim()) {
@@ -50,126 +57,181 @@ export default function LoginScreen() {
     }
   }
 
+  const logo = (
+    <Image
+      source={require('../../assets/aquora-logo.png')}
+      style={styles.logo}
+      resizeMode="contain"
+      accessibilityLabel="Aquora, creado por Xpertic"
+    />
+  );
+
+  const form = (
+    <View style={styles.form}>
+      {/* Email */}
+      <Text style={styles.label}>Correo electrónico</Text>
+      <View style={styles.inputRow}>
+        <Ionicons name="mail-outline" size={20} color={Colors.textSecondary} />
+        <TextInput
+          style={styles.input}
+          placeholder="operador@acueducto.co"
+          placeholderTextColor={Colors.textSecondary}
+          value={email}
+          onChangeText={setEmail}
+          keyboardType="email-address"
+          autoCapitalize="none"
+          autoCorrect={false}
+          maxLength={255}
+        />
+      </View>
+
+      {/* Password */}
+      <Text style={[styles.label, { marginTop: 14 }]}>Contraseña</Text>
+      <View style={styles.inputRow}>
+        <Ionicons name="lock-closed-outline" size={20} color={Colors.textSecondary} />
+        <TextInput
+          style={styles.input}
+          placeholder="••••••••"
+          placeholderTextColor={Colors.textSecondary}
+          value={password}
+          onChangeText={setPassword}
+          secureTextEntry={!showPassword}
+          autoCapitalize="none"
+          maxLength={200}
+        />
+        <TouchableOpacity
+          onPress={() => setShowPassword(v => !v)}
+          hitSlop={8}
+          accessibilityRole="button"
+          accessibilityLabel={showPassword ? 'Ocultar la contraseña' : 'Mostrar la contraseña'}
+        >
+          <Ionicons
+            name={showPassword ? 'eye-off-outline' : 'eye-outline'}
+            size={20}
+            color={Colors.textSecondary}
+          />
+        </TouchableOpacity>
+      </View>
+
+      {/* Primary button */}
+      <TouchableOpacity
+        style={[styles.btnPrimary, isLoading && styles.btnDisabled]}
+        onPress={handleLogin}
+        disabled={isLoading}
+        activeOpacity={0.85}
+      >
+        {isLoading
+          ? <ActivityIndicator color="#fff" />
+          : <Text style={styles.btnPrimaryText}>Ingresar</Text>
+        }
+      </TouchableOpacity>
+
+      {/* El alta crea SIEMPRE una cuenta Civil (solo consulta); elevar el rol es
+          potestad de un administrador. Ver app/(auth)/register.tsx. */}
+      <TouchableOpacity
+        style={styles.btnOutline}
+        onPress={() => router.push('/(auth)/register')}
+        activeOpacity={0.8}
+      >
+        <Text style={styles.btnOutlineText}>Crear cuenta nueva</Text>
+      </TouchableOpacity>
+      <Text style={styles.hint}>Las cuentas nuevas se crean como Civil (solo consulta).</Text>
+
+      {/* En WEB ofrece descargar la app (mismo gesto que "crear cuenta nueva"); en la APK avisa
+          si la instalada se quedó atrás. El propio componente decide cuál aplica y si mostrarse
+          — aquí no hace falta ramificar por plataforma. */}
+      <AppUpdateBanner modo="descarga" />
+      <AppUpdateBanner modo="actualizacion" />
+    </View>
+  );
+
   return (
     <SafeAreaView style={styles.safe}>
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         style={styles.flex}
       >
-        <ScrollView
-          contentContainerStyle={styles.scroll}
-          keyboardShouldPersistTaps="handled"
-        >
-          {/* Hero */}
-          <View style={styles.hero}>
-            <Image
-              source={require('../../assets/aquora-logo.png')}
-              style={styles.logo}
-              resizeMode="contain"
-              accessibilityLabel="Aquora, creado por Xpertic"
-            />
-            <Text style={styles.subtitle}>Ingresa a tu cuenta de operador</Text>
-          </View>
-
-          {/* Email */}
-          <Text style={styles.label}>Correo electrónico</Text>
-          <View style={styles.inputRow}>
-            <Ionicons name="mail-outline" size={20} color={Colors.textSecondary} />
-            <TextInput
-              style={styles.input}
-              placeholder="operador@acueducto.co"
-              placeholderTextColor={Colors.textSecondary}
-              value={email}
-              onChangeText={setEmail}
-              keyboardType="email-address"
-              autoCapitalize="none"
-              autoCorrect={false}
-              maxLength={255}
-            />
-          </View>
-
-          {/* Password */}
-          <Text style={[styles.label, { marginTop: 14 }]}>Contraseña</Text>
-          <View style={styles.inputRow}>
-            <Ionicons name="lock-closed-outline" size={20} color={Colors.textSecondary} />
-            <TextInput
-              style={styles.input}
-              placeholder="••••••••"
-              placeholderTextColor={Colors.textSecondary}
-              value={password}
-              onChangeText={setPassword}
-              secureTextEntry={!showPassword}
-              autoCapitalize="none"
-              maxLength={200}
-            />
-            <TouchableOpacity
-              onPress={() => setShowPassword(v => !v)}
-              hitSlop={8}
-              accessibilityRole="button"
-              accessibilityLabel={showPassword ? 'Ocultar la contraseña' : 'Mostrar la contraseña'}
+        {isWide ? (
+          <View style={styles.wideRow}>
+            <View style={styles.wideWater}>
+              {logo}
+              <Text style={styles.tagline}>El agua de 12 plantas, en una sola pantalla.</Text>
+              <Text style={styles.taglineSub}>
+                Caudal, presión, niveles y calidad del agua en tiempo real.
+              </Text>
+            </View>
+            <ScrollView
+              style={styles.flex}
+              contentContainerStyle={styles.wideFormScroll}
+              keyboardShouldPersistTaps="handled"
             >
-              <Ionicons
-                name={showPassword ? 'eye-off-outline' : 'eye-outline'}
-                size={20}
-                color={Colors.textSecondary}
-              />
-            </TouchableOpacity>
+              {form}
+            </ScrollView>
           </View>
-
-          {/* Primary button */}
-          <TouchableOpacity
-            style={[styles.btnPrimary, isLoading && styles.btnDisabled]}
-            onPress={handleLogin}
-            disabled={isLoading}
-            activeOpacity={0.85}
-          >
-            {isLoading
-              ? <ActivityIndicator color="#fff" />
-              : <Text style={styles.btnPrimaryText}>Ingresar</Text>
-            }
-          </TouchableOpacity>
-
-          {/* El alta crea SIEMPRE una cuenta Civil (solo consulta); elevar el rol es
-              potestad de un administrador. Ver app/(auth)/register.tsx. */}
-          <TouchableOpacity
-            style={styles.btnOutline}
-            onPress={() => router.push('/(auth)/register')}
-            activeOpacity={0.8}
-          >
-            <Text style={styles.btnOutlineText}>Crear cuenta nueva</Text>
-          </TouchableOpacity>
-          <Text style={styles.hint}>Las cuentas nuevas se crean como Civil (solo consulta).</Text>
-
-          {/* En WEB ofrece descargar la app (mismo gesto que "crear cuenta nueva"); en la APK avisa
-              si la instalada se quedó atrás. El propio componente decide cuál aplica y si mostrarse
-              — aquí no hace falta ramificar por plataforma. */}
-          <AppUpdateBanner modo="descarga" />
-          <AppUpdateBanner modo="actualizacion" />
-        </ScrollView>
+        ) : (
+          <ScrollView contentContainerStyle={styles.narrowScroll} keyboardShouldPersistTaps="handled">
+            <View style={styles.narrowWater}>{logo}</View>
+            <View style={styles.narrowForm}>{form}</View>
+          </ScrollView>
+        )}
       </KeyboardAvoidingView>
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: Colors.bg },
+  safe: { flex: 1, backgroundColor: L.pageBg },
   flex: { flex: 1 },
-  scroll: {
-    flexGrow: 1,
-    paddingHorizontal: 24,
-    paddingTop: 28,
-    paddingBottom: 20,
+
+  // Escritorio/tablet: panel de agua a la izquierda, formulario centrado a la derecha.
+  wideRow: { flex: 1, flexDirection: 'row' },
+  wideWater: {
+    flex: 1,
+    backgroundColor: L.waterPanel,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 48,
+    overflow: 'hidden',
   },
-  hero: { alignItems: 'center', marginBottom: 20 },
+  wideFormScroll: {
+    flexGrow: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 32,
+    paddingVertical: 40,
+  },
+  tagline: {
+    marginTop: 28,
+    fontSize: 26,
+    lineHeight: 34,
+    color: L.text,
+    textAlign: 'center',
+    maxWidth: 440,
+  },
+  taglineSub: {
+    marginTop: 10,
+    fontSize: 16,
+    lineHeight: 24,
+    color: L.textSecondary,
+    textAlign: 'center',
+    maxWidth: 440,
+  },
+
+  // Celular: zona del logo (~330 px) arriba y formulario debajo con 24 px de margen.
+  narrowScroll: { flexGrow: 1 },
+  narrowWater: {
+    height: 330,
+    backgroundColor: L.waterPanel,
+    alignItems: 'center',
+    justifyContent: 'center',
+    overflow: 'hidden',
+  },
+  narrowForm: { paddingHorizontal: 24, paddingTop: 28, paddingBottom: 20 },
+
+  form: { width: '100%', maxWidth: 400 },
   logo: {
     width: 152,
     height: (152 * 459) / 545,
-    marginBottom: 4,
-  },
-  subtitle: {
-    fontSize: 15,
-    color: Colors.textSecondary,
-    marginTop: 6,
   },
   hint: {
     fontSize: 13,
