@@ -33,6 +33,8 @@ import { Fonts, usePoppins } from '../../constants/fonts';
 const L = Colors.login;
 /** Desde este ancho el login usa dos columnas (panel de agua + formulario). */
 const WIDE_BREAKPOINT = 900;
+/** Fracción del panel izquierdo que cubre el agua en escritorio. */
+const WIDE_WATER_LEVEL = 0.34;
 
 export default function LoginScreen() {
   const [email, setEmail] = useState('');
@@ -43,7 +45,7 @@ export default function LoginScreen() {
   const emailRef = useRef<TextInput>(null);
   const passwordRef = useRef<TextInput>(null);
   const { login } = useAuth();
-  const { width } = useWindowDimensions();
+  const { width, height } = useWindowDimensions();
   const isWide = width >= WIDE_BREAKPOINT;
   const [fontsLoaded, fontError] = usePoppins();
   const reduce = useReduceMotion();
@@ -189,6 +191,9 @@ export default function LoginScreen() {
         disabled={isLoading}
         accessibilityRole="button"
         accessibilityState={{ busy: isLoading, disabled: isLoading }}
+        // react-native-web 0.21 ya no traduce accessibilityState: los aria-* cubren la web.
+        aria-busy={isLoading}
+        aria-disabled={isLoading}
         style={({ pressed }) => [
           styles.btnPrimary,
           (pressed || isLoading) && { backgroundColor: L.buttonPressed },
@@ -256,8 +261,9 @@ export default function LoginScreen() {
       >
         {isWide ? (
           <View style={styles.wideRow}>
-            <View style={styles.wideWater}>
-              <WaterBackground level={0.34} />
+            {/* El logo y la frase se centran en la parte seca, por encima del agua. */}
+            <View style={[styles.wideWater, { paddingBottom: height * WIDE_WATER_LEVEL }]}>
+              <WaterBackground level={WIDE_WATER_LEVEL} />
               <LogoRipples width={200} />
               <Text style={styles.tagline}>El agua de 12 plantas, en una sola pantalla.</Text>
               <Text style={styles.taglineSub}>
@@ -353,7 +359,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: 48,
-    paddingBottom: '30%',
     overflow: 'hidden',
   },
   wideFormScroll: {
@@ -429,7 +434,8 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: L.text,
     // En web el navegador dibuja su propio contorno encima del halo: el halo ya marca el foco.
-    ...(Platform.OS === 'web' ? { outlineWidth: 0 } : null),
+    // Con estilo `auto` Chrome pinta su anillo aunque el ancho sea 0: hace falta `solid`.
+    ...(Platform.OS === 'web' ? { outlineStyle: 'solid', outlineWidth: 0 } : null),
   },
   eye: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center', marginRight: 4 },
   fieldError: {
