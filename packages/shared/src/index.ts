@@ -249,6 +249,34 @@ export interface PlantSnapshotDto {
   autonomy?: TankAutonomyDto[];
 }
 
+export interface PlantReport {
+  red: {
+    estado: string;
+    hora: string;
+    detalle: string;
+  };
+  puente: {
+    estado: string;
+    hora: string;
+    detalle: string;
+  };
+  buffers: {
+    estado: string;
+    hora: string;
+    detalle: string;
+  }[];
+  senales: {
+    estado: string;
+    hora: string;
+    detalle: string;
+  }[];
+  anomalias: {
+    estado: string;
+    hora: string;
+    detalle: string;
+  }[];
+}
+
 /**
  * Autonomía de un tanque: cuánto falta para el 50 % y para quedarse vacío.
  *
