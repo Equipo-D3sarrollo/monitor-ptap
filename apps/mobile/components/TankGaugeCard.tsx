@@ -1,10 +1,12 @@
-import { View, Text, StyleSheet, Animated, Easing } from 'react-native';
+import { View, Text, StyleSheet, Animated, Easing, Platform } from 'react-native';
 import { memo, useEffect, useRef } from 'react';
 import { Ionicons } from '@expo/vector-icons';
-import type { TankAutonomyDto } from '../services/api';
+import Svg, { Path } from 'react-native-svg';
 import type { TankView } from '../services/tanks';
-import { tankFill } from '../services/card-look';
-import { useValueFlash } from '../hooks/useValueFlash';
+import { autonomyLook, tankFill, tankState } from '../services/card-look';
+import { useStateFlash } from '../hooks/useStateFlash';
+import { useReduceMotion } from '../hooks/useReduceMotion';
+import { WAVE_PERIOD, wavePath } from './wave-path';
 import Colors from '../constants/colors';
 import { Fonts } from '../constants/fonts';
 import { BotonSilencio } from './BotonSilencio';
@@ -20,13 +22,55 @@ const WATER = Colors.login.waveMid;
  *  coste: por debajo de este umbral se salta al valor final. */
 const MIN_DELTA_PCT = 0.5;
 
+const NATIVE = Platform.OS !== 'web';
+/** Ola de la superficie del agua: 4 periodos en el doble del ancho del tanque, una vuelta en 4 s. */
+const TANK_W = 64;
+const WAVE_H = 10;
+const WAVE_D = wavePath(4, 20);
+
 interface Props {
   tank: TankView;
   /** La planta está congelada (sin conexión, mostrando la última lectura). Atenúa la tarjeta,
    *  la marca como congelada y NO anima la barra (los valores son viejos, no deben "moverse"). */
   frozen?: boolean;
+  /** true si la planta NO está en vivo (puente caído o datos congelados): el agua queda plana. */
+  still?: boolean;
   /** Planta del tanque, para la campana de silencio. Sin ella, la campana no se pinta. */
   plantId?: string;
+}
+
+/**
+ * Ola en la superficie del agua del tanque. Solo con la planta en vivo y sin "reducir movimiento";
+ * si no, no se pinta y el agua queda plana. Un bucle de un solo `timing` (ver loop-phase.ts).
+ */
+function TankWave({ still }: { still: boolean }) {
+  const reduce = useReduceMotion();
+  const drift = useRef(new Animated.Value(0)).current;
+  const moving = reduce === false && !still;
+
+  useEffect(() => {
+    if (!moving) return;
+    const anim = Animated.loop(
+      Animated.timing(drift, { toValue: 1, duration: 4000, easing: Easing.linear, useNativeDriver: NATIVE }),
+    );
+    anim.start();
+    return () => anim.stop();
+  }, [moving, drift]);
+
+  if (!moving) return null;
+  return (
+    <Animated.View
+      pointerEvents="none"
+      style={[
+        styles.wave,
+        { transform: [{ translateX: drift.interpolate({ inputRange: [0, 1], outputRange: [0, -TANK_W] }) }] },
+      ]}
+    >
+      <Svg width={TANK_W * 2} height={WAVE_H} viewBox={`0 0 ${4 * WAVE_PERIOD} 100`} preserveAspectRatio="none">
+        <Path d={WAVE_D} fill={WATER} />
+      </Svg>
+    </Animated.View>
+  );
 }
 
 /**
@@ -39,7 +83,7 @@ function sujetoDelTanque(id: string): string | null {
   return m ? `tank${m[1]}` : null;
 }
 
-function TankGaugeCardBase({ tank, frozen = false, plantId }: Props) {
+function TankGaugeCardBase({ tank, frozen = false, still = false, plantId }: Props) {
   // percentage llega null hasta que la planta confirme la capacidad real del tanque;
   // en ese caso NO se dibuja % de llenado (sería inventado), solo nivel y volumen reales.
   //
@@ -54,7 +98,7 @@ function TankGaugeCardBase({ tank, frozen = false, plantId }: Props) {
   const pctReal = tank.percentage;
   const fill = tankFill(pctReal);
   const pct = fill.drawPct;
-  const flash = useValueFlash(tank.levelM, frozen);
+  const flash = useStateFlash(tankState(tank), frozen);
   const hasLevel = tank.levelM !== null;
   // Fuera de rango: aviso del backend, o una lectura físicamente imposible (nivel negativo o
   // por encima del 100 % del tanque). Se muestra el valor crudo + etiqueta roja (política acordada).
@@ -62,7 +106,7 @@ function TankGaugeCardBase({ tank, frozen = false, plantId }: Props) {
     tank.outOfRange ||
     (hasLevel && (tank.levelM as number) < 0) ||
     (tank.percentage !== null && (tank.percentage < 0 || tank.percentage > 100));
-  const autonomia = autonomiaTexto(tank.autonomy);
+  const autonomia = autonomyLook(tank.autonomy);
   const sujeto = sujetoDelTanque(tank.id);
   const fillAnim = useRef(new Animated.Value(0)).current;
   /** Último valor al que se llevó la barra: permite saltarse los tweens imperceptibles. */
@@ -114,7 +158,9 @@ function TankGaugeCardBase({ tank, frozen = false, plantId }: Props) {
           accessibilityLabel={tankLabel}
         >
           {pct !== null ? (
-            <Animated.View style={[styles.water, { height: fillHeight }]} />
+            <Animated.View style={[styles.water, { height: fillHeight }]}>
+              {pct > 0 && <TankWave still={still || frozen} />}
+            </Animated.View>
           ) : (
             <Ionicons name="help" size={22} color={B.gray} style={styles.tankHelp} />
           )}
@@ -174,16 +220,19 @@ function TankGaugeCardBase({ tank, frozen = false, plantId }: Props) {
         {(tank.levelOpMin !== null || tank.levelOpMax !== null) && (
           <InfoRow
             label="Rango operativo"
-            value={`${tank.levelOpMin !== null ? fmtM(tank.levelOpMin) : '—'} – ${tank.levelOpMax !== null ? fmtM(tank.levelOpMax) : '—'} m`}
+            value={
+              tank.levelOpMin !== null && tank.levelOpMax !== null
+                ? `${fmtM(tank.levelOpMin)} – ${fmtM(tank.levelOpMax)} m`
+                : tank.levelOpMin !== null
+                  ? `mín. ${fmtM(tank.levelOpMin)} m`
+                  : `máx. ${fmtM(tank.levelOpMax as number)} m`
+            }
           />
         )}
         <InfoRow label="Volumen" value={tank.volumeM3 !== null ? `${tank.volumeM3.toFixed(1)} m³` : 'Sin dato'} />
         {autonomia && (
-          <InfoRow
-            label={autonomia.basis === 'vaciado_real' ? 'Autonomía' : 'Autonomía si cierras'}
-            value={autonomia.texto}
-            hint={autonomia.pie}
-          />
+          // Amarillo solo cuando el backend también avisaría (isAutonomyLow); con icono y texto.
+          <InfoRow label={autonomia.label} value={autonomia.texto} hint={autonomia.pie} warn={autonomia.low} />
         )}
       </View>
     </View>
@@ -193,49 +242,24 @@ function TankGaugeCardBase({ tank, frozen = false, plantId }: Props) {
 /** Memo con comparación POR VALOR — ver `memo-compare.ts`. */
 export const TankGaugeCard = memo(TankGaugeCardBase, sameTankCard);
 
-function InfoRow({ label, value, hint }: { label: string; value: string; hint?: string }) {
+function InfoRow({ label, value, hint, warn = false }: { label: string; value: string; hint?: string; warn?: boolean }) {
   return (
     <View>
       <View style={styles.infoRow}>
-        <Text style={styles.infoLabel}>{label}</Text>
-        <Text style={styles.infoValue}>{value}</Text>
+        <View style={styles.infoLabelRow}>
+          {warn && <Ionicons name="time-outline" size={13} color={B.yellow} />}
+          <Text style={[styles.infoLabel, warn && { color: B.yellow }]}>
+            {label}
+            {warn ? ' · baja' : ''}
+          </Text>
+        </View>
+        <Text style={[styles.infoValue, warn && { color: B.yellow }]}>{value}</Text>
       </View>
       {/* El pie dice de dónde sale el número. Sin él, "4 h" con la entrada abierta se leería como
           una cuenta atrás cuando en realidad el tanque no se está vaciando. */}
       {hint ? <Text style={styles.infoHint}>{hint}</Text> : null}
     </View>
   );
-}
-
-/** Horas y minutos como los diría un operador: «3 h 20 min», «45 min». */
-function humanHoras(horas: number): string {
-  if (horas < 1) return `${Math.max(1, Math.round(horas * 60))} min`;
-  const h = Math.floor(horas);
-  const min = Math.round((horas - h) * 60);
-  return min === 0 ? `${h} h` : `${h} h ${min} min`;
-}
-
-/**
- * Texto de la autonomía, o `null` si no hay nada honesto que decir.
- *
- * El número lo calcula el BACKEND con un temporizador estable; aquí solo se redacta. Los dos casos
- * se distinguen a propósito porque significan cosas distintas: con la entrada cerrada es una cuenta
- * atrás real, y con la entrada abierta es un supuesto —«si cerraras ahora»— con el consumo medio del
- * día. Enseñar ambos igual haría creer al operario que el tanque se está vaciando cuando no.
- */
-function autonomiaTexto(a: TankAutonomyDto | null): { texto: string; pie: string; basis: TankAutonomyDto['basis'] } | null {
-  if (!a || a.hoursTo0 === null) return null;
-  // Separador de punto medio y no una coma: «15 h 58 min, 7 h 58 min» con coma se lee como una sola
-  // cifra con decimales, y son dos duraciones distintas.
-  const hasta50 = a.hoursTo50 !== null && a.hoursTo50 > 0 ? ` · ${humanHoras(a.hoursTo50)} al 50 %` : '';
-  return {
-    basis: a.basis,
-    texto: `${humanHoras(a.hoursTo0)}${hasta50}`,
-    pie:
-      a.basis === 'vaciado_real'
-        ? `Entrada cerrada · vaciándose a ${a.flowLps.toFixed(1)} l/s`
-        : `Proyección con el consumo medio del día (${a.flowLps.toFixed(1)} l/s)`,
-  };
 }
 
 const styles = StyleSheet.create({
@@ -268,6 +292,9 @@ const styles = StyleSheet.create({
   tankOverflow: { borderColor: Colors.danger },
   tankHelp: { alignSelf: 'center' },
   water: { width: '100%', backgroundColor: WATER },
+  // La franja de la ola asoma por encima del agua (el tanque tiene overflow: hidden).
+  wave: { position: 'absolute', left: 0, top: -WAVE_H + 2, width: TANK_W * 2, height: WAVE_H },
+  infoLabelRow: { flexDirection: 'row', alignItems: 'center', gap: 4, flexShrink: 1 },
   maxMark: {
     position: 'absolute',
     left: 0,

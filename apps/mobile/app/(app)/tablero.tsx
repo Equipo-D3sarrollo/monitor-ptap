@@ -14,6 +14,8 @@ import { PICKER_PANEL_MIN_WIDTH, PlantPickerPanel } from '../../components/Plant
 import { TableroHeader, type HeaderKpi } from '../../components/TableroHeader';
 import { hasRangeAnomaly } from '@ptap/shared';
 import { plantStatus } from '../../services/plant-status';
+import { anomalyBanner } from '../../services/card-look';
+import { AnomalyBanner } from '../../components/AnomalyBanner';
 import { ConnectionBanner } from '../../components/ConnectionBanner';
 import { DashboardSummary } from '../../components/DashboardSummary';
 import { GroupHeader } from '../../components/GroupHeader';
@@ -104,6 +106,9 @@ export default function TableroScreen() {
     () => (snapshot ? plantStatus(snapshot.liveness, snapshot.bridgeStatus) : null),
     [snapshot],
   );
+
+  // Franja roja: primera señal fuera de rango, con el mismo criterio que el resumen y la campana.
+  const banner = useMemo(() => anomalyBanner(signals), [signals]);
 
   // Cifras clave del encabezado: SOLO las que existen en el snapshot (nunca un valor de ejemplo).
   const kpis = useMemo(() => {
@@ -209,6 +214,8 @@ export default function TableroScreen() {
           </View>
         ) : (
           <>
+            {/* Solo si alguna señal está fuera de rango (hasRangeAnomaly): cuál, valor y límite. */}
+            {banner && <AnomalyBanner text={banner.text} more={banner.more} />}
             {signals.length > 0 && (
               <DashboardSummary
                 total={summary.total}
@@ -223,7 +230,7 @@ export default function TableroScreen() {
               <View style={styles.grid}>
                 {tanks.map((tank) => (
                   <View key={tank.id} style={tanqueAnchoCompleto ? styles.cellFull : styles.cell}>
-                    <TankGaugeCard tank={tank} frozen={frozen} plantId={selectedPlant.id} />
+                    <TankGaugeCard tank={tank} frozen={frozen} still={!status?.online} plantId={selectedPlant.id} />
                   </View>
                 ))}
               </View>

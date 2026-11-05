@@ -4,8 +4,8 @@ import { Ionicons } from '@expo/vector-icons';
 import Colors from '../constants/colors';
 import { Fonts } from '../constants/fonts';
 import type { SignalDto } from '../services/api';
-import { directionLook, isAnomalous } from '../services/card-look';
-import { useValueFlash } from '../hooks/useValueFlash';
+import { directionLook, isAnomalous, signalState } from '../services/card-look';
+import { useStateFlash } from '../hooks/useStateFlash';
 import { GaugeCard } from './GaugeCard';
 import { sameSignalCard } from './memo-compare';
 import { BotonSilencio } from './BotonSilencio';
@@ -47,7 +47,7 @@ function FlowMeterCardBase({
   const opMax = signal.opMax;
   const hasSpan = typeof opMin === 'number' && typeof opMax === 'number' && opMax - opMin > 0;
   // Hooks antes de cualquier retorno: el número de hooks no puede cambiar entre renders.
-  const flash = useValueFlash(signal.value, frozen);
+  const flash = useStateFlash(signalState(signal), frozen);
 
   if (!numeric || !hasSpan) {
     return (
@@ -120,7 +120,7 @@ const styles = StyleSheet.create({
   },
   cardAnomaly: { borderColor: Colors.danger, borderWidth: 1.5 },
   cardFrozen: { opacity: 0.6 },
-  flash: { position: 'absolute', top: 0, right: 0, bottom: 0, left: 0, backgroundColor: 'rgba(36,145,204,0.12)' },
+  flash: { position: 'absolute', top: 0, right: 0, bottom: 0, left: 0, backgroundColor: 'rgba(36,145,204,0.2)' },
   top: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   name: { flex: 1, fontFamily: Fonts.regular, fontSize: 13, color: B.textSecondary },
   dirRow: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 2 },
