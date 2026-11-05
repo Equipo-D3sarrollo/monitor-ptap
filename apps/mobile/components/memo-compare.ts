@@ -57,6 +57,8 @@ export function sameSignalCard(a: SignalCardProps, b: SignalCardProps): boolean 
 interface TankCardProps {
   tank: TankView;
   frozen?: boolean;
+  /** Planta no en vivo: la ola del tanque se detiene. */
+  still?: boolean;
   /** Planta del tanque: decide a qué ítem apunta la campana de silencio. */
   plantId?: string;
 }
@@ -81,7 +83,7 @@ export function sameValveItem(a: ValveItemProps, b: ValveItemProps): boolean {
 
 /** Para `TankGaugeCard`. */
 export function sameTankCard(a: TankCardProps, b: TankCardProps): boolean {
-  if (a.frozen !== b.frozen || a.plantId !== b.plantId) return false;
+  if (a.frozen !== b.frozen || a.still !== b.still || a.plantId !== b.plantId) return false;
   const x = a.tank;
   const y = b.tank;
   return (

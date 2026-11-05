@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react';
 import { Tabs, Redirect, router } from 'expo-router';
+import { PlatformPressable } from 'expo-router/react-navigation';
 import {
   View,
   Text,
@@ -285,6 +286,16 @@ export default function AppLayout() {
               ? styles.rail
               : styles.bottomBar,
           tabBarItemStyle: sidebar ? styles.railItem : styles.bottomItem,
+          // Celular: raya azul de 2 px arriba de la pestaña activa (referencia TableroMovil). Es el
+          // mismo botón que pinta la barra por defecto; solo se le añade el borde según aria-selected.
+          tabBarButton: sidebar
+            ? undefined
+            : ({ style, ...props }) => (
+                <PlatformPressable
+                  {...props}
+                  style={[style, styles.tabTop, props['aria-selected'] && styles.tabTopActive]}
+                />
+              ),
           tabBarLabelStyle: { fontFamily: Fonts.medium, fontSize: 11, lineHeight: 16 },
         }}
       >
@@ -377,6 +388,8 @@ const styles = StyleSheet.create({
   },
   railItem: { borderRadius: 12, marginVertical: 3, minHeight: 60, paddingHorizontal: 0 },
   bottomItem: { height: 58 },
+  tabTop: { borderTopWidth: 2, borderTopColor: 'transparent' },
+  tabTopActive: { borderTopColor: B.blue },
   // Poppins es más alta que la fuente del sistema: con el alto por defecto la etiqueta quedaba
   // aplastada a 9 px y cortada abajo.
   bottomBar: {
