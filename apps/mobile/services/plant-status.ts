@@ -2,7 +2,8 @@ import { classifyBridge, type BridgeStatus, type LivenessDto } from '@ptap/share
 
 /** Estado de una planta para el semáforo del tablero. El color nunca va solo: siempre con icono y texto. */
 export type PlantStatusKind = 'live' | 'stable' | 'frozen' | 'no_link' | 'no_plc_data';
-export type PlantStatusTone = 'ok' | 'muted' | 'danger';
+/** Sin `danger`: el rojo queda SOLO para valores fuera de rango, nunca para el estado de la planta. */
+export type PlantStatusTone = 'ok' | 'muted';
 
 export interface PlantStatus {
   kind: PlantStatusKind;
@@ -25,14 +26,16 @@ export function formatSince(iso: string, now: Date = new Date()): string {
 /**
  * Semáforo según el dominio (no por intuición):
  * - Puente distinto de `Connected` manda sobre la frescura: sin enlace no hay dato fiable.
- *   `classifyBridge` separa "la ruta al PLC cayó" (rojo) de "el PLC no entrega datos" (gris).
+ *   "Sin conexión" va en gris con icono de desconexión, igual cuando la ruta al PLC cayó como
+ *   cuando el PLC no entrega datos (`classifyBridge` los distingue en `kind`). El rojo es solo
+ *   para valores fuera de rango.
  * - `live` y `stable` son operación NORMAL → verde. `stable` nunca es advertencia.
- * - `frozen` → gris con la hora del último cambio conocido.
+ * - `frozen` → gris con reloj y la hora del último cambio conocido: distinto de "Sin conexión".
  */
 export function plantStatus(liveness: LivenessDto, bridgeStatus: BridgeStatus, now: Date = new Date()): PlantStatus {
   const bridge = classifyBridge(bridgeStatus);
   if (bridge === 'route') {
-    return { kind: 'no_link', tone: 'danger', label: 'Sin conexión', icon: 'cloud-offline-outline', online: false };
+    return { kind: 'no_link', tone: 'muted', label: 'Sin conexión', icon: 'cloud-offline-outline', online: false };
   }
   if (bridge === 'master_no_data') {
     return { kind: 'no_plc_data', tone: 'muted', label: 'Sin conexión', icon: 'cloud-offline-outline', online: false };
