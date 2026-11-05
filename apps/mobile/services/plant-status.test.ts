@@ -19,7 +19,7 @@ test('plant-status: live y stable son verdes y cuentan como en línea', () => {
 });
 
 test('plant-status: stable NUNCA es advertencia (operación normal)', () => {
-  assert.notEqual(plantStatus(live('stable'), 'Connected', NOW).tone, 'danger');
+  assert.equal(plantStatus(live('stable'), 'Connected', NOW).tone, 'ok');
 });
 
 test('plant-status: frozen es gris con la hora del último cambio', () => {
@@ -28,13 +28,21 @@ test('plant-status: frozen es gris con la hora del último cambio', () => {
   assert.equal(plantStatus(live('frozen', null), 'Connected', NOW).label, 'Sin datos');
 });
 
-test('plant-status: el puente caído manda sobre la frescura', () => {
+test('plant-status: el puente caído manda sobre la frescura y va en GRIS, nunca en rojo', () => {
   for (const b of ['Disconnected', 'Faulted', 'Connecting', 'Recovering'] as const) {
     const s = plantStatus(live('live'), b, NOW);
-    assert.deepEqual([s.label, s.tone, s.online], ['Sin conexión', 'danger', false], b);
+    assert.deepEqual([s.kind, s.label, s.tone, s.icon, s.online], ['no_link', 'Sin conexión', 'muted', 'cloud-offline-outline', false], b);
   }
   const stale = plantStatus(live('live'), 'Stale', NOW);
-  assert.deepEqual([stale.label, stale.tone, stale.online], ['Sin conexión', 'muted', false]);
+  assert.deepEqual([stale.kind, stale.label, stale.tone, stale.online], ['no_plc_data', 'Sin conexión', 'muted', false]);
+});
+
+test('plant-status: "Sin conexión" se distingue de "Sin datos desde…" por icono y texto', () => {
+  const offline = plantStatus(live('live'), 'Disconnected', NOW);
+  const frozen = plantStatus(live('frozen', new Date(2026, 10, 4, 14, 5).toISOString()), 'Connected', NOW);
+  assert.notEqual(offline.icon, frozen.icon);
+  assert.notEqual(offline.label, frozen.label);
+  assert.equal(frozen.icon, 'time-outline');
 });
 
 test('formatSince: otro día incluye la fecha', () => {

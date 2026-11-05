@@ -38,7 +38,6 @@ export const PICKER_PANEL_MIN_WIDTH = 1024;
 const TONE: Record<PlantStatusTone, { icon: string; text: string }> = {
   ok: { icon: B.green, text: B.green },
   muted: { icon: B.gray, text: B.textSecondary },
-  danger: { icon: Colors.danger, text: B.dangerText },
 };
 
 /**
