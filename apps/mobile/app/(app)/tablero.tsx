@@ -10,7 +10,7 @@ import { GaugeCard } from '../../components/GaugeCard';
 import { FlowMeterCard } from '../../components/FlowMeterCard';
 import { TankGaugeCard } from '../../components/TankGaugeCard';
 import { LiveBadge } from '../../components/LiveBadge';
-import { PlantSelector } from '../../components/PlantSelector';
+import { PICKER_PANEL_MIN_WIDTH, PlantPickerPanel, PlantPickerTrigger } from '../../components/PlantPicker';
 import { ConnectionBanner } from '../../components/ConnectionBanner';
 import { DashboardSummary } from '../../components/DashboardSummary';
 import { GroupHeader } from '../../components/GroupHeader';
@@ -106,9 +106,8 @@ export default function TableroScreen() {
     );
   }
 
-  return (
+  const screen = (
     <SafeAreaView style={styles.safe} edges={['bottom']}>
-      <PlantSelector />
       <ConnectionBanner apiReachable={apiReachable} bridgeStatus={snapshot?.bridgeStatus} />
 
       <ScrollView
@@ -119,7 +118,8 @@ export default function TableroScreen() {
       >
         <View style={styles.sectionHeader}>
           <View style={{ flex: 1 }}>
-            <Text style={styles.plantName}>{snapshot?.displayName ?? selectedPlant.name}</Text>
+            {/* Celular/tablet: el nombre abre la hoja "Elegir planta" (solo Admin). */}
+            <PlantPickerTrigger name={snapshot?.displayName ?? selectedPlant.name} />
             <Text style={styles.sectionSubtitle}>Tablero en tiempo real</Text>
           </View>
           {hasContent && (
@@ -237,6 +237,15 @@ export default function TableroScreen() {
       <LiveBadge state={livenessState} loading={isLoading && !snapshot} />
     </SafeAreaView>
   );
+
+  // Escritorio: panel lateral fijo con las 12 plantas (solo Admin; para los demás no se pinta).
+  if (width < PICKER_PANEL_MIN_WIDTH) return screen;
+  return (
+    <View style={styles.row}>
+      <PlantPickerPanel />
+      {screen}
+    </View>
+  );
 }
 
 /** Reloj aislado: el tick de 1 s re-renderiza SOLO este texto, no todo el tablero (antes
@@ -252,6 +261,7 @@ function Clock() {
 
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: Colors.surface },
+  row: { flex: 1, flexDirection: 'row', backgroundColor: Colors.surface },
   centered: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 32, gap: 10 },
   content: { padding: 12 },
   sectionHeader: {
