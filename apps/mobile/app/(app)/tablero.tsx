@@ -10,17 +10,24 @@ import { GaugeCard } from '../../components/GaugeCard';
 import { FlowMeterCard } from '../../components/FlowMeterCard';
 import { TankGaugeCard } from '../../components/TankGaugeCard';
 import { LiveBadge } from '../../components/LiveBadge';
-import { PICKER_PANEL_MIN_WIDTH, PlantPickerPanel, PlantPickerTrigger } from '../../components/PlantPicker';
+import { PICKER_PANEL_MIN_WIDTH, PlantPickerPanel } from '../../components/PlantPicker';
+import { TableroHeader, type HeaderKpi } from '../../components/TableroHeader';
+import { hasRangeAnomaly } from '@ptap/shared';
+import { plantStatus } from '../../services/plant-status';
 import { ConnectionBanner } from '../../components/ConnectionBanner';
 import { DashboardSummary } from '../../components/DashboardSummary';
 import { GroupHeader } from '../../components/GroupHeader';
 import { DashboardSkeleton } from '../../components/Skeleton';
 import { OfflineNotice } from '../../components/OfflineNotice';
 import Colors from '../../constants/colors';
+import { Fonts } from '../../constants/fonts';
 import { tanksFromSnapshot } from '../../services/tanks';
 import { cardKindFor } from '../../services/signal-kind';
 import { dashboardSignals, groupSignals, summarize, type GroupId } from '../../services/signal-groups';
 import { setCompact, toggleGroup, useDashboardPrefs } from '../../services/dashboard-prefs';
+
+/** Formato numérico es-CO, igual que las tarjetas. */
+const fmt = (n: number): string => n.toLocaleString('es-CO', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
 /** Icono por domainKey conocido (cosmético). */
 const ICONS: Record<string, string> = {
@@ -92,6 +99,34 @@ export default function TableroScreen() {
 
   const onToggleGroup = useCallback((id: GroupId) => toggleGroup(id), []);
 
+  // Estado de la planta para el encabezado. Sin snapshot no se afirma nada.
+  const status = useMemo(
+    () => (snapshot ? plantStatus(snapshot.liveness, snapshot.bridgeStatus) : null),
+    [snapshot],
+  );
+
+  // Cifras clave del encabezado: SOLO las que existen en el snapshot (nunca un valor de ejemplo).
+  const kpis = useMemo(() => {
+    const out: HeaderKpi[] = [];
+    const add = (key: string, label: string, color: string) => {
+      const sig = snapshot?.signals[key];
+      if (!sig || typeof sig.value !== 'number') return;
+      out.push({ key, label, value: fmt(sig.value), unit: sig.unit ?? undefined, color, alert: hasRangeAnomaly(sig) });
+    };
+    add('inletFlow1', 'Caudal de entrada', Colors.brand.inflow);
+    add('outletFlow1', 'Caudal de salida', Colors.brand.outflow);
+    if (signals.length > 0) {
+      out.push({
+        key: 'anomalies',
+        label: 'Fuera de rango',
+        value: String(summary.anomalies),
+        color: Colors.brand.text,
+        alert: summary.anomalies > 0,
+      });
+    }
+    return out;
+  }, [snapshot, signals.length, summary.anomalies]);
+
   // Guard de rol: el tablero detallado es para operador/jefe/admin. El Civil (solo estado
   // básico) no entra aquí ni siquiera por navegación directa. El backend igual responde 403.
   if (!canView) {
@@ -108,6 +143,35 @@ export default function TableroScreen() {
 
   const screen = (
     <SafeAreaView style={styles.safe} edges={['bottom']}>
+      {/* Encabezado con agua: nombre (abre "Elegir planta" si es Admin), estado y cifras clave. */}
+      <TableroHeader
+        plantName={snapshot?.displayName ?? selectedPlant.name}
+        status={status}
+        lastChangeAt={snapshot?.liveness.lastChangeAt ?? null}
+        kpis={kpis}
+        right={
+          <>
+            {hasContent && (
+              <TouchableOpacity
+                style={styles.densityBtn}
+                onPress={() => setCompact(!prefs.compact)}
+                accessibilityRole="button"
+                accessibilityState={{ selected: prefs.compact }}
+                accessibilityLabel={
+                  prefs.compact ? 'Mostrar el detalle de cada tarjeta' : 'Ver el tablero en modo compacto'
+                }
+              >
+                <Ionicons
+                  name={prefs.compact ? 'list-outline' : 'grid-outline'}
+                  size={18}
+                  color={Colors.brand.textSecondary}
+                />
+              </TouchableOpacity>
+            )}
+            <Clock />
+          </>
+        }
+      />
       <ConnectionBanner apiReachable={apiReachable} bridgeStatus={snapshot?.bridgeStatus} />
 
       <ScrollView
@@ -116,32 +180,6 @@ export default function TableroScreen() {
           <RefreshControl refreshing={isRefetching} onRefresh={refetch} colors={[Colors.primary]} tintColor={Colors.primary} />
         }
       >
-        <View style={styles.sectionHeader}>
-          <View style={{ flex: 1 }}>
-            {/* Celular/tablet: el nombre abre la hoja "Elegir planta" (solo Admin). */}
-            <PlantPickerTrigger name={snapshot?.displayName ?? selectedPlant.name} />
-            <Text style={styles.sectionSubtitle}>Tablero en tiempo real</Text>
-          </View>
-          {hasContent && (
-            <TouchableOpacity
-              style={styles.densityBtn}
-              onPress={() => setCompact(!prefs.compact)}
-              hitSlop={8}
-              accessibilityRole="button"
-              accessibilityState={{ selected: prefs.compact }}
-              accessibilityLabel={
-                prefs.compact ? 'Mostrar el detalle de cada tarjeta' : 'Ver el tablero en modo compacto'
-              }
-            >
-              <Ionicons
-                name={prefs.compact ? 'list-outline' : 'grid-outline'}
-                size={16}
-                color={Colors.textSecondary}
-              />
-            </TouchableOpacity>
-          )}
-          <Clock />
-        </View>
 
         {isLoading && !snapshot ? (
           <DashboardSkeleton />
@@ -260,8 +298,8 @@ function Clock() {
 }
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: Colors.surface },
-  row: { flex: 1, flexDirection: 'row', backgroundColor: Colors.surface },
+  safe: { flex: 1, backgroundColor: Colors.brand.page },
+  row: { flex: 1, flexDirection: 'row', backgroundColor: Colors.brand.page },
   centered: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 32, gap: 10 },
   content: { padding: 12 },
   sectionHeader: {
@@ -274,12 +312,20 @@ const styles = StyleSheet.create({
   plantName: { fontSize: 17, fontWeight: '800', color: Colors.textPrimary },
   sectionSubtitle: { fontSize: 12, color: Colors.textSecondary, marginTop: 2 },
   densityBtn: {
+    width: 44,
+    height: 44,
     borderWidth: 1,
-    borderColor: Colors.divider,
-    borderRadius: 8,
-    padding: 6,
+    borderColor: Colors.brand.cardBorder,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  clock: { fontSize: 13, fontWeight: '600', color: Colors.textSecondary, fontVariant: ['tabular-nums'] },
+  clock: {
+    fontFamily: Fonts.medium,
+    fontSize: 13,
+    color: Colors.brand.textSecondary,
+    fontVariant: ['tabular-nums'],
+  },
   grid: { flexDirection: 'row', flexWrap: 'wrap', marginBottom: 8 },
   cell: { width: '50%' },
   /** Fila entera: para los tanques en pantallas estrechas, donde el texto largo no cabe a la mitad. */

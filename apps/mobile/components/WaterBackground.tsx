@@ -39,6 +39,11 @@ const BUBBLES = [
 interface Props {
   /** Fracción del alto (0–1) que cubre el agua cuando termina de subir. */
   level: number;
+  /**
+   * Agua quieta, como con "reducir movimiento". El tablero lo usa cuando la planta no está en
+   * línea: un agua en movimiento sobre una planta sin datos aparentaría una vida que no hay.
+   */
+  paused?: boolean;
 }
 
 /**
@@ -46,8 +51,9 @@ interface Props {
  * bucle y burbujas. Ocupa todo su contenedor (que debe tener `overflow: 'hidden'`) y no recibe
  * toques. Con "reducir movimiento" activo el agua aparece ya llena y quieta.
  */
-export function WaterBackground({ level }: Props) {
-  const reduce = useReduceMotion();
+export function WaterBackground({ level, paused = false }: Props) {
+  const reduceMotion = useReduceMotion();
+  const reduce = reduceMotion === null ? null : reduceMotion || paused;
   const [size, setSize] = useState<{ w: number; h: number } | null>(null);
   const rise = useRef(new Animated.Value(0)).current;
   const drift = useRef(LAYERS.map(() => new Animated.Value(0))).current;
