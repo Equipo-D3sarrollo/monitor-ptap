@@ -1,10 +1,18 @@
 import { View, Text, StyleSheet, Animated, Easing } from 'react-native';
 import { memo, useEffect, useRef } from 'react';
+import { Ionicons } from '@expo/vector-icons';
 import type { TankAutonomyDto } from '../services/api';
 import type { TankView } from '../services/tanks';
+import { tankFill } from '../services/card-look';
+import { useValueFlash } from '../hooks/useValueFlash';
 import Colors from '../constants/colors';
+import { Fonts } from '../constants/fonts';
 import { BotonSilencio } from './BotonSilencio';
 import { sameTankCard } from './memo-compare';
+
+const B = Colors.brand;
+/** Agua del tanque: el azul medio de las olas del login. */
+const WATER = Colors.login.waveMid;
 
 /** Cambio de nivel por debajo del cual no vale la pena animar (en puntos porcentuales).
  *  La animación de ancho NO puede usar el driver nativo, así que cada tween corre en el hilo de
@@ -31,18 +39,6 @@ function sujetoDelTanque(id: string): string | null {
   return m ? `tank${m[1]}` : null;
 }
 
-function waterColor(pct: number): string {
-  if (pct > 70) return Colors.success;
-  if (pct >= 25) return Colors.warning;
-  return Colors.danger;
-}
-
-function statusLabel(pct: number): string {
-  if (pct > 70) return 'Alto';
-  if (pct >= 25) return 'Medio';
-  return 'Bajo';
-}
-
 function TankGaugeCardBase({ tank, frozen = false, plantId }: Props) {
   // percentage llega null hasta que la planta confirme la capacidad real del tanque;
   // en ese caso NO se dibuja % de llenado (sería inventado), solo nivel y volumen reales.
@@ -51,9 +47,14 @@ function TankGaugeCardBase({ tank, frozen = false, plantId }: Props) {
   //  - `pctReal`  es lo que se ESCRIBE. Puede pasar de 100 (Carbonero midió 2.96 m contra un
   //     máximo configurado de 2.80 → 106 %). Recortarlo hacía que el tanque dijera "lleno"
   //     mientras seguía subiendo sin derramar, que es exactamente el defecto reportado.
-  //  - `pctBarra` es lo que se DIBUJA, acotado a [0,100] porque la barra no tiene dónde crecer.
+  //  - `pct` es lo que se DIBUJA, acotado a [0,100] porque el tanque no tiene dónde crecer.
+  //
+  // Sin semáforo Alto/Medio/Bajo: pintaba de rojo un nivel bajo que no estaba fuera de rango. El
+  // rojo es solo para fuera de rango (incluido el rebose, que lo es).
   const pctReal = tank.percentage;
-  const pct = pctReal !== null ? Math.min(100, Math.max(0, pctReal)) : null;
+  const fill = tankFill(pctReal);
+  const pct = fill.drawPct;
+  const flash = useValueFlash(tank.levelM, frozen);
   const hasLevel = tank.levelM !== null;
   // Fuera de rango: aviso del backend, o una lectura físicamente imposible (nivel negativo o
   // por encima del 100 % del tanque). Se muestra el valor crudo + etiqueta roja (política acordada).
@@ -87,71 +88,95 @@ function TankGaugeCardBase({ tank, frozen = false, plantId }: Props) {
     }).start();
   }, [pct, frozen, fillAnim]);
 
-  const fillWidth = fillAnim.interpolate({
+  const fillHeight = fillAnim.interpolate({
     inputRange: [0, 100],
     outputRange: ['0%', '100%'],
   });
+  const fmtM = (m: number) => m.toLocaleString('es-CO', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  const tankLabel =
+    fill.kind === 'unconfirmed'
+      ? `${tank.name}: capacidad sin confirmar`
+      : `${tank.name} al ${Math.round(pctReal as number)} %${fill.kind === 'overflow' ? ', rebosando' : ''}`;
 
   return (
-    <View style={[styles.card, frozen && styles.cardFrozen]}>
-      <View style={styles.nameRow}>
-        <Text style={styles.name}>{tank.name}</Text>
-        {plantId && sujeto ? (
-          <BotonSilencio plantId={plantId} subject={sujeto} etiqueta={tank.name} />
-        ) : null}
-        {frozen && (
-          <View style={styles.frozenTag}>
-            <Text style={styles.frozenTagText}>congelado</Text>
-          </View>
-        )}
-        {outOfRange && (
-          <View style={styles.rangeTag}>
-            <Text style={styles.rangeTagText}>fuera de rango</Text>
-          </View>
-        )}
-      </View>
+    <View style={[styles.card, outOfRange && styles.cardAnomaly, frozen && styles.cardFrozen]}>
+      <Animated.View pointerEvents="none" style={[styles.flash, { opacity: flash }]} />
+      <View style={styles.row}>
+        {/* Tanque: el agua sube hasta el % real (tope 100). Sin capacidad confirmada, vacío y punteado. */}
+        <View
+          style={[
+            styles.tank,
+            fill.kind === 'unconfirmed' && styles.tankUnknown,
+            fill.kind === 'overflow' && styles.tankOverflow,
+          ]}
+          accessible
+          accessibilityRole="image"
+          accessibilityLabel={tankLabel}
+        >
+          {pct !== null ? (
+            <Animated.View style={[styles.water, { height: fillHeight }]} />
+          ) : (
+            <Ionicons name="help" size={22} color={B.gray} style={styles.tankHelp} />
+          )}
+          {tank.levelOpMax !== null && fill.kind !== 'unconfirmed' && <View style={styles.maxMark} />}
+        </View>
 
-      <View style={styles.chipsRow}>
-        {tank.levelOpMax !== null && (
-          <View style={styles.chip}>
-            <Text style={styles.chipLabel}>MAX</Text>
-            <Text style={styles.chipValue}>{tank.levelOpMax.toFixed(2)} m</Text>
+        <View style={styles.body}>
+          <View style={styles.nameRow}>
+            <Text style={styles.name} numberOfLines={1}>
+              {tank.name}
+            </Text>
+            {plantId && sujeto ? <BotonSilencio plantId={plantId} subject={sujeto} etiqueta={tank.name} /> : null}
           </View>
-        )}
-        {tank.levelOpMin !== null && (
-          <View style={styles.chip}>
-            <Text style={styles.chipLabel}>MIN</Text>
-            <Text style={styles.chipValue}>{tank.levelOpMin.toFixed(2)} m</Text>
-          </View>
-        )}
-      </View>
 
-      {pct !== null ? (
-        <>
-          {/* El número es el REAL, sin recortar: si marca 106 % hay que verlo, no esconderlo. */}
-          <Text style={styles.pctText}>{Math.round(pctReal as number)}%</Text>
-          <View style={[styles.statusBadge, { backgroundColor: waterColor(pct) + '30', borderColor: waterColor(pct) }]}>
-            <Text style={[styles.statusText, { color: waterColor(pct) }]}>{statusLabel(pct)}</Text>
-          </View>
-          {(pctReal as number) > 100 && (
-            <Text style={styles.excedido}>
-              Por encima del máximo configurado ({tank.levelOpMax?.toFixed(2) ?? '—'} m). O el tanque
-              está rebosando, o ese máximo está mal.
+          {fill.kind === 'unconfirmed' ? (
+            <>
+              <Text style={styles.big}>{hasLevel ? `${fmtM(tank.levelM as number)} m` : 'Sin dato'}</Text>
+              <Text style={styles.muted}>Capacidad sin confirmar</Text>
+            </>
+          ) : (
+            // El número es el REAL, sin recortar: si marca 106 % hay que verlo, no esconderlo.
+            <Text style={[styles.big, outOfRange && { color: B.dangerText }]}>
+              {Math.round(pctReal as number)}
+              <Text style={styles.unit}> %</Text>
             </Text>
           )}
-        </>
-      ) : (
-        <Text style={styles.pctTextUnknown}>{hasLevel ? `${tank.levelM!.toFixed(2)} m` : '—'}</Text>
-      )}
 
-      <View style={styles.barOuter}>
-        {pct !== null && (
-          <Animated.View style={[styles.barFill, { width: fillWidth, backgroundColor: waterColor(pct) }]} />
-        )}
+          {fill.kind === 'overflow' && (
+            <View style={styles.tag}>
+              <Ionicons name="alert-circle" size={13} color={Colors.danger} />
+              <Text style={[styles.tagText, { color: B.dangerText }]}>
+                Rebose: por encima del máximo ({tank.levelOpMax !== null ? `${fmtM(tank.levelOpMax)} m` : '—'}). O el
+                tanque está rebosando, o ese máximo está mal.
+              </Text>
+            </View>
+          )}
+          {outOfRange && fill.kind !== 'overflow' && (
+            <View style={styles.tag}>
+              <Ionicons name="alert-circle" size={13} color={Colors.danger} />
+              <Text style={[styles.tagText, { color: B.dangerText }]}>Fuera de rango</Text>
+            </View>
+          )}
+          {frozen && (
+            <View style={styles.tag}>
+              <Ionicons name="time-outline" size={13} color={B.gray} />
+              <Text style={styles.tagText}>Congelado</Text>
+            </View>
+          )}
+        </View>
       </View>
 
       <View style={styles.info}>
-        <InfoRow label="Nivel" value={tank.levelM !== null ? `${tank.levelM.toFixed(2)} m` : 'Sin dato'} />
+        <InfoRow
+          label="Nivel"
+          value={tank.levelM !== null ? `${fmtM(tank.levelM)} m` : 'Sin dato'}
+        />
+        {(tank.levelOpMin !== null || tank.levelOpMax !== null) && (
+          <InfoRow
+            label="Rango operativo"
+            value={`${tank.levelOpMin !== null ? fmtM(tank.levelOpMin) : '—'} – ${tank.levelOpMax !== null ? fmtM(tank.levelOpMax) : '—'} m`}
+          />
+        )}
         <InfoRow label="Volumen" value={tank.volumeM3 !== null ? `${tank.volumeM3.toFixed(1)} m³` : 'Sin dato'} />
         {autonomia && (
           <InfoRow
@@ -217,76 +242,50 @@ const styles = StyleSheet.create({
   card: {
     flex: 1,
     margin: 5,
-    padding: 14,
-    backgroundColor: Colors.bg,
+    padding: 16,
+    backgroundColor: B.card,
     borderRadius: 16,
     borderWidth: 1,
-    borderColor: Colors.divider,
-  },
-  cardFrozen: { opacity: 0.55 },
-  nameRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 10, flexWrap: 'wrap' },
-  name: { fontSize: 13, fontWeight: '700', color: Colors.textPrimary },
-  rangeTag: {
-    backgroundColor: Colors.danger + '22',
-    borderColor: Colors.danger,
-    borderWidth: 1,
-    borderRadius: 6,
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-  },
-  rangeTagText: { fontSize: 11, fontWeight: '700', color: Colors.danger, letterSpacing: 0.5 },
-  frozenTag: {
-    backgroundColor: Colors.textSecondary + '22',
-    borderColor: Colors.textSecondary,
-    borderWidth: 1,
-    borderRadius: 6,
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-  },
-  frozenTagText: { fontSize: 11, fontWeight: '700', color: Colors.textSecondary, letterSpacing: 0.5 },
-  chipsRow: { flexDirection: 'row', gap: 8, marginBottom: 10 },
-  chip: {
-    backgroundColor: Colors.surface,
-    borderRadius: 8,
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    alignItems: 'center',
-  },
-  chipLabel: { fontSize: 11, fontWeight: '700', color: Colors.textSecondary, letterSpacing: 0.5 },
-  chipValue: { fontSize: 12, fontWeight: '700', color: Colors.textPrimary },
-  pctText: { fontSize: 34, fontWeight: '800', color: Colors.textPrimary, textAlign: 'center', fontVariant: ['tabular-nums'] },
-  excedido: {
-    fontSize: 12,
-    color: Colors.danger,
-    textAlign: 'center',
-    marginTop: 6,
-    paddingHorizontal: 8,
-  },
-  pctTextUnknown: {
-    fontSize: 20,
-    fontWeight: '700',
-    color: Colors.textSecondary,
-    textAlign: 'center',
-    marginVertical: 8,
-  },
-  statusBadge: {
-    alignSelf: 'center',
-    borderWidth: 1,
-    borderRadius: 10,
-    paddingHorizontal: 10,
-    paddingVertical: 2,
-    marginTop: 4,
-    marginBottom: 10,
-  },
-  statusText: { fontSize: 11, fontWeight: '700' },
-  barOuter: {
-    height: 10,
-    borderRadius: 5,
-    backgroundColor: Colors.surface,
+    borderColor: '#1B3044',
     overflow: 'hidden',
-    marginBottom: 12,
   },
-  barFill: { height: '100%', borderRadius: 5 },
+  cardAnomaly: { borderColor: Colors.danger, borderWidth: 1.5 },
+  cardFrozen: { opacity: 0.6 },
+  flash: { position: 'absolute', top: 0, right: 0, bottom: 0, left: 0, backgroundColor: 'rgba(36,145,204,0.12)' },
+  row: { flexDirection: 'row', gap: 16, alignItems: 'center', marginBottom: 12 },
+  tank: {
+    width: 64,
+    height: 92,
+    borderWidth: 2,
+    borderTopWidth: 0,
+    borderColor: B.searchBorder,
+    borderBottomLeftRadius: 10,
+    borderBottomRightRadius: 10,
+    overflow: 'hidden',
+    justifyContent: 'flex-end',
+  },
+  tankUnknown: { borderStyle: 'dashed', justifyContent: 'center', alignItems: 'center' },
+  tankOverflow: { borderColor: Colors.danger },
+  tankHelp: { alignSelf: 'center' },
+  water: { width: '100%', backgroundColor: WATER },
+  maxMark: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    top: 0,
+    borderTopWidth: 1,
+    borderStyle: 'dashed',
+    borderColor: B.textSecondary,
+    opacity: 0.6,
+  },
+  body: { flex: 1, minWidth: 0, gap: 4 },
+  nameRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  name: { flex: 1, fontFamily: Fonts.semibold, fontSize: 15, color: B.text },
+  big: { fontFamily: Fonts.semibold, fontSize: 30, lineHeight: 38, color: B.text, fontVariant: ['tabular-nums'] },
+  unit: { fontFamily: Fonts.regular, fontSize: 15, color: B.textSecondary },
+  muted: { fontFamily: Fonts.medium, fontSize: 13, color: B.textSecondary },
+  tag: { flexDirection: 'row', alignItems: 'flex-start', gap: 4 },
+  tagText: { flex: 1, fontFamily: Fonts.medium, fontSize: 12, color: B.textSecondary },
   info: { gap: 4 },
   /**
    * Etiqueta a la izquierda, valor a la derecha — y si no caben juntos, el valor baja ENTERO a su
@@ -297,16 +296,16 @@ const styles = StyleSheet.create({
    * que salte de línea en bloque en vez de romperse; el `gap` garantiza que nunca se toquen.
    */
   infoRow: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', gap: 8 },
-  infoLabel: { fontSize: 11, color: Colors.textSecondary, flexShrink: 1 },
+  infoLabel: { fontFamily: Fonts.regular, fontSize: 12, color: B.textSecondary, flexShrink: 1 },
   infoValue: {
-    fontSize: 11,
-    fontWeight: '600',
-    color: Colors.textPrimary,
+    fontFamily: Fonts.medium,
+    fontSize: 12,
+    color: B.text,
     flexGrow: 1,
     // Por debajo de esto no se comprime: prefiere bajar de línea antes que quedar en una columna
     // de dos caracteres.
     minWidth: 96,
     textAlign: 'right',
   },
-  infoHint: { fontSize: 10, color: Colors.textSecondary, opacity: 0.75, marginTop: -2, marginBottom: 2 },
+  infoHint: { fontFamily: Fonts.regular, fontSize: 11, color: B.textSecondary, marginTop: -2, marginBottom: 2 },
 });
