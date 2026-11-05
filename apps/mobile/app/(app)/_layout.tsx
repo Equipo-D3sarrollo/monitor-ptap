@@ -8,16 +8,44 @@ import {
   Pressable,
   StyleSheet,
   ActivityIndicator,
+  useWindowDimensions,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import Colors from '../../constants/colors';
-import { usePoppins } from '../../constants/fonts';
+import { Fonts, usePoppins } from '../../constants/fonts';
 import { useAuth } from '../../context/AuthContext';
+import { usePlant } from '../../context/PlantContext';
 import { useUnseenNotifications } from '../../hooks/useNotifications';
 import { NotificationOptIn } from '../../components/NotificationOptIn';
 import { usePendingUsers } from '../../hooks/usePendingUsers';
 import { useWebEscape } from '../../hooks/useWebEscape';
 import { ROLE_LABELS, ROLE_COLORS, type AuthUser } from '@ptap/shared';
+
+const B = Colors.brand;
+/** Desde este ancho las pestañas pasan a una barra lateral (como el panel de plantas del tablero). */
+const SIDEBAR_MIN_WIDTH = 1024;
+
+/**
+ * Título de la cabecera: "Aquora · planta". Aislado para que el cambio de planta repinte solo este
+ * texto y no las opciones de las 7 pestañas. Sin el logo: a la altura de la cabecera sus letras son
+ * ilegibles y repetían "Aquora"; el logo va en el encabezado con agua del tablero.
+ */
+function HeaderTitle() {
+  const { selectedPlant } = usePlant();
+  return (
+    <View
+      style={styles.titleRow}
+      accessible
+      accessibilityRole="header"
+      accessibilityLabel={`Aquora, planta ${selectedPlant.name}`}
+    >
+      <Text style={styles.titleBrand}>Aquora</Text>
+      <Text style={styles.titlePlant} numberOfLines={1}>
+        · {selectedPlant.name}
+      </Text>
+    </View>
+  );
+}
 
 /**
  * Campana de notificaciones AISLADA.
@@ -42,7 +70,7 @@ function AlertBell() {
       }
     >
       <View>
-        <Ionicons name="notifications-outline" size={24} color="#fff" />
+        <Ionicons name="notifications-outline" size={24} color={B.text} />
         {unseen > 0 && (
           <View style={styles.notifBadge}>
             <Text style={styles.notifText}>{unseen > 9 ? '9+' : unseen}</Text>
@@ -65,7 +93,7 @@ function MenuButton({ onPress }: { onPress: () => void }) {
       accessibilityLabel={count > 0 ? `Menú. ${count} cuentas pendientes de aprobar` : 'Menú'}
     >
       <View>
-        <Ionicons name="menu" size={24} color="#fff" />
+        <Ionicons name="menu" size={24} color={B.text} />
         {/* Punto de aviso: hay cuentas pendientes de aprobar (solo lo ve un admin). */}
         {count > 0 && (
           <View style={styles.menuDot}>
@@ -192,16 +220,21 @@ export default function AppLayout() {
   // Poppins para los componentes del tablero; si falla la carga se sigue con la fuente del sistema.
   const [fontsLoaded, fontError] = usePoppins();
   const isCivil = user?.role === 'civil';
+  const sidebar = useWindowDimensions().width >= SIDEBAR_MIN_WIDTH;
 
   // Opciones de cabecera ESTABLES: se esparcen en 7 `Tabs.Screen`, así que recrearlas en cada
   // render obligaba a react-navigation a re-evaluar las 7. `setMenuVisible` es estable (useState),
-  // y los conteos viven ahora dentro de `<AlertBell/>` y `<MenuButton/>`, no aquí.
+  // y los conteos viven ahora dentro de `<AlertBell/>` y `<MenuButton/>`, no aquí. La planta vive
+  // dentro de `<HeaderTitle/>` por la misma razón. Las pantallas con título propio (Alertas,
+  // Usuarios…) lo sobrescriben con `headerTitle: 'texto'` y heredan el estilo.
   const HEADER_OPTS = useMemo(
     () => ({
-      headerStyle: { backgroundColor: Colors.primary },
-      headerTintColor: '#fff',
-      headerTitle: 'MONITOR / PTAP',
-      headerTitleStyle: { fontWeight: '800' as const, fontSize: 16, letterSpacing: 1 },
+      headerStyle: { backgroundColor: B.panel, borderBottomWidth: 1, borderBottomColor: B.divider },
+      headerShadowVisible: false,
+      headerTintColor: B.text,
+      headerTitleAlign: 'left' as const,
+      headerTitle: () => <HeaderTitle />,
+      headerTitleStyle: { fontFamily: Fonts.semibold, fontSize: 17, color: B.text },
       headerLeft: () => <MenuButton onPress={() => setMenuVisible(true)} />,
       headerRight: () => <AlertBell />,
     }),
@@ -216,8 +249,8 @@ export default function AppLayout() {
   // Mientras se restaura la sesión persistida no se decide nada (evita el parpadeo al login).
   if (isLoading || (!fontsLoaded && !fontError)) {
     return (
-      <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: Colors.bg }}>
-        <ActivityIndicator size="large" color={Colors.primary} />
+      <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: B.page }}>
+        <ActivityIndicator size="large" color={B.blue} />
       </View>
     );
   }
@@ -238,17 +271,21 @@ export default function AppLayout() {
       {menuVisible && <MenuModal visible onClose={() => setMenuVisible(false)} user={user} />}
       <Tabs
         screenOptions={{
-          tabBarActiveTintColor: Colors.primary,
-          tabBarInactiveTintColor: Colors.textSecondary,
+          tabBarActiveTintColor: B.link,
+          tabBarInactiveTintColor: B.textSecondary,
+          // Escritorio: barra lateral de 76 px con la pestaña activa resaltada (referencia
+          // TableroEscritorio). Celular: barra inferior.
+          tabBarPosition: sidebar ? 'left' : 'bottom',
+          tabBarVariant: sidebar ? 'material' : 'uikit',
+          tabBarLabelPosition: 'below-icon',
+          tabBarActiveBackgroundColor: sidebar ? B.selected : undefined,
           tabBarStyle: isCivil
             ? { display: 'none' }
-            : {
-                backgroundColor: Colors.bg,
-                borderTopColor: Colors.divider,
-                elevation: 0,
-                shadowOpacity: 0,
-              },
-          tabBarLabelStyle: { fontSize: 11, fontWeight: '600' },
+            : sidebar
+              ? styles.rail
+              : styles.bottomBar,
+          tabBarItemStyle: sidebar ? styles.railItem : styles.bottomItem,
+          tabBarLabelStyle: { fontFamily: Fonts.medium, fontSize: 11, lineHeight: 16 },
         }}
       >
         <Tabs.Screen
@@ -326,6 +363,31 @@ export default function AppLayout() {
 }
 
 const styles = StyleSheet.create({
+  titleRow: { flexDirection: 'row', alignItems: 'center', gap: 6, maxWidth: '100%' },
+  titleBrand: { fontFamily: Fonts.semibold, fontSize: 17, color: B.text },
+  titlePlant: { fontFamily: Fonts.regular, fontSize: 15, color: B.textSecondary, flexShrink: 1 },
+  // 96 px: con menos, el ítem de la barra lateral deja ~43 px a la etiqueta y "Válvulas" se corta.
+  rail: {
+    width: 96,
+    backgroundColor: B.panel,
+    borderRightWidth: 1,
+    borderRightColor: B.divider,
+    paddingTop: 12,
+    paddingHorizontal: 4,
+  },
+  railItem: { borderRadius: 12, marginVertical: 3, minHeight: 60, paddingHorizontal: 0 },
+  bottomItem: { height: 58 },
+  // Poppins es más alta que la fuente del sistema: con el alto por defecto la etiqueta quedaba
+  // aplastada a 9 px y cortada abajo.
+  bottomBar: {
+    backgroundColor: B.panel,
+    borderTopColor: B.divider,
+    elevation: 0,
+    shadowOpacity: 0,
+    height: 66,
+    paddingTop: 4,
+    paddingBottom: 4,
+  },
   overlay: {
     flex: 1,
     backgroundColor: 'rgba(0,0,0,0.45)',
