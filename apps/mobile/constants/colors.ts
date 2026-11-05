@@ -56,6 +56,17 @@ const Colors = {
     // Entrada y salida se distinguen con icono + etiqueta + dos azules; el verde es solo "OK".
     inflow: '#7CC8F0',
     outflow: '#2491CC',
+    // Selector de plantas (referencia TableroEscritorio/TableroMovil).
+    selected: '#0E2D45',
+    row: '#081A27',
+    rowBorder: '#132A3C',
+    divider: '#16293A',
+    searchBorder: '#4F6A82',
+    placeholder: '#7B8C99',
+    link: '#7CC4EC',
+    // Texto rojo sobre fondos oscuros: `Colors.danger` (#EF4444) queda en ~4,4:1 sobre `card`;
+    // este da ≥ 4,5:1. El rojo de puntos y bordes sigue siendo `Colors.danger`.
+    dangerText: '#FF9A9A',
   },
 } as const;
 
