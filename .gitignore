@@ -65,3 +65,6 @@ apps/mobile/android/
 # Subagent-driven-development scratch state
 .superpowers/
 apps/mobile/eas.json
+
+# Auditoria local del proyecto: puede mencionar IPs y datos del servidor. No se versiona.
+/contexto.md
