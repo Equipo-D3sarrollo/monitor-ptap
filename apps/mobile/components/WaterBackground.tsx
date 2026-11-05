@@ -4,6 +4,7 @@ import Svg, { Path } from 'react-native-svg';
 import Colors from '../constants/colors';
 import { useReduceMotion } from '../hooks/useReduceMotion';
 import { WAVE_PERIOD, wavePath } from './wave-path';
+import { phaseRange } from './loop-phase';
 
 const L = Colors.login;
 // En web, Animated no tiene driver nativo y avisa si se le pide: allí corre en JS.
@@ -17,18 +18,22 @@ const RISE_MS = 2200;
  * y se desplaza un ancho completo por vuelta, así el bucle coincide consigo mismo (ver wave-path).
  */
 const LAYERS = [
-  { color: L.waveBack, periods: 1, amp: 16, lift: 18, ms: 26_000, reverse: false },
-  { color: L.waveMid, periods: 2, amp: 14, lift: 8, ms: 17_000, reverse: true },
-  { color: L.waveFront, periods: 3, amp: 10, lift: 0, ms: 11_000, reverse: false },
+  { color: L.waveBack, periods: 1, amp: 21, lift: 18, ms: 14_000, reverse: false },
+  { color: L.waveMid, periods: 2, amp: 18, lift: 8, ms: 10_000, reverse: true },
+  { color: L.waveFront, periods: 3, amp: 13, lift: 0, ms: 7_000, reverse: false },
 ].map(l => ({ ...l, d: wavePath(l.periods * 2, l.amp) }));
 
-/** Burbujas: posición horizontal (%), diámetro, duración de la subida y desfase inicial. */
+/**
+ * Burbujas: posición horizontal (%), diámetro, duración de la subida y `phase` = en qué punto de su
+ * recorrido arranca (fracción). Fase en vez de retraso: ver loop-phase.ts.
+ */
 const BUBBLES = [
-  { left: 12, size: 6, ms: 5200, delay: 0 },
-  { left: 28, size: 4, ms: 6800, delay: 1400 },
-  { left: 47, size: 8, ms: 7600, delay: 600 },
-  { left: 63, size: 5, ms: 5800, delay: 2600 },
-  { left: 81, size: 7, ms: 6400, delay: 1900 },
+  { left: 12, size: 6, ms: 5200, phase: 0 },
+  { left: 28, size: 4, ms: 6800, phase: 0.45 },
+  { left: 44, size: 8, ms: 7600, phase: 0.2 },
+  { left: 63, size: 5, ms: 5800, phase: 0.7 },
+  { left: 79, size: 7, ms: 6400, phase: 0.35 },
+  { left: 91, size: 5, ms: 6000, phase: 0.85 },
 ];
 
 interface Props {
@@ -55,12 +60,11 @@ export function WaterBackground({ level }: Props) {
       rise.setValue(1);
       return;
     }
-    const linear = (v: Animated.Value, ms: number, delay = 0) =>
+    // Bucle de un solo `timing`, sin `Animated.delay` dentro: `loop(sequence([delay, timing]))` no
+    // reinicia el valor tras la primera vuelta y todo se quedaba quieto a los pocos segundos.
+    const linear = (v: Animated.Value, ms: number) =>
       Animated.loop(
-        Animated.sequence([
-          Animated.delay(delay),
-          Animated.timing(v, { toValue: 1, duration: ms, easing: Easing.linear, useNativeDriver: NATIVE }),
-        ]),
+        Animated.timing(v, { toValue: 1, duration: ms, easing: Easing.linear, useNativeDriver: NATIVE }),
       );
     const anims = [
       Animated.timing(rise, {
@@ -70,7 +74,7 @@ export function WaterBackground({ level }: Props) {
         useNativeDriver: NATIVE,
       }),
       ...LAYERS.map((l, i) => linear(drift[i], l.ms)),
-      ...BUBBLES.map((b, i) => linear(bubbles[i], b.ms, b.delay)),
+      ...BUBBLES.map((b, i) => linear(bubbles[i], b.ms)),
     ];
     anims.forEach(a => a.start());
     return () => anims.forEach(a => a.stop());
@@ -128,29 +132,25 @@ export function WaterBackground({ level }: Props) {
         ))}
 
         {!reduce &&
-          BUBBLES.map((b, i) => (
-            <Animated.View
-              key={b.left}
-              style={[
-                styles.bubble,
-                {
-                  left: `${b.left}%`,
-                  width: b.size,
-                  height: b.size,
-                  borderRadius: b.size / 2,
-                  opacity: bubbles[i].interpolate({ inputRange: [0, 0.15, 0.8, 1], outputRange: [0, 0.55, 0.35, 0] }),
-                  transform: [
-                    {
-                      translateY: bubbles[i].interpolate({
-                        inputRange: [0, 1],
-                        outputRange: [0, -(h - waterTop) * 0.9],
-                      }),
-                    },
-                  ],
-                },
-              ]}
-            />
-          ))}
+          BUBBLES.map((b, i) => {
+            const p = bubbles[i].interpolate(phaseRange(b.phase));
+            return (
+              <Animated.View
+                key={b.left}
+                style={[
+                  styles.bubble,
+                  {
+                    left: `${b.left}%`,
+                    width: b.size,
+                    height: b.size,
+                    borderRadius: b.size / 2,
+                    opacity: p.interpolate({ inputRange: [0, 0.15, 0.8, 1], outputRange: [0, 0.55, 0.35, 0] }),
+                    transform: [{ translateY: p.interpolate({ inputRange: [0, 1], outputRange: [0, -(h - waterTop) * 0.9] }) }],
+                  },
+                ]}
+              />
+            );
+          })}
       </Animated.View>
     </View>
   );
