@@ -1,9 +1,10 @@
 import { View, Text, StyleSheet, Animated, Easing, Platform } from 'react-native';
-import { memo, useEffect, useRef } from 'react';
+import { memo, useEffect, useRef, useState } from 'react';
 import { Ionicons } from '@expo/vector-icons';
 import Svg, { Path } from 'react-native-svg';
+import { tankAutonomyText } from '../services/tank-autonomy';
 import type { TankView } from '../services/tanks';
-import { autonomyLook, tankFill, tankState } from '../services/card-look';
+import { isAutonomyLow, tankFill, tankState } from '../services/card-look';
 import { useStateFlash } from '../hooks/useStateFlash';
 import { useReduceMotion } from '../hooks/useReduceMotion';
 import { WAVE_PERIOD, wavePath } from './wave-path';
@@ -11,6 +12,7 @@ import Colors from '../constants/colors';
 import { Fonts } from '../constants/fonts';
 import { BotonSilencio } from './BotonSilencio';
 import { sameTankCard } from './memo-compare';
+import { useReducedMotion } from '../hooks/useReducedMotion';
 
 const B = Colors.brand;
 /** Agua del tanque: el azul medio de las olas del login. */
@@ -84,6 +86,7 @@ function sujetoDelTanque(id: string): string | null {
 }
 
 function TankGaugeCardBase({ tank, frozen = false, still = false, plantId }: Props) {
+  const reducedMotion = useReducedMotion();
   // percentage llega null hasta que la planta confirme la capacidad real del tanque;
   // en ese caso NO se dibuja % de llenado (sería inventado), solo nivel y volumen reales.
   //
@@ -106,31 +109,40 @@ function TankGaugeCardBase({ tank, frozen = false, still = false, plantId }: Pro
     tank.outOfRange ||
     (hasLevel && (tank.levelM as number) < 0) ||
     (tank.percentage !== null && (tank.percentage < 0 || tank.percentage > 100));
-  const autonomia = autonomyLook(tank.autonomy);
+  // Texto de yosh (entiende reserva, tendencias y limitaciones del DTO nuevo); el aviso amarillo, de
+  // guido, solo cuando el backend también avisaría. Congelado no avisa: el dato es viejo.
+  const autonomia = tankAutonomyText(tank.autonomy, frozen);
+  const autonomiaBaja = !frozen && isAutonomyLow(tank.autonomy);
   const sujeto = sujetoDelTanque(tank.id);
-  const fillAnim = useRef(new Animated.Value(0)).current;
+  const [fillAnim] = useState(() => new Animated.Value(0));
   /** Último valor al que se llevó la barra: permite saltarse los tweens imperceptibles. */
   const shownPct = useRef<number | null>(null);
 
   useEffect(() => {
-    if (pct === null) return;
+    if (pct === null) {
+      shownPct.current = null;
+      fillAnim.setValue(0);
+      return;
+    }
     const previous = shownPct.current;
     shownPct.current = pct;
     // Congelado: saltar al valor sin animar (el dato es viejo, no debe "moverse" en pantalla).
     // Primer render o cambio imperceptible: también se salta, para no gastar el hilo de JS en un
     // tween que nadie distingue (la barra de ancho no admite driver nativo).
-    if (frozen || previous === null || Math.abs(pct - previous) < MIN_DELTA_PCT) {
+    if (reducedMotion || frozen || previous === null || Math.abs(pct - previous) < MIN_DELTA_PCT) {
       fillAnim.setValue(pct);
       return;
     }
     // Tween corto para que la barra acompañe al número sin quedar 900 ms por detrás.
-    Animated.timing(fillAnim, {
+    const animation = Animated.timing(fillAnim, {
       toValue: pct,
       duration: 350,
       easing: Easing.out(Easing.cubic),
       useNativeDriver: false,
-    }).start();
-  }, [pct, frozen, fillAnim]);
+    });
+    animation.start();
+    return () => animation.stop();
+  }, [pct, frozen, fillAnim, reducedMotion]);
 
   const fillHeight = fillAnim.interpolate({
     inputRange: [0, 100],
@@ -192,8 +204,8 @@ function TankGaugeCardBase({ tank, frozen = false, still = false, plantId }: Pro
             <View style={styles.tag}>
               <Ionicons name="alert-circle" size={13} color={Colors.danger} />
               <Text style={[styles.tagText, { color: B.dangerText }]}>
-                Rebose: por encima del máximo ({tank.levelOpMax !== null ? `${fmtM(tank.levelOpMax)} m` : '—'}). O el
-                tanque está rebosando, o ese máximo está mal.
+                Rebose: por encima del máximo ({tank.levelOpMax !== null ? `${fmtM(tank.levelOpMax)} m` : '—'}). Puede ser un
+                rebose, un error de lectura o un máximo incorrecto. Verifica en planta.
               </Text>
             </View>
           )}
@@ -232,7 +244,7 @@ function TankGaugeCardBase({ tank, frozen = false, still = false, plantId }: Pro
         <InfoRow label="Volumen" value={tank.volumeM3 !== null ? `${tank.volumeM3.toFixed(1)} m³` : 'Sin dato'} />
         {autonomia && (
           // Amarillo solo cuando el backend también avisaría (isAutonomyLow); con icono y texto.
-          <InfoRow label={autonomia.label} value={autonomia.texto} hint={autonomia.pie} warn={autonomia.low} />
+          <InfoRow label={autonomia.label} value={autonomia.texto} hint={autonomia.pie} warn={autonomiaBaja} />
         )}
       </View>
     </View>

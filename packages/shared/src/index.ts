@@ -154,7 +154,8 @@ export interface SignalDto {
    * Ausente ⇒ se aplica la regla de bits de siempre. Un valor que no coincida con ninguno de los
    * declarados NO se interpreta: se prefiere no afirmar nada antes que inventar un estado.
    */
-  stateEncoding?: { closed?: number; open?: number };
+  /** bits contains actual masks (1024 = bit10), never bit positions. Fault takes priority. */
+  stateEncoding?: { closed?: number; open?: number; bits?: { open: number; close: number; fault: number } };
   /**
    * Solo en señales de VÁLVULA: qué caudal corresponde a ESA válvula, para inferir su estado.
    *
@@ -201,6 +202,19 @@ export interface SignalDto {
    * `CurrentWrite` aunque la válvula no tenga comando definido.
    */
   commandable?: boolean;
+  /**
+   * Solo en señales de VÁLVULA: qué VERBOS declara su mapping, p. ej. `['open', 'close']`.
+   *
+   * Es `commandable` un nivel más abajo, y nace del mismo error. `commandable` evitó ofrecer botón
+   * en una válvula sin canal de mando; esto evita ofrecer un VERBO que ese canal no tiene: hoy solo
+   * La Vorágine y La Sirena declaran `close`, así que en las otras ocho un "cerrar" sale al backend
+   * para volver con `UNKNOWN_COMMAND`. Hacerle confirmar al operador una maniobra que no puede
+   * salir es exactamente lo que el campo anterior se propuso terminar.
+   *
+   * **Ausente significa que la señal NO es una válvula.** Un array vacío no debería ocurrir: una
+   * señal `writable` sin verbos no pasa la validación del mapping.
+   */
+  commands?: string[];
 }
 
 /**
@@ -247,6 +261,21 @@ export interface PlantSnapshotDto {
    * preferible no enseñar nada a enseñar un número viejo.
    */
   autonomy?: TankAutonomyDto[];
+  /**
+   * `true` = la planta está dada de alta en el mapping, pero el mapping no le declara NINGÚN buffer
+   * de datos: existe y todavía no está conectada al PLC maestro (Cabuyo, La Luisa, La Leonera y
+   * Gloria desde el 2026-10-19). Desaparece solo, sin tocar la app, en cuanto se le declaren buffers.
+   *
+   * Existe porque `liveness: frozen` no distingue los dos casos: la app pintaba «CONGELADO · SIN
+   * CONEXIÓN» en rojo, y la vista Civil «Reintentando automáticamente», para una planta que nunca se
+   * ha conectado. Quien lo leía entendía una CAÍDA. La liveness sigue en `frozen`, que es la verdad
+   * del dato; este campo dice POR QUÉ.
+   *
+   * Solo se emite cuando es true, como `commandable`: ausente = planta conectada, que es el caso de
+   * las doce de siempre, y un front antiguo que lo ignore se comporta como antes. Es estático: sale
+   * del mapping y no cambia sin reiniciar el backend.
+   */
+  integrationPending?: true;
 }
 
 export interface PlantReport {
@@ -277,30 +306,26 @@ export interface PlantReport {
   }[];
 }
 
-/**
- * Autonomía de un tanque: cuánto falta para el 50 % y para quedarse vacío.
- *
- * El cliente lo pidió (2026-08-20) para poder decidir ANTES de cerrar la entrada. El número lo
- * calcula el backend con un temporizador estable —banda muerta de 0,2 l/s y salto de régimen de
- * 0,6 l/s— porque recalcularlo con el caudal instantáneo lo hacía saltar de 5 h a 3 h y volver, y
- * así no sirve para decidir nada.
- */
+/** Estimación individual desde el descenso observado; distingue mínimo operativo y vacío. */
 export interface TankAutonomyDto {
+  /** Identidad de señal, también para tanques externos retransmitidos por otra planta. */
+  tankKey?: string;
   /** Número de tanque, para casarlo con `tank<N>Level` del mismo snapshot. */
   tankN: number;
   /** Horas hasta bajar al 50 %. 0 si ya está por debajo; null si no se puede calcular. */
   hoursTo50: number | null;
   /** Horas hasta quedar vacío. null si no se puede calcular. */
   hoursTo0: number | null;
-  /** Caudal (l/s) con el que se fijó el temporizador. */
+  /** Vaciado neto estimado (l/s). 0 si se estima solo por nivel sin conversión a volumen. */
   flowLps: number;
-  /**
-   * Qué SIGNIFICA el número, que no es lo mismo según el estado de la entrada:
-   *  - `vaciado_real`: la entrada está cerrada y el tanque se vacía de verdad. Es una cuenta atrás.
-   *  - `proyeccion_24h`: la entrada está abierta y el tanque NO se vacía. Es un supuesto —«si
-   *    cerraras ahora»— con el consumo medio del día. Presentarlo como cuenta atrás sería mentir.
-   */
-  basis: 'vaciado_real' | 'proyeccion_24h';
+  /** Método de estimación. Las proyecciones antiguas se mantienen por compatibilidad. */
+  basis: 'vaciado_real' | 'proyeccion_24h' | 'proyeccion_actual' | 'tendencia_volumen' | 'tendencia_nivel';
+  /** Tiempo hasta el mínimo de servicio; no equivale al vaciado físico. */
+  hoursToReserve?: number | null;
+  reserveLevelM?: number | null;
+  reserveBasis?: 'op_min' | '50_percent' | null;
+  /** Sin asociación hidráulica verificada no se reparte el caudal de planta entre tanques. */
+  limitation?: 'multiple_tanks' | 'multiple_flows' | 'unmapped_flow' | null;
 }
 
 /**
@@ -431,6 +456,91 @@ export function debeSonar(aviso: AvisoSonable, prefs: NotificationPrefsDto, ahor
   return !enSilencio;
 }
 
+/**
+ * Canales de Android de los avisos de planta. Contrato backend↔móvil: el backend los nombra en cada
+ * push (FCM) y la app los crea al arrancar.
+ *
+ * Viven aquí, y no como un literal en cada lado, porque un desajuste NO da error: si el push nombra
+ * un canal que el teléfono no tiene, Android lo publica en un canal de reserva de importancia
+ * normal —sin banner emergente—, que es exactamente el fallo que estos canales vienen a corregir.
+ *
+ * Los ids son nuevos (los de antes eran `ptap-alertas` y `ptap-criticas`) porque los canales de
+ * Android son INMUTABLES una vez creados: subirle la importancia a uno que el teléfono ya tiene no
+ * surte ningún efecto. Cambiar la importancia exige un id distinto.
+ */
+export const CANAL_AVISOS = 'aquora-avisos';
+export const CANAL_CRITICAS = 'aquora-criticas';
+
+/**
+ * Etiqueta de la notificación de un aviso de planta en el panel de Android.
+ *
+ * Android identifica cada notificación por (etiqueta, id numérico), y tanto la app como FCM usan el
+ * mismo id numérico (0). Con la misma etiqueta, el aviso que llega por push y el que levanta la
+ * consulta de respaldo son LA MISMA notificación: la segunda reemplaza a la primera en vez de
+ * apilarse al lado.
+ */
+export function etiquetaDeAviso(id: number): string {
+  return `n-${id}`;
+}
+
+/** Etiqueta del resumen («N avisos nuevos»). Un resumen nuevo reemplaza al anterior. */
+export const ETIQUETA_RESUMEN = 'resumen';
+
+/** Lo mínimo para componer el texto de un aviso en el panel del teléfono. */
+export interface AvisoPresentable {
+  severity: NotificationSeverity;
+  message: string;
+  action?: string | null;
+}
+
+/**
+ * Cuerpo de la notificación de un aviso, igual por push que por la consulta de respaldo.
+ *
+ * Lo crítico lleva además QUÉ HACER: es el aviso por el que alguien sale corriendo, y tiene que poder
+ * actuar leyendo solo el panel. El resto se queda en el mensaje, para que la notificación no se
+ * convierta en un párrafo; la acción sigue en la bandeja.
+ */
+export function cuerpoDeAviso(aviso: AvisoPresentable): string {
+  if (aviso.severity === 'critical' && aviso.action) return `${aviso.message}\n\n▸ ${aviso.action}`;
+  return aviso.message;
+}
+
+/**
+ * Título y texto del resumen que sustituye a más de dos avisos no críticos llegados de golpe.
+ *
+ * Llenar el panel con doce tarjetas es peor que una. Lo crítico NUNCA pasa por aquí: sale siempre
+ * con su título completo. Es el mismo texto por push que por la consulta de respaldo.
+ */
+export function resumenDeAvisos(avisos: readonly { plantId: string }[]): { titulo: string; cuerpo: string } {
+  const plantas = new Set(avisos.map((a) => a.plantId)).size;
+  return {
+    titulo: `${avisos.length} avisos nuevos`,
+    cuerpo: `${plantas} planta${plantas === 1 ? '' : 's'} requieren atención. Abre la aplicación para ver el detalle.`,
+  };
+}
+
+/**
+ * Respuesta de `POST /api/notifications/devices` (alta del teléfono para el push).
+ *
+ * `pushActivo` dice si el SERVIDOR puede empujar avisos (tiene la clave de Firebase). La app solo deja
+ * de publicar por su cuenta cuando es `true`: con el push apagado en el servidor, un teléfono que se
+ * creyera atendido por push se quedaría sin ningún aviso.
+ */
+export interface RegistroPushDto {
+  registrado: true;
+  pushActivo: boolean;
+}
+
+/** Respuesta de `POST /api/notifications/devices/prueba`: el aviso de prueba a los teléfonos propios. */
+export interface PruebaPushDto {
+  /** `false` = el servidor no tiene la clave de Firebase; no se intentó nada. */
+  pushActivo: boolean;
+  /** Teléfonos registrados a nombre de quien pide la prueba. */
+  telefonos: number;
+  enviados: number;
+  fallidos: number;
+}
+
 /** Cambio de liveness para el evento Socket.IO `opc:liveness`. */
 export interface LivenessChange {
   plantId: string;
@@ -450,6 +560,11 @@ export interface PlantBasicStatusDto {
   liveness: LivenessDto;
   /** null = la planta no tiene señales de tanque mapeadas (no se puede afirmar ni negar). */
   waterAvailable: boolean | null;
+  /**
+   * Mismo campo y misma regla que `PlantSnapshotDto.integrationPending`. El Civil puede verlo: no es
+   * una lectura de la planta, es la razón por la que no hay ninguna.
+   */
+  integrationPending?: true;
 }
 
 /** Elemento de GET /api/plants. */
@@ -458,6 +573,8 @@ export interface PlantListItem {
   displayName: string;
   liveness: LivenessDto;
   bridgeStatus: BridgeStatus;
+  /** Mismo campo y misma regla que `PlantSnapshotDto.integrationPending`. */
+  integrationPending?: true;
 }
 
 export interface Sensor {
@@ -477,6 +594,13 @@ export interface Valve {
   description: string;
   isOpen: boolean;
 }
+
+/**
+ * Estado de una válvula derivado de su palabra de REALIMENTACIÓN por bits (integrador de La
+ * Vorágine). Lo devuelve `estadoPorRealimentacion` en el backend; `undefined` cuando la lectura
+ * no permite afirmar ningún estado. Debe leerse igual en el motor de mapeo y en el WriteService.
+ */
+export type ValveFeedback = 'open' | 'closed' | 'moving' | 'fault';
 
 export interface Tank {
   id: string;
@@ -519,6 +643,7 @@ const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
   jefe: [
     'view_basic_status',
     'view_dashboard',
+    'control_valves',
     'acknowledge_alarms',
     'adjust_setpoints',
     'view_event_logs',
@@ -585,7 +710,7 @@ export const ROLE_LABELS: Record<Role, string> = {
 export const ROLE_DESCRIPTIONS: Record<Role, string> = {
   civil: 'Vista básica',
   operador: 'Datos y control',
-  jefe: 'Datos, sin control',
+  jefe: 'Datos y control',
   admin: 'Control total',
 };
 
@@ -599,4 +724,5 @@ export const ROLE_COLORS: Record<Role, string> = {
 // El RBAC del backend (Fase 4) gatea por permiso granular usando ROLE_PERMISSIONS/
 // hasPermission (arriba) — la MISMA fuente que consume el móvil para features de UI.
 // Se retiró el antiguo sistema paralelo de tiers (RoleTier/ROLE_TIER/tierAtLeast) porque
-// no podía expresar la matriz oficial (p. ej. `jefe` = todo lo del operador salvo válvulas).
+// no podía expresar permisos granulares. Operadores y jefes pueden accionar válvulas
+// por autorización operativa del 2026-10-31; el ámbito por planta se valida en el backend.

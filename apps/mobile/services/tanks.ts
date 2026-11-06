@@ -26,10 +26,8 @@ export interface TankView {
   /**
    * Cuánto aguanta el tanque, calculado por el backend. `null` mientras no llegue.
    *
-   * NO se calcula aquí a propósito, aunque los datos estarían a mano: el backend lo hace con un
-   * temporizador estable (banda muerta de 0,2 l/s, salto de régimen de 0,6 l/s) y con el promedio
-   * de salida de 24 h, y es el MISMO número que usan los avisos. Recalcularlo en el móvil daría dos
-   * verdades distintas — la tarjeta diciendo una cosa y la notificación otra.
+   * El backend estima el descenso propio del tanque y publica el mismo resultado que usan los
+   * avisos. La app solo presenta el mínimo operativo, el vaciado y el método empleado.
    */
   autonomy: TankAutonomyDto | null;
 }
@@ -144,7 +142,7 @@ export function tanksFromSnapshot(snapshot: PlantSnapshotDto | undefined): TankV
         ts: meta?.ts ?? null,
         outOfRange: meta?.outOfRange ?? false,
         external: false,
-        autonomy: (snapshot.autonomy ?? []).find((a) => a.tankN === n) ?? null,
+        autonomy: (snapshot.autonomy ?? []).find((a) => a.tankKey ? a.tankKey === `tank${n}` : a.tankN === n) ?? null,
       },
     });
   }
@@ -165,9 +163,8 @@ export function tanksFromSnapshot(snapshot: PlantSnapshotDto | undefined): TankV
       ts: level.ts,
       outOfRange: level.outOfRange ?? false,
       external: true,
-      // Un tanque retransmitido pertenece a OTRA planta: su caudal de salida no está en este
-      // snapshot, así que no hay con qué calcular su autonomía y no se finge una.
-      autonomy: null,
+      // La tendencia propia permite estimarlo sin atribuirle el caudal de esta planta.
+      autonomy: (snapshot.autonomy ?? []).find((a) => a.tankKey === ext.levelKey.replace(/Level$/, '')) ?? null,
     });
   }
   return tanks;

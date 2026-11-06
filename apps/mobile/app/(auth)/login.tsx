@@ -44,6 +44,8 @@ export default function LoginScreen() {
   const [errors, setErrors] = useState<LoginFieldErrors>({});
   const emailRef = useRef<TextInput>(null);
   const passwordRef = useRef<TextInput>(null);
+  // `disabled` del botón llega un render tarde: dos Enter seguidos mandaban dos logins.
+  const submitting = useRef(false);
   const { login } = useAuth();
   const { width, height } = useWindowDimensions();
   const isWide = width >= WIDE_BREAKPOINT;
@@ -80,11 +82,13 @@ export default function LoginScreen() {
   }, [reduce, appear]);
 
   async function handleLogin() {
+    if (submitting.current) return;
     const found = validateLogin(email, password);
     setErrors(found);
     if (found.email) return emailRef.current?.focus();
     if (found.password) return passwordRef.current?.focus();
 
+    submitting.current = true;
     setIsLoading(true);
     try {
       const { token, user } = await apiLogin(email.trim(), password);
@@ -95,6 +99,7 @@ export default function LoginScreen() {
       // Decir siempre "credenciales inválidas" manda a la gente a revisar lo que no falla.
       toast.error('Error de acceso', err instanceof Error ? err.message : 'No se pudo iniciar sesión.');
     } finally {
+      submitting.current = false;
       setIsLoading(false);
     }
   }
@@ -428,6 +433,7 @@ const styles = StyleSheet.create({
   },
   input: {
     flex: 1,
+    minWidth: 0,
     height: '100%',
     paddingRight: 14,
     fontFamily: Fonts.regular,

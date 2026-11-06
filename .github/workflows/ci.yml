@@ -21,22 +21,29 @@ jobs:
   ci:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7.0.1
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7.1.0
         with:
-          node-version: 22
+          node-version-file: .nvmrc
           cache: npm
 
       - name: Instalar dependencias
         run: npm ci
 
-      # Auditoría de dependencias (seguridad frontend #13). Informativo: no bloquea el pipeline por
-      # avisos transitivos (node-opcua/expo arrastran muchos), pero SÍ los deja visibles en el log.
-      # Para endurecer, quitar `continue-on-error` o subir a `--audit-level=critical`.
-      - name: Auditoría de dependencias (npm audit)
-        continue-on-error: true
+      - name: Auditoría de dependencias del monorepo
+        # DEP-01 usa una copia local corregida y atribuida; el test siguiente comprueba la
+        # resolución efectiva de Expo y las cargas de contaminación de prototipo.
         run: npm audit --audit-level=high
+
+      - name: Regresión de seguridad de dependencias locales
+        run: npm run test:security:deps
+
+      - name: Instalar herramienta PLC
+        run: npm ci --prefix tools/plc-discovery
+
+      - name: Auditoría de herramienta PLC
+        run: npm audit --prefix tools/plc-discovery --audit-level=high
 
       - name: Typecheck (api + mobile + shared)
         run: npm run typecheck
@@ -44,8 +51,11 @@ jobs:
       - name: Lint (todos los workspaces)
         run: npm run lint
 
+      - name: Typecheck herramienta PLC
+        run: npm run typecheck --prefix tools/plc-discovery
+
       - name: Tests del API (todos los test/*.test.ts, por glob)
         working-directory: apps/api
         env:
           TSX_TSCONFIG_PATH: tsconfig.test.json
-        run: node --import tsx --test test/*.test.ts
+        run: node --import tsx --test --test-concurrency=2 test/*.test.ts

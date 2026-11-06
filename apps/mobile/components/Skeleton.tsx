@@ -1,6 +1,7 @@
-import { memo, useEffect, useRef } from 'react';
+import { memo, useEffect, useState } from 'react';
 import { View, Animated, Easing, StyleSheet, type ViewStyle } from 'react-native';
 import Colors from '../constants/colors';
+import { useReducedMotion } from '../hooks/useReducedMotion';
 
 /**
  * Esqueletos de carga. Sustituyen a los textos "Cargando tablero…" / "Cargando electroválvulas…":
@@ -10,8 +11,13 @@ import Colors from '../constants/colors';
  * al contrario que la barra de nivel del tanque (que anima ancho y no puede).
  */
 function usePulse(): Animated.Value {
-  const pulse = useRef(new Animated.Value(0.4)).current;
+  const [pulse] = useState(() => new Animated.Value(0.4));
+  const reducedMotion = useReducedMotion();
   useEffect(() => {
+    if (reducedMotion) {
+      pulse.setValue(0.6);
+      return;
+    }
     const loop = Animated.loop(
       Animated.sequence([
         Animated.timing(pulse, { toValue: 1, duration: 750, easing: Easing.inOut(Easing.ease), useNativeDriver: true }),
@@ -20,7 +26,7 @@ function usePulse(): Animated.Value {
     );
     loop.start();
     return () => loop.stop();
-  }, [pulse]);
+  }, [pulse, reducedMotion]);
   return pulse;
 }
 

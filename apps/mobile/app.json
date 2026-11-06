@@ -1,8 +1,8 @@
 {
   "expo": {
-    "name": "Monitor PTAP",
+    "name": "Aquora",
     "slug": "monitor-ptap",
-    "version": "1.2.4",
+    "version": "1.4.1",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "dark",
@@ -16,14 +16,14 @@
       "adaptiveIcon": {
         "backgroundColor": "#1565C0",
         "foregroundImage": "./assets/android-icon-foreground.png",
-        "backgroundImage": "./assets/android-icon-background.png",
         "monochromeImage": "./assets/android-icon-monochrome.png"
       },
       "package": "com.ptap.monitor",
-      "versionCode": 7
+      "versionCode": 10
     },
     "web": {
       "bundler": "metro",
+      "output": "static",
       "favicon": "./assets/favicon.png"
     },
     "plugins": [

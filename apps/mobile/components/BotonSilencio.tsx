@@ -40,6 +40,7 @@ export function BotonSilencio({
       // Área táctil de 44 px sin agrandar el icono: la tarjeta es pequeña y el dato manda.
       hitSlop={14}
       accessibilityRole="switch"
+      aria-checked={!silenciado}
       accessibilityState={{ checked: !silenciado, disabled: guardando }}
       accessibilityLabel={
         silenciado
