@@ -249,7 +249,6 @@ export interface PlantSnapshotDto {
   autonomy?: TankAutonomyDto[];
 }
 
-<<<<<<< HEAD
 export interface PlantReport {
   red: {
     estado: string;
@@ -278,8 +277,6 @@ export interface PlantReport {
   }[];
 }
 
-=======
->>>>>>> origin/feat/tablero-agua
 /**
  * Autonomía de un tanque: cuánto falta para el 50 % y para quedarse vacío.
  *
