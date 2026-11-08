@@ -1,4 +1,4 @@
-import { Body, Controller, Delete, Get, Param, Patch, Req, UseGuards } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Inject, Param, Patch, Req, UseGuards } from '@nestjs/common';
 import { RequirePermission } from '../auth/decorators/require-permission.decorator';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { PermissionGuard } from '../auth/guards/permission.guard';
@@ -17,7 +17,7 @@ import { MappingOverrideService } from './mapping-override.service';
 @Controller('opc/mapping')
 @UseGuards(JwtAuthGuard, PermissionGuard)
 export class MappingController {
-  constructor(private readonly overrides: MappingOverrideService) {}
+  constructor(@Inject(MappingOverrideService) private readonly overrides: MappingOverrideService) {}
 
   /** Las correcciones en vigor, de todas las plantas. */
   @Get()
