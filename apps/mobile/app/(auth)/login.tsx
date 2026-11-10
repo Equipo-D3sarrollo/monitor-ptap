@@ -1,4 +1,4 @@
-import { forwardRef, useEffect, useRef, useState, type ReactNode } from 'react';
+import { forwardRef, useEffect, useRef, useState, type ComponentRef, type ReactNode } from 'react';
 import {
   View,
   Text,
@@ -42,8 +42,9 @@ export default function LoginScreen() {
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [errors, setErrors] = useState<LoginFieldErrors>({});
-  const emailRef = useRef<TextInput>(null);
-  const passwordRef = useRef<TextInput>(null);
+  // La INSTANCIA de TextInput (con .focus()); en RN 0.88 `TextInput` como tipo es el componente.
+  const emailRef = useRef<ComponentRef<typeof TextInput>>(null);
+  const passwordRef = useRef<ComponentRef<typeof TextInput>>(null);
   // `disabled` del botón llega un render tarde: dos Enter seguidos mandaban dos logins.
   const submitting = useRef(false);
   const { login } = useAuth();
@@ -306,7 +307,7 @@ interface FieldProps extends TextInputProps {
 }
 
 /** Campo con etiqueta, icono y tres estados: normal, foco (borde azul + halo) y error. */
-const Field = forwardRef<TextInput, FieldProps>(function Field(
+const Field = forwardRef<ComponentRef<typeof TextInput>, FieldProps>(function Field(
   { label, icon, error, accessory, onFocus, onBlur, ...input },
   ref,
 ) {
