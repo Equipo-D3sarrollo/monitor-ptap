@@ -104,7 +104,7 @@ test('mapping: write.target.sourceBuffer inexistente es rechazado (validación s
   assert.ok(result.errors.some((e) => /NO_EXISTE/.test(e)));
 });
 
-test('mapping de PRODUCCIÓN: la válvula 1 está en las 10 plantas CON canal de comando, y solo La Vorágine tiene una segunda', () => {
+test('mapping de PRODUCCIÓN: la válvula 1 está en las plantas CON canal de comando (Cabuyo: solo la de entrada), y la segunda solo donde el integrador la entregó', () => {
   // Invariante (2026-07-30): la ruta de la válvula se replicó a todas las plantas por instrucción
   // del operador («mín. 1 válvula, se escribe por el canal 0, abrir = 4096 en todas»), tras
   // verificarla en campo en Sirena (docs/archivo/PRUEBA_VALVULA_SIRENA.md: pulso capturado por testigo
@@ -132,10 +132,14 @@ test('mapping de PRODUCCIÓN: la válvula 1 está en las 10 plantas CON canal de
 
   assert.deepEqual(
     writables,
-    conCanal.flatMap((id) => (CON_DOS_VALVULAS.includes(id) ? [`${id}/valve1`, `${id}/valve2`] : [`${id}/valve1`])),
-    'una valve1 por planta con canal de comando, la valve2 donde el integrador la entregó, y nada más',
+    conCanal.flatMap((id) =>
+      SOLO_ENTRADA.includes(id)
+        ? [`${id}/valve2`]
+        : CON_DOS_VALVULAS.includes(id) ? [`${id}/valve1`, `${id}/valve2`] : [`${id}/valve1`],
+    ),
+    'una valve1 por planta con canal de comando (salvo donde la salida es proporcional sin mando), la valve2 donde el integrador la entregó, y nada más',
   );
-  assert.equal(conCanal.length, 10, 'hoy son 10 plantas con canal (san-antonio y quijote no tienen intOut/intIn)');
+  assert.equal(conCanal.length, 11, 'hoy son 11 plantas con canal (Cabuyo desde el 2026-11-10; san-antonio y quijote no tienen intOut/intIn)');
   for (const sinCanal of ['san-antonio', 'quijote']) {
     assert.ok(!writables.some((w) => w.startsWith(`${sinCanal}/`)), `${sinCanal} NO debe tener válvula: no tiene canal donde escribir`);
   }
@@ -167,7 +171,7 @@ test('mapping de PRODUCCIÓN: La Vorágine tiene DOS válvulas y las DOS se acci
   };
 
   const conValve2 = prod.plants.filter((p) => (p.signals ?? []).some((s) => s.domainKey === 'valve2')).map((p) => p.plantId);
-  assert.deepEqual(conValve2, CON_DOS_VALVULAS, 'una segunda válvula exige su codificación, planta por planta');
+  assert.deepEqual(conValve2, [...CON_DOS_VALVULAS, ...SOLO_ENTRADA], 'una válvula de entrada exige su codificación, planta por planta');
 
   const voragine = prod.plants.find((p) => p.plantId === 'voragine');
   const entrada = (voragine?.signals ?? []).find((s) => s.domainKey === 'valve2');
@@ -276,6 +280,26 @@ const ENTREGA_INTEGRADOR_2026_10_16: Record<string, { open: number; close: numbe
   ]),
 );
 
+/**
+ * Ficha del integrador del 2026-11-09/10 (Brayan Grueso, Telcobras): Cabuyo. Solo la válvula de ENTRADA
+ * tiene mando —bit2/bit3 de INT_OUT_CABUYO[0], sostenida, en `bitmask` porque esa palabra tiene OTROS
+ * bits en uso—; la de salida es proporcional y su consigna es la Fase 4 (sin `valve1`).
+ */
+const ENTREGA_CABUYO_2026_11_10: Record<string, { open: number; close: number }> = {
+  'cabuyo/valve2': { open: 4, close: 8 },
+};
+/** Plantas cuya única válvula accionable es la de entrada (salida proporcional sin mando hasta la Fase 4). */
+const SOLO_ENTRADA = ['cabuyo'];
+/** Plantas que comparten su palabra de mando con bits ajenos: escriben en `bitmask`, nunca en absoluto. */
+const EN_BITMASK = ['cabuyo'];
+/** Plantas con realimentación entregada en INT_IN[1] (las demás confirman por eco en intOut). */
+const CON_ESTADO_EN_INT_IN = ['voragine', 'cabuyo'];
+/** Todas las entregas del integrador: la única fuente de `sustained` en producción. */
+const ENTREGAS_INTEGRADOR: Record<string, { open: number; close: number }> = {
+  ...ENTREGA_INTEGRADOR_2026_10_16,
+  ...ENTREGA_CABUYO_2026_11_10,
+};
+
 
 interface ProdWrite {
   target?: { sourceBuffer?: string; index?: number };
@@ -299,18 +323,19 @@ function valvulasDeProduccion(): Array<{ plantId: string; domainKey: string; w: 
   );
 }
 
-test('mapping de PRODUCCIÓN: cada válvula escribe en el canal 0 en modo absolute y SOSTENIDA', () => {
+test('mapping de PRODUCCIÓN: cada válvula escribe en el canal 0, SOSTENIDA, en absolute (bitmask donde la palabra tiene bits ajenos)', () => {
   const valves = valvulasDeProduccion();
   assert.ok(valves.length > 0);
   for (const { plantId, domainKey, w } of valves) {
     const quien = `${plantId}/${domainKey}`;
     assert.equal(w?.target?.index, 0, `${quien}: se escribe por el canal 0`);
-    assert.equal(w?.mode, 'absolute', `${quien}: modo absolute`);
+    assert.equal(w?.mode, EN_BITMASK.includes(plantId) ? 'bitmask' : 'absolute', `${quien}: modo según la palabra`);
     assert.equal(w?.sustained, true, `${quien}: señal SOSTENIDA`);
     assert.equal(w?.pulse, undefined, `${quien}: sin pulso`);
     assert.equal(w?.rollbackValue, undefined, `${quien}: sin rollbackValue`);
-    assert.equal(w?.readBack?.channel, plantId === 'voragine' ? 'intIn' : 'intOut', `${quien}: canal verificado o eco`);
-    assert.equal(w?.readBack?.confirmsWrittenValue, plantId !== 'voragine', `${quien}: eco solo sin feedback verificado`);
+    const conEstado = CON_ESTADO_EN_INT_IN.includes(plantId);
+    assert.equal(w?.readBack?.channel, conEstado ? 'intIn' : 'intOut', `${quien}: canal de estado o eco`);
+    assert.equal(w?.readBack?.confirmsWrittenValue, !conEstado, `${quien}: eco solo sin canal de estado`);
     assert.equal(w?.readBack?.stateVerified, plantId === 'voragine', `${quien}: estado confirmado solo en Vorágine`);
     if (domainKey === 'valve1') {
       assert.deepEqual(w?.commands, { open: 4096, close: 8192 }, `${quien}: salida 4096/8192`);
@@ -327,9 +352,9 @@ test('mapping de PRODUCCIÓN: CERRAR solo existe donde hay respaldo (campo o int
     .sort();
   assert.deepEqual(
     conCierre,
-    Object.entries(ENTREGA_INTEGRADOR_2026_10_16).map(([quien, c]) => `${quien}=${c.close}`).sort(),
+    Object.entries(ENTREGAS_INTEGRADOR).map(([quien, c]) => `${quien}=${c.close}`).sort(),
   );
-  for (const [quien, entrega] of Object.entries(ENTREGA_INTEGRADOR_2026_10_16)) {
+  for (const [quien, entrega] of Object.entries(ENTREGAS_INTEGRADOR)) {
     const w = valvulasDeProduccion().find((v) => `${v.plantId}/${v.domainKey}` === quien)?.w;
     assert.ok(typeof w?._riesgo === 'string' && /integrador/i.test(w._riesgo) && /sosten/i.test(w._riesgo));
     assert.equal(w?.readBack?.stateVerified, quien.startsWith('voragine/'));
@@ -349,9 +374,50 @@ test('mapping de PRODUCCIÓN: CERRAR solo existe donde hay respaldo (campo o int
 
 test('mapping de PRODUCCIÓN: solo las válvulas de la entrega del integrador sostienen la señal, y ninguna usa ya pulse.until', () => {
   const sostenidas = valvulasDeProduccion().filter((v) => v.w?.sustained === true).map((v) => `${v.plantId}/${v.domainKey}`);
-  assert.deepEqual(sostenidas.sort(), Object.keys(ENTREGA_INTEGRADOR_2026_10_16).sort());
+  assert.deepEqual(sostenidas.sort(), Object.keys(ENTREGAS_INTEGRADOR).sort());
   const conUntil = valvulasDeProduccion().filter((v) => v.w?.pulse?.until).map((v) => v.plantId);
   assert.deepEqual(conUntil, []);
+});
+
+test('mapping de PRODUCCIÓN: Cabuyo — solo la válvula de ENTRADA, en bitmask (bits ajenos en la palabra), read-back SIN verificar y palabra de estado de confianza (integrador 2026-11-10)', () => {
+  const prod = loadJson(join(__dirname, '..', 'config', 'opc_mapping.json')) as {
+    plants: Array<{
+      plantId: string;
+      signals?: Array<{ domainKey?: string; index?: number; buffer?: string; writable?: boolean; flowDomainKey?: string; stateTrusted?: boolean; write?: ProdWrite & { readBack?: { index?: number; mask?: number; faultMask?: number; expectedByCommand?: Record<string, number> } } }>;
+    }>;
+  };
+  const senales = prod.plants.find((p) => p.plantId === 'cabuyo')?.signals ?? [];
+  const por = (k: string) => senales.find((s) => s.domainKey === k);
+
+  // La salida es proporcional: se ve su apertura, pero su mando (consigna 0-100 %) es la Fase 4.
+  assert.equal(por('valve1'), undefined, 'sin valve1: la consigna de la salida es la Fase 4');
+  assert.equal(por('valve1Position')?.writable, false);
+  assert.equal(por('valve1Position')?.flowDomainKey, 'outletFlow1');
+
+  const entrada = por('valve2');
+  assert.equal(entrada?.flowDomainKey, 'inletFlow1', 'la entrada se juzga con SU caudal');
+  assert.equal(entrada?.index, 0, 'única señal en INT_OUT_CABUYO[0]: sin ancla');
+  const w = entrada?.write;
+  assert.deepEqual(w?.target, { channel: 'intOut', sourceBuffer: 'INT_OUT_CABUYO', index: 0 });
+  assert.deepEqual(w?.commands, ENTREGA_CABUYO_2026_11_10['cabuyo/valve2']);
+  // bitmask y NO absolute: en absoluto se pisarían los otros bits de la palabra que el PLC usa.
+  assert.equal(w?.mode, 'bitmask');
+  assert.equal(w?.sustained, true);
+  assert.equal(w?.readBack?.channel, 'intIn');
+  assert.equal(w?.readBack?.index, 1);
+  assert.deepEqual(w?.readBack?.expectedByCommand, { open: 1, close: 2 });
+  assert.equal(w?.readBack?.mask, 3);
+  assert.equal(w?.readBack?.faultMask, 16);
+  assert.equal(w?.readBack?.stateVerified, false, 'sin verificar en campo todavía');
+  assert.ok(/Brayan Grueso/.test(String(w?._riesgo)) && /bitmask/.test(String(w?._riesgo)), 'el _riesgo dice de dónde sale y por qué bitmask');
+  // El integrador confirmó la codificación verificada en campo (2026-11-10): la palabra decide en la
+  // app, como en La Vorágine. El read-back del mando sigue sin verificar hasta la prueba con Aquora.
+  assert.equal(por('valve2State')?.stateTrusted, true);
+
+  const r = new CommandMappingResolver().resolve('cabuyo', 'valve2');
+  assert.ok(r, 'el WriteService la puede resolver');
+  assert.equal(r.write.mode, 'bitmask');
+  assert.equal(motivoSostenidaInvalida(r.write), null, 'sostenida en bitmask válida');
 });
 
 // ── ORDEN SOSTENIDA: lo que el validador y el loader RECHAZAN (integrador de La Vorágine, 2026-10-16) ──
@@ -528,9 +594,9 @@ test('mapping REAL: La Vorágine carga y el resolver da las DOS válvulas con su
       .filter((s) => s.write?.sustained)
       .map((s) => `${s.plantId}/${s.domainKey}`)
       .sort(),
-    Object.keys(ENTREGA_INTEGRADOR_2026_10_16).sort(),
+    Object.keys(ENTREGAS_INTEGRADOR).sort(),
   );
-  for (const [quien, entrega] of Object.entries(ENTREGA_INTEGRADOR_2026_10_16)) {
+  for (const [quien, entrega] of Object.entries(ENTREGAS_INTEGRADOR)) {
     const [plantId, domainKey] = quien.split('/');
     const r = resolver.resolve(plantId, domainKey);
     assert.ok(r, `${quien}: accionable`);

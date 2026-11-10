@@ -282,11 +282,25 @@ Fuente: `REAL_IN_SIRENA` (Float[50], nsUri `AQUATECH4`, `g=A7B368C5-2F51-723A-81
 | 31 | `tank3Volume` | Volumen tanque 3 | m³ | 0 a 10000 | — | confirmed |
 | 32 | `tank4Volume` | Volumen tanque 4 | m³ | 0 a 10000 | — | confirmed |
 
+### Cabuyo (`cabuyo`) — 6 señales
+
+Fuente: `INT_OUT_CABUYO` (Int16[10], nsUri `AQUATECH4`, `g=4A2238DA-AE10-9D0D-1F37-988B99A50632`)
+Fuente: `INT_IN_CABUYO` (Int16[10], nsUri `AQUATECH4`, `g=17F74BB0-F31C-E8ED-4AA4-12582C2323C1`)
+Fuente: `REAL_IN_CABUYO` (Float[30], nsUri `AQUATECH4`, `g=95602685-4CD8-F2A1-4522-AA3CA25C6850`)
+
+| Índice | domainKey | Señal | Unidad | Validez | Rango operativo | Confianza |
+|---|---|---|---|---|---|---|
+| 0 | `valve2` | Válvula de entrada | — | — | — | confirmed |
+| 0 | `inletFlow1` | Caudal de entrada | l/s | 0 a 1000 | — | confirmed |
+| 1 | `valve2State` | Estado válvula de entrada | — | — | — | confirmed |
+| 7 | `outletFlow1` | Caudal de salida | l/s | 0 a 1000 | — | confirmed |
+| 12 | `inletPressure1` | Presión de entrada | psi | -15 a 232 | — | confirmed |
+| 16 | `valve1Position` | Válvula de salida | % | 0 a 100 | — | confirmed |
+
 ### Plantas sin señales mapeadas aún
 
 - San Antonio (`san-antonio`)
 - El Quijote (`quijote`)
-- Cabuyo (`cabuyo`)
 - La Luisa (`luisa`)
 - La Leonera (`leonera`)
 - Gloria (`gloria`)
@@ -325,7 +339,7 @@ Fuente: `REAL_IN_SIRENA` (Float[50], nsUri `AQUATECH4`, `g=A7B368C5-2F51-723A-81
 - Validez de presiones: [-15, 232] psi. El min NO es 0: los transmisores manométricos derivan bajo cero (Campoalegre salida 1 leyó -0.74 psi real el 2026-07-15) y el vacío físico llega a ≈ -14.7 psi. Bajo -15 psi es imposible físico ⇒ OUT_OF_RANGE (sensor/escala dañados; p. ej. Carbonero salida -57 psi). PENDIENTE verificar contra HMI: Cascajal presión de entrada lee 384 psi (¿unidad/índice/escala?).
 - opMin/opMax = rango OPERATIVO/normativo entregado por el operador (insumo de alarmas futuras). NO confundir con min/max, que son límites de validez física: una lectura fuera de [opMin,opMax] pero dentro de [min,max] es un dato REAL y usable (p. ej. pH de salida 5.8 o tanque en 0.5 m) que la UI debe mostrar, no descartar.
 - Topología de san-antonio y quijote verificada por browse: son sitios mínimos reales (solo un buffer de tanque + MSG_READ). topologyVerified: true.
-- PLANTAS EN INTEGRACIÓN (alta 2026-10-19): cabuyo (Cabuyo), luisa (La Luisa), leonera (La Leonera) y gloria (Gloria) están dadas de alta SIN señales, a la espera de que el integrador las suba al PLC maestro. El browse del 2026-07-12 no trae ningún tag suyo: sin buffer, NodeId ni índice no hay nada que mapear y no se inventa nada (opcBuffers: {}, connection unmapped con DN/ER/TO en null, signals: []). Equipo declarado por el cliente en las cuatro: válvula de entrada on/off, válvula de salida proporcional (% de apertura + consigna 0–100 %), caudal de entrada, caudal de salida y presión de entrada; solo La Leonera tiene además 1 tanque con sensor de nivel, con datos aún desconocidos. Lo que el integrador debe entregar por planta y los pasos para conectarlas: docs/plc/PLANTAS_NUEVAS_CABUYO_LUISA_LEONERA_GLORIA.md.
+- PLANTAS EN INTEGRACIÓN (alta 2026-10-19): cabuyo (Cabuyo) quedó INTEGRADA el 2026-11-10 con la ficha del integrador del PLC (Brayan Grueso, Telcobras, 2026-11-09/10): 6 tags (REAL_IN/INT_IN/INT_OUT_CABUYO, MSG_READ_CABUYO primaria, MSG_READ_INT_CABUYO, MSG_WRITE_INT_CABUYO), caudales, presión de entrada, apertura de la válvula de salida (solo lectura; su consigna es Fase 4) y mando de la válvula de entrada (bitmask, sostenida, stateVerified: false). Su connection queda UNMAPPED con sourceBuffer MSG_READ_CABUYO: DN/ER/TO pendientes, pedir sus GUID al integrador (no hubo lectura del PLC). luisa (La Luisa), leonera (La Leonera) y gloria (Gloria) siguen dadas de alta SIN señales, a la espera de que el integrador las suba al PLC maestro: sin buffer, NodeId ni índice no hay nada que mapear y no se inventa nada (opcBuffers: {}, connection unmapped con DN/ER/TO en null, signals: []). Equipo declarado por el cliente en las cuatro: válvula de entrada on/off, válvula de salida proporcional (% de apertura + consigna 0–100 %), caudal de entrada, caudal de salida y presión de entrada; solo La Leonera tiene además 1 tanque con sensor de nivel, con datos aún desconocidos. Lo que el integrador debe entregar por planta y los pasos para conectarlas: docs/plc/PLANTAS_NUEVAS_CABUYO_LUISA_LEONERA_GLORIA.md.
 - VÁLVULAS, ENTREGA DEL INTEGRADOR DEL 2026-10-23 (corrige la del 2026-10-16): la orden ya no se deja SOSTENIDA (el 1 que dejaba la app chocaba con la HMI); el bit de mando se mantiene en 1 solo hasta que el PLC informa abierta/cerrada (según el verbo) o falla, y vuelve a 0 (pulse.feedback, tope 120 s, minHoldMs 20 s). Solo La Vorágine tiene entregados sus bits de realimentación (INT_IN_VORAGINE[1]): sus dos válvulas pasan a esa forma. Soledad (valve1), Cascajal (valve1, valve2) y Campoalegre (valve1, valve2) quedan en writable: false con _nota hasta que el integrador entregue los suyos; su write sostenido se conserva SOLO para la limpieza de bits huérfanos, que al conectar el puente apaga los bits de mando que sigan puestos sin una orden viva. Sirena, Carbonero y las de pulso de 300 ms (4096) no cambian.
 - displayName es provisional (displayNameProvisional: true) hasta confirmación escrita de la planta.
 - generatedFrom.namespaces es referencia histórica de la captura, NO fuente de verdad para el runtime.

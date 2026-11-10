@@ -8,6 +8,11 @@
 >
 > Esta ficha es lo que el integrador debe entregar para conectarlas. Con ella completa, conectarlas es
 > un cambio solo de datos en `apps/api/config/opc_mapping.json`.
+>
+> **Actualización (2026-11-10): Cabuyo está INTEGRADA** con la ficha del integrador (Brayan Grueso,
+> Telcobras, 2026-11-09/10; tabla 3.1). Sigue con pendientes marcados en 3.1 (DN/ER/TO, bits ajenos de
+> `INT_OUT_CABUYO[0]`, periodo de las MSG, bit EN RECORRIDO, umbral de apertura). La Luisa, La Leonera
+> y Gloria siguen sin señales.
 
 | Campo | Valor |
 |---|---|
@@ -81,53 +86,57 @@ Las cuatro tablas son iguales. La Leonera agrega la del tanque (sección 4).
 
 ### 3.1 Cabuyo (`cabuyo`)
 
+> **Entregada** por el integrador del PLC: Brayan Grueso (Telcobras), ficha corregida 2026-11-09/10.
+> Aplicada en `opc_mapping.json` el 2026-11-10. Namespace de todos los tags: `AQUATECH4`. Sin lectura
+> del PLC todavía: los GUID son los entregados, no verificados por browse.
+
 **Tags**
 
 | Qué | Nombre exacto del tag | Tipo y tamaño | Observaciones |
 |---|---|---|---|
-| Lecturas reales (`REAL_IN_<SITIO>`) | | Float[ ] | |
-| Estados enteros (`INT_IN_<SITIO>`) | | Int16[ ] | |
-| Mando entero (`INT_OUT_<SITIO>`) | | Int16[ ] | |
-| Consignas reales (`REAL_OUT_<SITIO>`) | | Float[ ] | solo si la consigna va como REAL |
-| MSG de lectura (`MSG_READ*`, todas) | | MESSAGE | ¿cuál es la primaria (la de DN/ER/TO)? |
-| MSG de escritura (`MSG_WRITE*`, todas) | | MESSAGE | |
-| Periodo de las MSG | | | lectura: ___ s · escritura: ___ s |
+| Lecturas reales (`REAL_IN_<SITIO>`) | `REAL_IN_CABUYO` | Float[30] | `g=95602685-4CD8-F2A1-4522-AA3CA25C6850` |
+| Estados enteros (`INT_IN_<SITIO>`) | `INT_IN_CABUYO` | Int16[10] | `g=17F74BB0-F31C-E8ED-4AA4-12582C2323C1` |
+| Mando entero (`INT_OUT_<SITIO>`) | `INT_OUT_CABUYO` | Int16[10] | `g=4A2238DA-AE10-9D0D-1F37-988B99A50632` |
+| Consignas reales (`REAL_OUT_<SITIO>`) | — | — | no hay: la consigna va como INT en `INT_OUT_CABUYO[1]` |
+| MSG de lectura (`MSG_READ*`, todas) | `MSG_READ_CABUYO` (**primaria**), `MSG_READ_INT_CABUYO` | MESSAGE | `g=95AB15FD-6F1C-9C3A-B77D-11FE88D33500` · `g=970CA2D3-EF96-C5D9-3CB9-870825885248`. **PENDIENTE: GUID de DN/ER/TO** de la primaria (`connection` sigue `unmapped`) |
+| MSG de escritura (`MSG_WRITE*`, todas) | `MSG_WRITE_INT_CABUYO` | MESSAGE | `g=CF34248B-824C-CE5A-95DE-DD46A2C13ED6` |
+| Periodo de las MSG | | | **PENDIENTE** — lectura: ___ s · escritura: ___ s |
 
 **Lecturas**
 
 | Señal en Aquora | Buffer e índice | Unidad | Rango del instrumento | Rango operativo (si existe) |
 |---|---|---|---|---|
-| Caudal de entrada (`inletFlow1`) | `____[__]` | l/s | | |
-| Caudal de salida (`outletFlow1`) | `____[__]` | l/s | | |
-| Presión de entrada (`inletPressure1`) | `____[__]` | psi / bar | | |
+| Caudal de entrada (`inletFlow1`) | `REAL_IN_CABUYO[0]` | l/s | no entregado (validez en Aquora 0–1000) | no entregado |
+| Caudal de salida (`outletFlow1`) | `REAL_IN_CABUYO[7]` | l/s | no entregado (validez en Aquora 0–1000) | no entregado |
+| Presión de entrada (`inletPressure1`) | `REAL_IN_CABUYO[12]` | psi | no entregado (validez en Aquora −15 a 232) | no entregado |
 
 **Válvula de entrada on/off (`valve2`)**
 
 | Dato | Valor |
 |---|---|
-| Palabra de mando | `INT_OUT_____[__]` |
-| Bit para ABRIR | bit __ (valor __) |
-| Bit para CERRAR | bit __ (valor __) |
-| ¿Sostenido o de pulso? | sostenido (queda puesta una de las dos señales) / pulso de ___ ms |
-| ¿Hay otros bits de esa palabra en uso? ¿Cuáles? | (Aquora escribe solo sus bits y respeta el resto) |
-| Palabra de estado | `INT_IN_____[__]` |
-| Codificación del estado | valores o bits de ABIERTA / CERRADA / en recorrido / falla |
-| ¿Codificación verificada en campo? | sí / no — por quién y cuándo |
+| Palabra de mando | `INT_OUT_CABUYO[0]` |
+| Bit para ABRIR | bit 2 (valor 4) |
+| Bit para CERRAR | bit 3 (valor 8) |
+| ¿Sostenido o de pulso? | sostenido (queda puesta una de las dos señales) |
+| ¿Hay otros bits de esa palabra en uso? ¿Cuáles? | **sí** → Aquora escribe en `bitmask` (solo bits 2 y 3). **PENDIENTE: cuáles son los otros bits** |
+| Palabra de estado | `INT_IN_CABUYO[1]` |
+| Codificación del estado | ABIERTA bit 0 (1) · CERRADA bit 1 (2) · falla bit 4 (16) · **PENDIENTE: bit de EN RECORRIDO** |
+| ¿Codificación verificada en campo? | **sí, según el integrador** (2026-11-10): `stateTrusted: true` en `valve2State`. El read-back del mando sigue en `stateVerified: false` hasta probarlo en campo con Aquora |
 
-**Válvula de salida proporcional (`valve1`)**
+**Válvula de salida proporcional (`valve1`)** — solo la apertura se mapea; el mando es la Fase 4.
 
 | Dato | Valor |
 |---|---|
-| % de apertura (realimentación): buffer e índice | `____[__]` |
-| Escala de la apertura | 0–100 % / 0–32767 / 4–20 mA / otra: ___ |
-| Apertura a partir de la cual se considera abierta | > ___ % (error de cero del transmisor) |
-| Consigna: buffer e índice | `REAL_OUT_____[__]` o `INT_OUT_____[__]` |
-| Consigna: tipo | REAL / INT |
-| Consigna: escala | 0–100 % / 0–32767 / otra: ___ |
-| Límites permitidos de la consigna | mínimo ___ % · máximo ___ % |
-| Rampa permitida | ___ %/s, o sin rampa |
-| ¿Qué hace el PLC local con una consigna fuera de límites? | |
-| ¿Existe un modo local/manual que ignore la consigna remota? ¿Dónde se lee? | |
+| % de apertura (realimentación): buffer e índice | `REAL_IN_CABUYO[16]` (`valve1Position`) |
+| Escala de la apertura | 0–100 % |
+| Apertura a partir de la cual se considera abierta | **PENDIENTE**: entregado como "0.99" sin unidad clara (¿0,99 %? ¿fracción 0–1?) |
+| Consigna: buffer e índice | `INT_OUT_CABUYO[1]` |
+| Consigna: tipo | INT |
+| Consigna: escala | 0–100 % |
+| Límites permitidos de la consigna | mínimo 0 % · máximo 100 % |
+| Rampa permitida | desconocida |
+| ¿Qué hace el PLC local con una consigna fuera de límites? | satura a los límites |
+| ¿Existe un modo local/manual que ignore la consigna remota? ¿Dónde se lee? | no hay modo local |
 
 ### 3.2 La Luisa (`luisa`)
 
@@ -366,6 +375,9 @@ mientras no tenga ninguno.
 autorización explícita de Operación, los datos de la sección 3 sobre la consigna, y cambios de
 código que hoy no existen: valor en el comando, escala y límites en el write spec, y read-back con
 tolerancia.
+
+Desde el 2026-11-10 `valve2State` de Cabuyo tiene `stateTrusted: true` (codificación confirmada por el
+integrador). El `readBack.stateVerified` de `valve2` sigue en `false` hasta la prueba en campo.
 
 ---
 
