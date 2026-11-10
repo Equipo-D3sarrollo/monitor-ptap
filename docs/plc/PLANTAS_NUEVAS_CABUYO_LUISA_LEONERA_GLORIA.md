@@ -123,7 +123,8 @@ Las cuatro tablas son iguales. La Leonera agrega la del tanque (sección 4).
 | Codificación del estado | ABIERTA bit 0 (1) · CERRADA bit 1 (2) · falla bit 4 (16) · **PENDIENTE: bit de EN RECORRIDO** |
 | ¿Codificación verificada en campo? | **sí, según el integrador** (2026-11-10): `stateTrusted: true` en `valve2State`. El read-back del mando sigue en `stateVerified: false` hasta probarlo en campo con Aquora |
 
-**Válvula de salida proporcional (`valve1`)** — solo la apertura se mapea; el mando es la Fase 4.
+**Válvula de salida proporcional (`valve1`)** — apertura mapeada; la consigna (Fase 4) está implementada en
+un entregable aparte, **pendiente de autorización de Operación** (ver `docs/CONSIGNA_VALVULA_PROPORCIONAL.md`).
 
 | Dato | Valor |
 |---|---|
@@ -318,7 +319,7 @@ Es la convención que ya usa el resto del sistema. La app la sigue desde la Fase
 | `inletFlow1` / `outletFlow1` | caudal de entrada / de salida | `realIn`, `unit: "l/s"` |
 | `inletPressure1` | presión de entrada | `realIn`, `unit: "psi"` (o la que entregue el integrador) |
 | `valve1Position` | % de apertura de la válvula de **salida** (proporcional) | `realIn`, `unit: "%"`, `min: 0`, `max: 100`, con `label` y `flowDomainKey: "outletFlow1"` |
-| `valve1` | mando de la válvula de **salida** | **no se declara** hasta la Fase 4 (consigna); hasta entonces la válvula se ve pero no se manda |
+| `valve1` | **consigna** de la válvula de **salida** proporcional | Fase 4: `intOut` con `write.setpoint` (`{ min, max, unit, tolerance }`), único verbo `setpoint`, `mode: absolute`, read-back sobre `valve1Position`. Sin consigna declarada la válvula se ve pero no se manda |
 | `valve2` | válvula de **entrada** on/off | como en La Vorágine: palabra de mando en `intOut`, `flowDomainKey: "inletFlow1"` |
 | `tank1Level` / `tank1Volume` | nivel (m) y volumen (m³) del tanque, solo La Leonera | `realIn`, con `opMin`/`opMax` del operador |
 
@@ -371,13 +372,31 @@ Con buffers declarados, la frescura de cada planta pasa a la regla normal (`live
 según se muevan sus datos). La regla de "sin buffers, `frozen` desde el arranque" solo aplica
 mientras no tenga ninguno.
 
-**Fase 4, fuera de esta ficha:** mandar la consigna 0–100 % de la válvula de salida. Necesita
-autorización explícita de Operación, los datos de la sección 3 sobre la consigna, y cambios de
-código que hoy no existen: valor en el comando, escala y límites en el write spec, y read-back con
-tolerancia.
+### Fase 4 — consigna de la válvula de salida (Cabuyo, 2026-11-10)
 
-Desde el 2026-11-10 `valve2State` de Cabuyo tiene `stateTrusted: true` (codificación confirmada por el
-integrador). El `readBack.stateVerified` de `valve2` sigue en `false` hasta la prueba en campo.
+**Estado: implementada y probada en simulador; pendiente de autorización de Operación. No desplegar.**
+Es un entregable separado de la integración (Fase 3) de Cabuyo.
+
+- **Contrato:** `POST /api/plants/cabuyo/commands` con `{ "command": "setpoint", "target": "valve1", "value": 40 }`.
+  Aquora rechaza fuera de 0–100 (`400 VALUE_OUT_OF_RANGE`, sin escribir) y redondea a entero.
+- **Escritura:** `INT_OUT_CABUYO[1]`, palabra completa (`mode: absolute`), sin rollback.
+- **Confirmación:** `confirmed` si `valve1Position` (`REAL_IN_CABUYO[16]`) llega a **±2 %** en 120 s; si no,
+  `sent` / `SENT_POSITION_PENDING`. La tolerancia de ±2 % y el tope de 120 s son **provisionales**.
+- **Se mantiene todo el canal:** RBAC (`control_valves`: operador, jefe y admin; civil no), interlocks,
+  idempotencia, auditoría, registro firmado y sesión segura.
+- **App:** botón «Ajustar apertura» → selector 0–100 % (deslizador, campo, ±1/±10) → confirmación con
+  espera de 3 s → diálogo de resultado.
+
+**Pendientes del integrador** (también en el `_riesgo` de `valve1`):
+1. Uso **exclusivo** de `INT_OUT_CABUYO[1]` para la consigna (en absoluto se pisarían otros bits).
+2. Tiempo de recorrido 0–100 % del actuador (fija el `timeoutMs`).
+3. Tolerancia aceptable entre consigna y apertura (hoy ±2 %, provisional).
+4. Rampa permitida.
+
+Además, desde el 2026-11-10 `valve2State` de Cabuyo tiene `stateTrusted: true` (codificación confirmada
+por el integrador). El `readBack.stateVerified` de `valve2` sigue en `false` hasta la prueba en campo.
+
+Detalle para el equipo: `docs/CONSIGNA_VALVULA_PROPORCIONAL.md`.
 
 ---
 

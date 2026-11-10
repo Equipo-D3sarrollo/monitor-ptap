@@ -272,6 +272,23 @@ function activo(condiciones: Condicion[], leer: (clave: string) => SimValue | un
   return condiciones.length > 0 && condiciones.every((c) => c.cumple(leer(c.clave)));
 }
 
+/** Velocidad del actuador simulado de una CONSIGNA (Fase 4): unidades de la consigna por segundo. */
+export const CONSIGNA_UNIDADES_POR_S = 2;
+
+/**
+ * Válvula proporcional con CONSIGNA: el PLC local lleva la apertura medida hacia el valor escrito en
+ * la palabra de consigna, a `CONSIGNA_UNIDADES_POR_S`, saturando a [min, max] como el PLC real.
+ * Sin MSG: ve la consigna en cuanto se escribe (simplificación; la rampa real es desconocida).
+ */
+interface Consigna {
+  clave: string;
+  mando: string;
+  apertura: string;
+  min: number;
+  max: number;
+  valor: number;
+}
+
 export class SimulatedPlc {
   private readonly logger = new Logger('SimuladorPLC');
   private readonly maestro = new Map<string, SimValue>();
@@ -280,6 +297,7 @@ export class SimulatedPlc {
   private readonly escritosPorBackend = new Set<string>();
   private readonly plantas = new Map<string, Planta>();
   private readonly valvulas: Valvula[] = [];
+  private readonly consignas: Consigna[] = [];
   private readonly valvulasPorClave = new Map<string, Valvula[]>();
   /** Elementos de entrada con dueño (realimentación o valor inicial): nunca llevan ruido. */
   private readonly conDueno = new Set<string>();
@@ -320,7 +338,8 @@ export class SimulatedPlc {
     }
 
     for (const s of mapping.signals) {
-      if (s.writable && s.write) this.construirValvula(s, s.write, opts);
+      if (s.writable && s.write?.setpoint) this.construirConsigna(s, s.write);
+      else if (s.writable && s.write) this.construirValvula(s, s.write, opts);
     }
     // Arranque sincronizado: la copia local nace igual que el maestro y la realimentación ya refleja
     // el estado inicial de cada válvula. Sin esto, el primer frame enseñaría un estado que nadie pidió.
@@ -531,6 +550,7 @@ export class SimulatedPlc {
     if (hasta <= this.ultimo) return;
     const desde = this.ultimo;
     for (const v of this.valvulas) this.mover(v, desde, hasta);
+    for (const c of this.consignas) this.moverConsigna(c, hasta - desde);
     this.ultimo = hasta;
     for (const p of this.plantas.values()) if (p.cfg.feedbackCycleMs === 0) this.publicarRealimentacion(p);
   }
@@ -700,6 +720,34 @@ export class SimulatedPlc {
       this.plantas.set(plantId, p);
     }
     return p;
+  }
+
+  private construirConsigna(s: SignalMapping, w: WriteSpec): void {
+    const sp = w.setpoint!;
+    const clave = `${s.plantId}/${s.domainKey}`;
+    const rbBuffer = w.readBack.sourceBuffer ?? w.target.sourceBuffer;
+    const b = this.buffer(s.plantId, rbBuffer);
+    if (!b || !CANALES_DE_ENTRADA.has(b.channel)) {
+      this.logger.warn(`[sim] ${clave}: la apertura ${rbBuffer} no es un buffer de entrada de la planta; la consigna no se emula`);
+      return;
+    }
+    const mando = claveDeElemento({ plantId: s.plantId, sourceBuffer: w.target.sourceBuffer, index: w.target.index });
+    const apertura = claveDeElemento({ plantId: s.plantId, sourceBuffer: rbBuffer, index: w.readBack.index });
+    // Arranque sincronizado: la apertura inicial es la del escenario si la declara; si no, la consigna.
+    const inicial = this.maestro.get(apertura) ?? this.maestro.get(mando) ?? sp.min;
+    const valor = typeof inicial === 'number' && Number.isFinite(inicial) ? inicial : sp.min;
+    this.maestro.set(apertura, valor);
+    this.conDueno.add(apertura);
+    this.consignas.push({ clave, mando, apertura, min: sp.min, max: sp.max, valor });
+  }
+
+  private moverConsigna(c: Consigna, dtMs: number): void {
+    const escrito = this.maestro.get(c.mando);
+    if (typeof escrito !== 'number' || !Number.isFinite(escrito)) return;
+    const objetivo = Math.min(c.max, Math.max(c.min, escrito)); // el PLC satura fuera de límites
+    const paso = (CONSIGNA_UNIDADES_POR_S * dtMs) / 1000;
+    c.valor = Math.abs(objetivo - c.valor) <= paso ? objetivo : c.valor + Math.sign(objetivo - c.valor) * paso;
+    this.maestro.set(c.apertura, c.valor);
   }
 
   private construirValvula(s: SignalMapping, w: WriteSpec, opts: SimulatorOptions): void {

@@ -222,6 +222,20 @@
       "required": ["target", "commands", "readBack", "timeoutMs", "permission"],
       "allOf": [
         {
+          "description": "Una CONSIGNA (setpoint presente, Fase 4: válvula de salida proporcional) escribe en absoluto un número que trae la petición, dentro de [setpoint.min, setpoint.max]; su único verbo es setpoint; no lleva pulse, rollbackValue (volver a otro valor movería la válvula), sequences, sustained ni latched. El resto (min < max, tolerancia > 0, canales de target y readBack, readBack sin máscaras) lo comprueban validate:mapping y el loader, que con una consigna inválida NO arranca.",
+          "if": { "required": ["setpoint"] },
+          "then": {
+            "required": ["mode"],
+            "properties": {
+              "mode": { "const": "absolute" },
+              "commands": { "required": ["setpoint"], "additionalProperties": false, "properties": { "setpoint": { "const": true } } },
+              "sustained": { "const": false },
+              "latched": { "const": false }
+            },
+            "not": { "anyOf": [{ "required": ["pulse"] }, { "required": ["rollbackValue"] }, { "required": ["sequences"] }] }
+          }
+        },
+        {
           "description": "Una orden SOSTENIDA (sustained: true) no se deshace nunca: admite mode bitmask o absolute (sobreescritura directa de la palabra); al menos dos verbos, cada uno una máscara o valor entero de 1 a 65535; y PROHÍBE pulse (se limpia al terminar), rollbackValue (volver a él dejaría la válvula sin señal), sequences (posiciones en absoluto) y latched (el de las órdenes compuestas). Cualquier otro spec sigue exigiendo rollbackValue. Lo que JSON Schema no puede expresar —que los verbos no compartan bits entre sí ni con otra válvula de la misma palabra— lo comprueban validate:mapping y el loader, que con un spec sostenido inválido NO arranca.",
           "if": { "properties": { "sustained": { "const": true } }, "required": ["sustained"] },
           "then": {
@@ -258,7 +272,7 @@
                 ]
               }
             },
-            "else": { "required": ["rollbackValue"] }
+            "else": { "if": { "not": { "required": ["setpoint"] } }, "then": { "required": ["rollbackValue"] } }
           }
         },
         {
@@ -417,6 +431,18 @@
         "rollbackValue": {
           "type": ["number", "boolean"],
           "description": "Valor seguro a re-escribir si la confirmación falla (best-effort), y con el que se limpia un pulso en absolute. Obligatorio en todo spec SALVO en una orden sostenida (sustained, retirada) y en un pulso con realimentación por bits (pulse.feedback), donde está PROHIBIDO: la sostenida no se deshacía nunca, y la de realimentación se limpia apagando SOLO su bit (un valor absoluto borraría la otra válvula de la palabra)."
+        },
+        "setpoint": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["min", "max", "tolerance"],
+          "description": "CONSIGNA (Fase 4). El valor lo trae la petición ({ command: 'setpoint', value }): fuera de [min, max] Aquora lo RECHAZA (no depende de que el PLC sature) y lo redondea a entero. Se confirma cuando el readBack (la apertura medida) llega a ±tolerance del valor dentro de timeoutMs; si no, el resultado es sent (SENT_POSITION_PENDING), nunca failed por eso. Ver docs/CONSIGNA_VALVULA_PROPORCIONAL.md.",
+          "properties": {
+            "min": { "type": "number" },
+            "max": { "type": "number" },
+            "unit": { "type": "string" },
+            "tolerance": { "type": "number", "exclusiveMinimum": 0 }
+          }
         },
         "permission": {
           "type": "string",

@@ -64,6 +64,7 @@ interface TankCardProps {
 interface ValveItemProps {
   valve: SupervisedValve;
   onToggle?: (valve: SupervisedValve, verb?: 'open' | 'close') => void;
+  onSetpoint?: (valve: SupervisedValve) => void;
   frozen?: boolean;
   busy?: boolean;
   compact?: boolean;
@@ -76,7 +77,7 @@ interface ValveItemProps {
  */
 export function sameValveItem(a: ValveItemProps, b: ValveItemProps): boolean {
   if (a.frozen !== b.frozen || a.busy !== b.busy || a.compact !== b.compact) return false;
-  if (a.onToggle !== b.onToggle) return false;
+  if (a.onToggle !== b.onToggle || a.onSetpoint !== b.onSetpoint) return false;
   // `source` decide si se muestra posición o sólo flujo. Un cambio de origen tiene que repintar
   // aunque `effectiveState` siga siendo open/closed. No se comparan los datos que no se pintan:
   // `byState`/`byFlow`/`flowValue`/`disagreement`/`rawState`.
@@ -96,6 +97,10 @@ export function sameValveItem(a: ValveItemProps, b: ValveItemProps): boolean {
     // número y la barra se quedarían congelados en la primera lectura.
     x.kind === y.kind &&
     x.positionPct === y.positionPct &&
+    // Consigna (Fase 4): se pinta el valor escrito y decide el botón «Ajustar apertura».
+    x.setpointPct === y.setpointPct &&
+    x.setpoint?.min === y.setpoint?.min &&
+    x.setpoint?.max === y.setpoint?.max &&
     // Los verbos deciden si se dibuja el control y cuál: si cambian (recarga del mapping) la
     // tarjeta TIENE que repintarse. Se compara la lista elemento a elemento porque
     // `valvesFromSnapshot` construye un array nuevo en cada snapshot y la identidad nunca coincide.

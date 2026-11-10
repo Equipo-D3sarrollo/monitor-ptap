@@ -25,6 +25,7 @@ function enPasado(command: string): string {
   const c = command.toLowerCase();
   if (c === 'open' || c === 'abrir') return 'abrió';
   if (c === 'close' || c === 'cerrar') return 'cerró';
+  if (c === 'setpoint') return 'ajustó la consigna de';
   return `ejecutó «${command}» en`;
 }
 
@@ -32,6 +33,7 @@ function enInfinitivo(command: string): string {
   const c = command.toLowerCase();
   if (c === 'open' || c === 'abrir') return 'abrir';
   if (c === 'close' || c === 'cerrar') return 'cerrar';
+  if (c === 'setpoint') return 'ajustar la consigna de';
   return `ejecutar «${command}» en`;
 }
 

@@ -8,6 +8,7 @@ import { useAuth } from '../../context/AuthContext';
 import { ValveItem } from '../../components/ValveItem';
 import { ValveConfirmDialog } from '../../components/ValveConfirmDialog';
 import { ValveResultDialog } from '../../components/ValveResultDialog';
+import { ValveSetpointDialog } from '../../components/ValveSetpointDialog';
 import { PlantSelector } from '../../components/PlantSelector';
 import { ConnectionBanner } from '../../components/ConnectionBanner';
 import { LiveBadge } from '../../components/LiveBadge';
@@ -33,7 +34,9 @@ import Colors from '../../constants/colors';
 interface Pendiente {
   plantId: string;
   valve: SupervisedValve;
-  verb: 'open' | 'close';
+  verb: 'open' | 'close' | 'setpoint';
+  /** Solo con `setpoint`: la consigna elegida en `ValveSetpointDialog`. */
+  value?: number;
 }
 
 export default function ElectrovalvulasScreen() {
@@ -46,6 +49,8 @@ export default function ElectrovalvulasScreen() {
   const rawValves = useMemo(() => valvesFromSnapshot(snapshot), [snapshot]);
   const { valves, send, busy } = useValveSupervisor(selectedPlant.id, rawValves);
   const [pendiente, setPendiente] = useState<Pendiente | null>(null);
+  /** Proporcional cuya consigna se está eligiendo (primer paso; el segundo es la confirmación). */
+  const [eligiendo, setEligiendo] = useState<SupervisedValve | null>(null);
   /** Veredicto de la última orden, a la espera de acuse de recibo. NUNCA es un toast: ver
    *  `ValveResultDialog`. */
   const [resultado, setResultado] = useState<(CommandVerdict & { valveName: string }) | null>(null);
@@ -87,6 +92,16 @@ export default function ElectrovalvulasScreen() {
     [frozen, canControl, busy, selectedPlant.id],
   );
 
+  /** «Ajustar apertura» (Fase 4): abre el selector de consigna. Nada sale todavía al PLC. */
+  const onSetpoint = useCallback(
+    (valve: SupervisedValve) => {
+      if (!canControl || busy) return;
+      if (accionDisponible(valve, frozen).kind !== 'setpoint') return;
+      setEligiendo(valve);
+    },
+    [frozen, canControl, busy],
+  );
+
   // Guard de rol de pantalla (coherente con tablero/reportes). Va tras TODOS los hooks: si a
   // alguien le retiran el permiso con la pantalla abierta, el número de hooks no puede cambiar.
   if (!canView) {
@@ -104,17 +119,19 @@ export default function ElectrovalvulasScreen() {
   /** Segundo paso: el operador aceptó en el diálogo. Recién aquí sale la orden al PLC. */
   async function onConfirmar() {
     if (!pendiente) return;
-    const { valve, verb, plantId } = pendiente;
+    const { valve, verb, plantId, value } = pendiente;
     setPendiente(null);
     if (plantId !== selectedPlant.id) return;
     const current = valves.find((v) => v.id === valve.id);
     if (!current || !canControl || busy) return;
-    const action = accionDisponible(current, frozen, verb);
+    // Se re-evalúa con la lectura de AHORA: entre elegir y aceptar la planta pudo congelarse.
+    const action = accionDisponible(current, frozen, verb === 'setpoint' ? undefined : verb);
     if (action.kind === 'blocked') {
       setResultado({ ok: false, signalSent: false, tone: 'danger', title: 'Orden bloqueada', message: action.explain, valveName: current.name });
       return;
     }
-    const verdict = await send(current, verb);
+    if ((verb === 'setpoint') !== (action.kind === 'setpoint') || (verb === 'setpoint' && value === undefined)) return;
+    const verdict = await send(current, verb, value);
     // A un diálogo con acuse de recibo, NO a un toast: aquí se movió un actuador físico y el
     // veredicto puede ser "enviado pero sin confirmar", que el operador debe leer sí o sí.
     setResultado({ ...verdict, valveName: valve.name });
@@ -206,6 +223,7 @@ export default function ElectrovalvulasScreen() {
               // Sin canal de comando no hay botón: hacer confirmar una maniobra que solo puede
               // acabar en 404 es peor que no ofrecerla. ValveItem pone la nota en su lugar.
               onToggle={canControl && valve.commandable ? onToggle : undefined}
+              onSetpoint={canControl && valve.commandable ? onSetpoint : undefined}
             />
           ))
         )}
@@ -220,10 +238,30 @@ export default function ElectrovalvulasScreen() {
         valveName={pendiente?.valve.name ?? ''}
         plantName={plantName}
         verb={pendiente?.verb ?? 'open'}
+        consigna={pendiente?.verb === 'setpoint' && pendiente.value !== undefined
+          ? { desde: pendiente.valve.positionPct, hasta: pendiente.value, unit: pendiente.valve.setpoint?.unit ?? null }
+          : undefined}
         busy={pendiente !== null && busy === pendiente.valve.id}
-        conLecturaDeEstado={conLecturaDeEstado}
+        // Una consigna se confirma con la apertura medida, que es lectura del propio equipo.
+        conLecturaDeEstado={pendiente?.verb === 'setpoint' ? true : conLecturaDeEstado}
         onConfirm={() => void onConfirmar()}
         onCancel={() => setPendiente(null)}
+      />
+
+      <ValveSetpointDialog
+        visible={eligiendo !== null}
+        valveName={eligiendo?.name ?? ''}
+        plantName={plantName}
+        // La apertura en vivo, no la del momento de abrir el diálogo.
+        positionPct={valves.find((v) => v.id === eligiendo?.id)?.positionPct ?? eligiendo?.positionPct ?? null}
+        setpointPct={eligiendo?.setpointPct ?? null}
+        limites={eligiendo?.setpoint ?? { min: 0, max: 100, unit: '%' }}
+        onCancel={() => setEligiendo(null)}
+        onContinue={(value) => {
+          if (!eligiendo) return;
+          setPendiente({ plantId: selectedPlant.id, valve: eligiendo, verb: 'setpoint', value });
+          setEligiendo(null);
+        }}
       />
 
       <ValveResultDialog verdict={resultado} onClose={() => setResultado(null)} />
