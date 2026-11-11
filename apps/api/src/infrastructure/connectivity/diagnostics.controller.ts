@@ -1,4 +1,7 @@
-import { Body, Controller, Get, Inject, Post, Req, UseGuards } from '@nestjs/common';
+import { PlantReportService } from './diagnostics/plant-report.service';
+import { ZodValidationPipe } from '../validation/zod-validation.pipe';
+import { plantIdParamSchema } from '../validation/plant-id.schema';
+import { Body, Controller, Get, Inject, Param, Post, Query, Req, UseGuards } from '@nestjs/common';
 import type { Request } from 'express';
 import { RequirePermission } from '../../modules/auth/decorators/require-permission.decorator';
 import { JwtAuthGuard } from '../../modules/auth/guards/jwt-auth.guard';
@@ -79,7 +82,17 @@ export class DiagnosticsController {
   constructor(
     @Inject(AuditLogService) private readonly auditLog: AuditLogService,
     @Inject(RouteProbeSampler) private readonly sampler: RouteProbeSampler,
+    @Inject(PlantReportService) private readonly plantReports: PlantReportService,
   ) {}
+
+  @Get('plant/:plantId')
+  @RequirePermission('system_config')
+  plantReport(
+    @Param('plantId', new ZodValidationPipe(plantIdParamSchema)) plantId: string,
+    @Query('probe') probe?: string,
+  ) {
+    return this.plantReports.report(plantId, probe === 'deep');
+  }
 
   /** Últimas transiciones del puente (técnico: `at`, `status`, `reason`). */
   @Get('connection-events')

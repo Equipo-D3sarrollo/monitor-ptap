@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { View, Text, ScrollView, RefreshControl, StyleSheet, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { Ionicons } from '@expo/vector-icons';
+import Ionicons from '../../components/AppIcon';
 import { fetchReports, generateReport, downloadReport, type ReportInfo } from '../../services/reports';
 import { usePlant } from '../../context/PlantContext';
 import { useAuth } from '../../context/AuthContext';

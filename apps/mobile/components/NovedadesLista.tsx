@@ -1,9 +1,10 @@
 import { View, Text, StyleSheet } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import Ionicons from './AppIcon';
 import { ListSkeleton } from './Skeleton';
 import { OfflineNotice } from './OfflineNotice';
 import type { Novedad } from '../services/novedades';
 import Colors from '../constants/colors';
+import { Fonts } from '../constants/fonts';
 
 /**
  * El changelog, dentro de la bandeja.
@@ -101,19 +102,42 @@ const styles = StyleSheet.create({
   },
   cardNueva: { backgroundColor: Colors.primary + '0E', borderColor: Colors.primary + '55' },
   head: { flexDirection: 'row', alignItems: 'center', gap: 8, flexWrap: 'wrap' },
-  version: { fontSize: 15, fontWeight: '800', color: Colors.textPrimary },
-  fecha: { fontSize: 11.5, color: Colors.textSecondary, marginLeft: 'auto' },
-  pill: { backgroundColor: Colors.primary, borderRadius: 999, paddingHorizontal: 8, paddingVertical: 2 },
-  pillText: { color: '#fff', fontSize: 9.5, fontWeight: '800', letterSpacing: 0.6 },
+  version: { fontFamily: Fonts.semibold, fontSize: 15, color: Colors.textPrimary },
+  fecha: {
+    fontFamily: Fonts.regular,
+    fontSize: 12,
+    color: Colors.textSecondary,
+    marginLeft: 'auto',
+  },
+  pill: {
+    backgroundColor: Colors.primary,
+    borderRadius: 999,
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+  },
+  pillText: { fontFamily: Fonts.semibold, color: '#fff', fontSize: 11, letterSpacing: 0.6 },
   punto: { flexDirection: 'row', alignItems: 'flex-start', gap: 8 },
   // El punto se alinea con la primera línea del texto, no con el centro del bloque.
   bullet: { marginTop: 6 },
-  puntoTexto: { flex: 1, fontSize: 13, color: Colors.textSecondary, lineHeight: 19 },
+  puntoTexto: {
+    fontFamily: Fonts.regular,
+    flex: 1,
+    fontSize: 14,
+    color: Colors.textSecondary,
+    lineHeight: 21,
+  },
   empty: { alignItems: 'center', paddingVertical: 56, paddingHorizontal: 24, gap: 8 },
-  emptyTitle: { fontSize: 16, fontWeight: '700', color: Colors.textPrimary },
-  emptyText: { fontSize: 13, color: Colors.textSecondary, textAlign: 'center', lineHeight: 19 },
+  emptyTitle: { fontFamily: Fonts.semibold, fontSize: 16, color: Colors.textPrimary },
+  emptyText: {
+    fontFamily: Fonts.regular,
+    fontSize: 14,
+    color: Colors.textSecondary,
+    textAlign: 'center',
+    lineHeight: 21,
+  },
   pie: {
-    fontSize: 11.5,
+    fontFamily: Fonts.regular,
+    fontSize: 12,
     color: Colors.textSecondary,
     textAlign: 'center',
     fontStyle: 'italic',

@@ -3,6 +3,42 @@
 Documento **único** de despliegue y operación: lo que está montado hoy (§1–§10) y cómo montarlo
 desde cero en un servidor nuevo (§11). Absorbe el antiguo `DEPLOY_VPS.md`.
 
+## Comprobación pública del 10 de noviembre de 2026 — plan A1/A2
+
+Comprobación de lectura a las **15:57 UTC (10:57 America/Bogota)**, desde la conexión de este PC.
+No se usaron datos móviles, SSH, credenciales de producción ni acceso al PLC. La evidencia está en
+[`seguimiento-semanas-1-2/produccion-publica-2026-11-10.json`](seguimiento-semanas-1-2/produccion-publica-2026-11-10.json).
+
+| Prueba A1 | Evidencia actual | Estado y límite |
+|---|---|---|
+| Certificado HTTPS | Validación TLS normal aprobada, TLS 1.3, `CN=aquora.xpertic.co`, Let's Encrypt; vence el **2027-01-29 11:59:47 UTC** | **Comprobado desde el PC.** La renovación del 31 de octubre sigue vigente; no requiere repetir la renovación ni abrir el puerto 80 |
+| Ruta `/hmi/` | HEAD devuelve 200. GET `/hmi/` y GET `/` devuelven el mismo HTML, de 31.326 bytes y SHA-256 `23E5869B555565266B250F457D03AA856A4585055DFF10EEFE13253C4BEB003A` | **Por confirmar.** Es compatible con un fallback de la SPA; ese 200 no demuestra que esté expuesto WinCC. Falta revisar nginx y repetir desde datos móviles antes de dar por retirada la ruta |
+| API y puerto 4000 | HEAD de `/api/health` devuelve 200 por HTTPS | **Parcial.** Confirma acceso al health público; no confirma el bind de Node ni el firewall. Faltan `ss` y `ufw` dentro de la VM |
+| OPC UA y excepción de escritura | El encabezado del runbook conserva la revisión autorizada del 31 de octubre con escrituras deshabilitadas | **Sin revalidar hoy.** Faltan lectura del estado OPC y revisión de los flags actuales de producción con el responsable |
+
+Comprobación pública complementaria del 10 de noviembre: HEAD sin credenciales de `/api/plants` y `/api/command-signatures/verify` devuelve **401**, con tipo JSON. Confirma la exigencia de sesión en esas dos rutas desde esta conexión; no acredita el bind/firewall dentro de la VM. [Evidencia](seguimiento-semanas-1-2/acceso-api-publico-2026-11-10.json).
+
+**A1 no está cerrada completamente.** Para completar las verificaciones que requieren la VM,
+el operador autorizado debe recoger únicamente resultados no secretos:
+
+```bash
+sudo ss -ltnp
+sudo ufw status
+grep -E '^(CONNECTIVITY_PROVIDER|OPCUA_WRITES_ENABLED|OPCUA_TRUSTED_NETWORK_WRITES|OPCUA_ALLOW_INSECURE_WRITES)=' ~/monitor-ptap/.env
+```
+
+Registrar si el puerto 4000 escucha exclusivamente en `127.0.0.1`, el resultado de la revisión
+de nginx para `/hmi/`, el modo de conexión OPC y la decisión del líder sobre cualquier excepción
+de escritura. No copiar el resto del `.env` ni secretos a este documento.
+
+**A2:** no se ejecutaron cambios de producción. La acción TLS del plan ya estaba realizada y
+su certificado fue revalidado; la política actual es **DNS-01 con puerto 80 público cerrado**.
+Por ello, el paso histórico de abrir el puerto 80 no se aplica automáticamente. No hay evidencia
+suficiente para ordenar un reinicio de API, cambiar ufw, retirar una configuración nginx o
+habilitar escrituras OPC. Primero deben completarse A1 y la revisión del responsable; si queda
+algún rojo confirmado, preparar su cambio y su reversión sobre esa evidencia. El 200 de `/hmi/`
+queda documentado como ambiguo, no como cierre ni como exposición confirmada del HMI.
+
 > **Acceso actualizado y verificado el 2026-10-30:** el dominio resuelve a
 > `181.204.165.66` y la VM acepta SSH por el puerto **7498**, sin VPN:
 > `ssh -p 7498 -i ~/.ssh/id_ed25519_centro_gestion xpertic_app@181.204.165.66`.

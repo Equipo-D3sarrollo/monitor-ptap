@@ -1,5 +1,12 @@
 # Monitor PTAP
 
+> Desarrollo del 11/11/2026: [semana 3, integración y validaciones](docs/SEMANA_3_AQUORA_2026-11-11.md).
+
+> **Copia local revisada (2026-11-09):** se integró Guido `614a4b9` y se verificaron las
+> dependencias en Docker. Resultado y pendientes de publicación:
+> [integración y seguridad](docs/INTEGRACION_GUIDO_SEGURIDAD_2026-11-09.md).
+> Esta revisión no desplegó cambios en producción.
+
 Sistema de **monitoreo en tiempo real de 16 Plantas de Tratamiento de Agua Potable (PTAP)**,
 conectadas a través de un PLC maestro Allen-Bradley expuesto por un servidor **FactoryTalk
 Optix OPC UA**. Doce están en operación. Cabuyo, La Luisa, La Leonera y Gloria están en

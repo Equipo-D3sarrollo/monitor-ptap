@@ -30,7 +30,7 @@ interface AuthContextType {
   token: string | null;
   user: AuthUser | null;
   isLoading: boolean;
-  login: (token: string, user: AuthUser) => Promise<void>;
+  login: (token: string, user: AuthUser, remember?: boolean) => Promise<void>;
   logout: () => Promise<void>;
   hasPermission: (perm: Permission) => boolean;
 }
@@ -153,7 +153,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [token, logout]);
 
   const login = useCallback(
-    async (newToken: string, newUser: AuthUser) => {
+    async (newToken: string, newUser: AuthUser, remember = true) => {
       const expected = ++transition.current;
       invalidateSessionRestoration();
       invalidateAuthRequests();
@@ -173,8 +173,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           await Promise.all([clearing, revokingWebPush]);
           if (expected !== transition.current) return;
           await Promise.all([
-            storage.setItem(TOKEN_KEY, newToken),
-            storage.setItem(USER_KEY, JSON.stringify(newUser)),
+            remember ? storage.setItem(TOKEN_KEY, newToken) : storage.deleteItem(TOKEN_KEY),
+            remember ? storage.setItem(USER_KEY, JSON.stringify(newUser)) : storage.deleteItem(USER_KEY),
           ]);
           if (expected !== transition.current) return;
           await setLastDataSession(newUser);

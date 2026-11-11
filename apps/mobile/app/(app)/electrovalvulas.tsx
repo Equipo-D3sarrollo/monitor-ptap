@@ -1,7 +1,7 @@
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { View, Text, ScrollView, RefreshControl, StyleSheet } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Ionicons } from '@expo/vector-icons';
+import Ionicons from '../../components/AppIcon';
 import { useSnapshot } from '../../hooks/useSnapshot';
 import { usePlant } from '../../context/PlantContext';
 import { useAuth } from '../../context/AuthContext';
@@ -13,9 +13,15 @@ import { ConnectionBanner } from '../../components/ConnectionBanner';
 import { LiveBadge } from '../../components/LiveBadge';
 import { ListSkeleton } from '../../components/Skeleton';
 import { OfflineNotice } from '../../components/OfflineNotice';
-import { valvesFromSnapshot, accionDisponible, resumenDeValvulas, type CommandVerdict } from '../../services/valves';
+import {
+  valvesFromSnapshot,
+  accionDisponible,
+  resumenDeValvulas,
+  type CommandVerdict,
+} from '../../services/valves';
 import { useValveSupervisor, type SupervisedValve } from '../../hooks/useValveSupervisor';
 import { useDashboardPrefs } from '../../services/dashboard-prefs';
+import { getAuthGeneration } from '../../services/api';
 import { EN_INTEGRACION } from '../../services/plant-status';
 import Colors from '../../constants/colors';
 
@@ -42,13 +48,26 @@ export default function ElectrovalvulasScreen() {
   const canView = hasPermission('view_dashboard'); // el Civil no ve electroválvulas
   const canControl = hasPermission('control_valves');
 
-  const { data: snapshot, isLoading, isError, refetch, isRefetching } = useSnapshot(selectedPlant.id, canView);
+  const {
+    data: snapshot,
+    isLoading,
+    isError,
+    refetch,
+    isRefetching,
+  } = useSnapshot(selectedPlant.id, canView);
   const rawValves = useMemo(() => valvesFromSnapshot(snapshot), [snapshot]);
   const { valves, send, busy } = useValveSupervisor(selectedPlant.id, rawValves);
   const [pendiente, setPendiente] = useState<Pendiente | null>(null);
   /** Veredicto de la última orden, a la espera de acuse de recibo. NUNCA es un toast: ver
    *  `ValveResultDialog`. */
   const [resultado, setResultado] = useState<(CommandVerdict & { valveName: string }) | null>(null);
+  const mounted = useRef(true);
+  useEffect(() => {
+    mounted.current = true;
+    return () => {
+      mounted.current = false;
+    };
+  }, []);
   const livenessState = snapshot?.liveness.state ?? 'frozen';
   const frozen = livenessState === 'frozen';
   // Aún no conectada al PLC maestro: su `frozen` no es una caída (ver services/plant-status.ts).
@@ -95,7 +114,9 @@ export default function ElectrovalvulasScreen() {
         <View style={styles.centered}>
           <Ionicons name="lock-closed-outline" size={40} color={Colors.textSecondary} />
           <Text style={styles.plantName}>Acceso restringido</Text>
-          <Text style={styles.sectionSubtitle}>Las electroválvulas no están disponibles para tu rol.</Text>
+          <Text style={styles.sectionSubtitle}>
+            Las electroválvulas no están disponibles para tu rol.
+          </Text>
         </View>
       </SafeAreaView>
     );
@@ -111,13 +132,28 @@ export default function ElectrovalvulasScreen() {
     if (!current || !canControl || busy) return;
     const action = accionDisponible(current, frozen, verb);
     if (action.kind === 'blocked') {
-      setResultado({ ok: false, signalSent: false, tone: 'danger', title: 'Orden bloqueada', message: action.explain, valveName: current.name });
+      setResultado({
+        ok: false,
+        signalSent: false,
+        tone: 'danger',
+        title: 'Orden bloqueada',
+        message: action.explain,
+        valveName: current.name,
+      });
       return;
     }
+    const originName = plantName;
+    const authGeneration = getAuthGeneration();
     const verdict = await send(current, verb);
+    if (!mounted.current || getAuthGeneration() !== authGeneration) return verdict;
     // A un diálogo con acuse de recibo, NO a un toast: aquí se movió un actuador físico y el
     // veredicto puede ser "enviado pero sin confirmar", que el operador debe leer sí o sí.
-    setResultado({ ...verdict, valveName: valve.name });
+    setResultado({
+      ...verdict,
+      valveName: `${originName} · ${valve.name}`,
+      message: `Planta: ${originName} (${plantId}).\n\n${verdict.message}`,
+    });
+    return verdict;
   }
 
   return (
@@ -149,11 +185,25 @@ export default function ElectrovalvulasScreen() {
           </View>
           {valves.length > 0 && (
             <View style={styles.summary}>
-              <Text style={[styles.summaryCount, { color: Colors.success }]}>{openCount} abiertas</Text>
+              <Text style={[styles.summaryCount, { color: Colors.success }]}>
+                {openCount} abiertas
+              </Text>
               <Text style={styles.summaryDot}> · </Text>
-              <Text style={[styles.summaryCount, { color: Colors.danger }]}>{closedCount} cerradas</Text>
-              {unconfirmedCount > 0 && <Text style={[styles.summaryCount, { color: Colors.textSecondary }]}> · {unconfirmedCount} sin confirmar</Text>}
-              {faultCount > 0 && <Text style={[styles.summaryCount, { color: Colors.danger }]}> · {faultCount} en falla</Text>}
+              <Text style={[styles.summaryCount, { color: Colors.danger }]}>
+                {closedCount} cerradas
+              </Text>
+              {unconfirmedCount > 0 && (
+                <Text style={[styles.summaryCount, { color: Colors.textSecondary }]}>
+                  {' '}
+                  · {unconfirmedCount} sin confirmar
+                </Text>
+              )}
+              {faultCount > 0 && (
+                <Text style={[styles.summaryCount, { color: Colors.danger }]}>
+                  {' '}
+                  · {faultCount} en falla
+                </Text>
+              )}
             </View>
           )}
         </View>
@@ -228,7 +278,11 @@ export default function ElectrovalvulasScreen() {
 
       <ValveResultDialog verdict={resultado} onClose={() => setResultado(null)} />
 
-      <LiveBadge state={livenessState} loading={isLoading && !snapshot} integrationPending={integrationPending} />
+      <LiveBadge
+        state={livenessState}
+        loading={isLoading && !snapshot}
+        integrationPending={integrationPending}
+      />
     </SafeAreaView>
   );
 }
@@ -237,10 +291,22 @@ const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: Colors.surface },
   centered: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 32, gap: 10 },
   content: { padding: 14 },
-  sectionHeader: { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 12 },
+  sectionHeader: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    justifyContent: 'space-between',
+    marginBottom: 12,
+  },
   plantName: { fontSize: 17, fontWeight: '800', color: Colors.textPrimary },
   sectionSubtitle: { fontSize: 12, color: Colors.textSecondary, marginTop: 2 },
-  summary: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'flex-end', alignItems: 'center', maxWidth: '65%', marginTop: 4 },
+  summary: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'flex-end',
+    alignItems: 'center',
+    maxWidth: '65%',
+    marginTop: 4,
+  },
   summaryCount: { fontSize: 12, fontWeight: '700' },
   summaryDot: { color: Colors.textSecondary, fontSize: 12 },
   notice: {
@@ -272,6 +338,17 @@ const styles = StyleSheet.create({
   eventMsg: { fontSize: 11.5, lineHeight: 16, color: Colors.textSecondary, marginTop: 2 },
   loadingWrap: { paddingVertical: 44, alignItems: 'center', gap: 8 },
   loadingText: { color: Colors.textSecondary, fontSize: 14, textAlign: 'center' },
-  loadingSub: { color: Colors.textSecondary, fontSize: 12, textAlign: 'center', paddingHorizontal: 20 },
-  note: { fontSize: 12, color: Colors.textSecondary, textAlign: 'center', marginTop: 12, fontStyle: 'italic' },
+  loadingSub: {
+    color: Colors.textSecondary,
+    fontSize: 12,
+    textAlign: 'center',
+    paddingHorizontal: 20,
+  },
+  note: {
+    fontSize: 12,
+    color: Colors.textSecondary,
+    textAlign: 'center',
+    marginTop: 12,
+    fontStyle: 'italic',
+  },
 });

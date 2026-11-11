@@ -62,7 +62,7 @@ export function parseReadArgs(argv: string[]): ReadArgs {
 async function readOneNode(args: ReadArgs): Promise<void> {
   const client = OPCUAClient.create({
     endpointMustExist: false,
-    securityMode: (MessageSecurityMode as Record<string, number>)[args.securityMode] ?? MessageSecurityMode.None,
+    securityMode: MessageSecurityMode[args.securityMode as keyof typeof MessageSecurityMode] ?? MessageSecurityMode.None,
     securityPolicy: (SecurityPolicy as Record<string, string>)[args.securityPolicy] ?? SecurityPolicy.None,
   });
 

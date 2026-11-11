@@ -1,5 +1,19 @@
 # Pendientes del proyecto
 
+## Semana 3 — código del 11 de noviembre de 2026
+
+A9 (informe API por planta) y A10 (Ayuda de 83 códigos) implementadas. A11 conserva las cinco mejoras técnicas existentes, sin repetirlas ni atribuir aprobación a operadores. J3 conserva el harness existente y corrige su reporte para exigir objetivo y cierre completo. Tipos, 777 pruebas API, 305 móviles, 5 herramientas web y exportación web aprobados en Docker. La corrida real de 72 h y las decisiones humanas no quedan acreditadas por estas pruebas offline. [Detalle](SEMANA_3_AQUORA_2026-11-11.md).
+
+## Seguimiento de semanas 1 y 2 — preparado el 10 de noviembre de 2026
+
+La ejecución del plan DES-PLN-2026-000 v1.0 se contrasta con el código antes de repetir tareas. El seguimiento por tarea queda en [seguimiento-semanas-1-2](seguimiento-semanas-1-2/). Las decisiones del PDF orientan el alcance; no acreditan por sí solas una intervención de producción ni una aprobación del cliente.
+
+La **revalidación de frescura de noviembre (J1)** sigue pendiente de tres lecturas reales con fecha/hora (08:00, 12:00 y 16:00), acceso autorizado al entorno y destinatario del integrador. La [tabla y el procedimiento preparados](seguimiento-semanas-1-2/J1_FRESCURA_NOVIEMBRE.md) no sustituyen esas lecturas. Las antigüedades de agosto de la sección 2b se conservan como historia, no como estado actual.
+
+La [sesión con operadores (A7)](seguimiento-semanas-1-2/A7_SESION_OPERADORES.md) y el [borrador de decisiones del cliente (J2)](seguimiento-semanas-1-2/J2_DECISIONES_CLIENTE.md) están preparados. Participantes, destinatarios, aprobación y convocatoria se registrarán solo cuando se realicen; no se han enviado comunicaciones por generar esos documentos.
+
+**Cierre local del seguimiento:** A3 y A4 completas en navegador; A5/A6 implementadas y verificadas en Linux, con 764 pruebas API y 20 corridas de reconexión aprobadas; A8 ya estaba implementada y se conservó. Tipos, 303 pruebas móviles, lint sin advertencias y exportaciones web/Android de la fuente final aprobaron. A1/A2 requieren completar la revisión de VM/OPC; A7/J1/J2 conservan sus dependencias humanas/de campo/envío; Windows y GitHub Actions aún no se ejecutaron remotamente. El tablero móvil obtuvo 80/80/80 en la última serie Lighthouse: **≥90 sigue pendiente**. [Matriz y evidencias](SEMANAS_1_2_AQUORA_2026-11-10.md).
+
 > **Único tracker de pendientes.** Fusiona los tres que existían por separado (`PENDIENTES_VPN.md`,
 > `PENDIENTE_DESPLIEGUE.md`, `SEMANA1-4_PENDIENTES.md`) y que se contradecían entre sí.
 >

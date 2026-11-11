@@ -50,8 +50,18 @@ interface ExternalTankDef {
  */
 const EXTERNAL_TANKS: Record<string, ExternalTankDef[]> = {
   soledad: [
-    { levelKey: 'sanAntonioTankLevel', volumeKey: 'sanAntonioTankVolume', name: 'Tanque San Antonio', fullLevelM: 2.5 },
-    { levelKey: 'quijoteTankLevel', volumeKey: 'quijoteTankVolume', name: 'Tanque El Quijote', fullLevelM: 3 },
+    {
+      levelKey: 'sanAntonioTankLevel',
+      volumeKey: 'sanAntonioTankVolume',
+      name: 'Tanque San Antonio',
+      fullLevelM: 2.5,
+    },
+    {
+      levelKey: 'quijoteTankLevel',
+      volumeKey: 'quijoteTankVolume',
+      name: 'Tanque El Quijote',
+      fullLevelM: 3,
+    },
   ],
 };
 
@@ -113,7 +123,7 @@ function percentageOf(levelM: number | null, fullLevelM: number | null): number 
 
 export function tanksFromSnapshot(snapshot: PlantSnapshotDto | undefined): TankView[] {
   if (!snapshot) return [];
-  const found: Array<{ n: number; tank: TankView }> = [];
+  const found: { n: number; tank: TankView }[] = [];
   // Un tanque existe si tiene Level Y/O Volume (antes solo se derivaba de Level → un tanque con
   // solo Volume mapeado desaparecía del tablero). Se recorre la UNIÓN de ambos keys.
   const nums = new Set<number>();
@@ -142,7 +152,10 @@ export function tanksFromSnapshot(snapshot: PlantSnapshotDto | undefined): TankV
         ts: meta?.ts ?? null,
         outOfRange: meta?.outOfRange ?? false,
         external: false,
-        autonomy: (snapshot.autonomy ?? []).find((a) => a.tankKey ? a.tankKey === `tank${n}` : a.tankN === n) ?? null,
+        autonomy:
+          (snapshot.autonomy ?? []).find((a) =>
+            a.tankKey ? a.tankKey === `tank${n}` : a.tankN === n,
+          ) ?? null,
       },
     });
   }
@@ -164,7 +177,9 @@ export function tanksFromSnapshot(snapshot: PlantSnapshotDto | undefined): TankV
       outOfRange: level.outOfRange ?? false,
       external: true,
       // La tendencia propia permite estimarlo sin atribuirle el caudal de esta planta.
-      autonomy: (snapshot.autonomy ?? []).find((a) => a.tankKey === ext.levelKey.replace(/Level$/, '')) ?? null,
+      autonomy:
+        (snapshot.autonomy ?? []).find((a) => a.tankKey === ext.levelKey.replace(/Level$/, '')) ??
+        null,
     });
   }
   return tanks;

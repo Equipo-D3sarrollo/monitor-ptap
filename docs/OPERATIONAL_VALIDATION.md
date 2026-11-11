@@ -180,9 +180,10 @@ Corregido en esta fecha, junto con dos cosas que lo habrían delatado el mismo d
   el soak se cerraba, los datos quedaban en disco sin forma de cerrar la sección.
 
 **Estado:** el arnés vuelve a sobrevivir al régimen (ensayo de 1 min tras la corrección: 14 muestras,
-5 ciclos de caos, handles 2 → 2, dead letter acotado en 110, sin excepciones). **La corrida de 24 h
-hay que relanzarla**: la del 2026-08-03 no midió nada utilizable y esta sección sigue sin poder
-cerrarse hasta que haya 24 h reales de reloj.
+5 ciclos de caos, handles 2 → 2, dead letter acotado en 110, sin excepciones). La corrida histórica
+de 24 h del 2026-08-03 permanece válida, como se detalla arriba. No demuestra una nueva corrida
+de 72 h en noviembre. Para ese objetivo se necesita su propio JSONL completo; el informe exige
+la duración declarada (con mínimo de 24 h) y un veredicto sin corte antes de aprobarlo.
 
 ```bash
 # En la VM, dentro de apps/api (no toca producción: proceso aparte, sin MySQL ni puertos)

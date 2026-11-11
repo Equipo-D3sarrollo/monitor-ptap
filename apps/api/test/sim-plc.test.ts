@@ -344,7 +344,8 @@ test('PLC: pulse.until vale `equals` SOLO con el verbo puesto y la válvula en E
 
 test('PLC: read-back AMBIGUO (mismo valor para abrir y cerrar, como La Vorágine) NO se emula, y lo avisa', () => {
   const v = new SimulatedPlc(prueba(), opciones(), 0).valvula('sim-buffers', 'valve2', 0);
-  assert.ok(v?.warnings.some((w) => /AMBIGUO/.test(w)), v?.warnings.join(' | '));
+  assert.ok(v, 'la válvula del escenario debe existir');
+  assert.ok(v.warnings.some((w) => /AMBIGUO/.test(w)), v.warnings.join(' | '));
   assert.ok(!v?.feedback.some((f) => f.origin === 'readBack'), 'ningún read-back emulado');
   assert.ok(v?.feedback.some((f) => f.origin === 'until'), 'el fin de carrera sí');
 });

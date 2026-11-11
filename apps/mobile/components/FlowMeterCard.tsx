@@ -1,14 +1,14 @@
 import { memo } from 'react';
 import { View, Text, StyleSheet, Animated } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import Ionicons from './AppIcon';
 import Colors from '../constants/colors';
 import { Fonts } from '../constants/fonts';
 import type { SignalDto } from '../services/api';
 import { directionLook, isAnomalous, signalState } from '../services/card-look';
 import { useStateFlash } from '../hooks/useStateFlash';
 import { GaugeCard } from './GaugeCard';
-import { sameSignalCard } from './memo-compare';
 import { BotonSilencio } from './BotonSilencio';
+import { sameSignalCard } from './memo-compare';
 
 const B = Colors.brand;
 
@@ -51,7 +51,14 @@ function FlowMeterCardBase({
 
   if (!numeric || !hasSpan) {
     return (
-      <GaugeCard signal={signal} name={name} icon={icon} frozen={frozen} compact={compact} plantId={plantId} />
+      <GaugeCard
+        signal={signal}
+        name={name}
+        icon={icon}
+        frozen={frozen}
+        compact={compact}
+        plantId={plantId}
+      />
     );
   }
 
@@ -81,13 +88,22 @@ function FlowMeterCardBase({
         </View>
       )}
 
-      <Text style={[styles.value, { color: anomaly ? B.dangerText : accent }]} numberOfLines={1} adjustsFontSizeToFit>
+      <Text
+        style={[styles.value, { color: anomaly ? B.dangerText : accent }]}
+        numberOfLines={1}
+        adjustsFontSizeToFit
+      >
         {fmt(value)}
         <Text style={styles.unit}> {signal.unit ?? ''}</Text>
       </Text>
 
       <View style={styles.barOuter}>
-        <View style={[styles.barFill, { width: `${pct}%`, backgroundColor: anomaly ? Colors.danger : accent }]} />
+        <View
+          style={[
+            styles.barFill,
+            { width: `${pct}%`, backgroundColor: anomaly ? Colors.danger : accent },
+          ]}
+        />
       </View>
       {!compact && (
         <View style={styles.barLabels}>
@@ -119,15 +135,34 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
   },
   cardAnomaly: { borderColor: Colors.danger, borderWidth: 1.5 },
-  cardFrozen: { opacity: 0.6 },
-  flash: { position: 'absolute', top: 0, right: 0, bottom: 0, left: 0, backgroundColor: 'rgba(36,145,204,0.2)' },
+  cardFrozen: { borderStyle: 'dashed' },
+  flash: {
+    position: 'absolute',
+    top: 0,
+    right: 0,
+    bottom: 0,
+    left: 0,
+    backgroundColor: 'rgba(36,145,204,0.2)',
+  },
   top: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   name: { flex: 1, fontFamily: Fonts.regular, fontSize: 13, color: B.textSecondary },
   dirRow: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 2 },
   dirText: { fontFamily: Fonts.medium, fontSize: 12 },
-  value: { fontFamily: Fonts.semibold, fontSize: 30, lineHeight: 38, marginTop: 6, fontVariant: ['tabular-nums'] },
+  value: {
+    fontFamily: Fonts.semibold,
+    fontSize: 30,
+    lineHeight: 38,
+    marginTop: 6,
+    fontVariant: ['tabular-nums'],
+  },
   unit: { fontFamily: Fonts.regular, fontSize: 14, color: B.textSecondary },
-  barOuter: { height: 6, borderRadius: 3, backgroundColor: B.divider, overflow: 'hidden', marginTop: 12 },
+  barOuter: {
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: B.divider,
+    overflow: 'hidden',
+    marginTop: 12,
+  },
   barFill: { height: '100%', borderRadius: 3 },
   barLabels: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 6, gap: 6 },
   barLabelText: { fontFamily: Fonts.regular, fontSize: 12, color: B.textSecondary },

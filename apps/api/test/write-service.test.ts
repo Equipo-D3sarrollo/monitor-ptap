@@ -155,9 +155,9 @@ function fakeAudit(): { service: AuditLogService; calls: AuditEntry[] } {
   return { service, calls };
 }
 
-const OPERADOR: CommandActor = { userId: 'u1', userEmail: 'op@ptap.co', role: 'operador', ip: '10.0.0.1' };
-const JEFE: CommandActor = { userId: 'u2', userEmail: 'jefe@ptap.co', role: 'jefe', ip: '10.0.0.2' };
-const CIVIL: CommandActor = { userId: 'u3', userEmail: 'civil@ptap.co', role: 'civil', ip: '10.0.0.3' };
+const OPERADOR: CommandActor = { userId: 'u1', userName: 'Operador de prueba', userEmail: 'op@ptap.co', role: 'operador', ip: '10.0.0.1' };
+const JEFE: CommandActor = { userId: 'u2', userName: 'Jefe de prueba', userEmail: 'jefe@ptap.co', role: 'jefe', ip: '10.0.0.2' };
+const CIVIL: CommandActor = { userId: 'u3', userName: 'Civil de prueba', userEmail: 'civil@ptap.co', role: 'civil', ip: '10.0.0.3' };
 
 function build(opts: { secure: boolean; bridge: BridgeStatus; confirms?: boolean; writesEnabled?: boolean; write?: WriteSpec | null; snapshot?: PlantSnapshotDto | null; writeThrows?: boolean; preset?: number; echoFails?: boolean; trustedNetwork?: boolean }) {
   const adapter = fakeAdapter({ secure: opts.secure, bridge: opts.bridge, confirms: opts.confirms, writeThrows: opts.writeThrows, preset: opts.preset, echoFails: opts.echoFails });
@@ -212,7 +212,7 @@ test('write-service: approved authenticated network permits mapped command, read
 test('write-service: approved network preserves RBAC, freshness and the master switch', async () => {
   for (const variant of ['rbac', 'stale', 'disabled'] as const) {
     const { service, adapter } = build({ secure: false, bridge: 'Connected', trustedNetwork: true,
-      writesEnabled: variant !== 'disabled', snapshot: snap(variant === 'stale' ? 'stale' : 'live') });
+      writesEnabled: variant !== 'disabled', snapshot: snap(variant === 'stale' ? 'frozen' : 'live') });
     const r = await service.execute('voragine', { command: 'openValve', target: 'valveEV01' }, variant === 'rbac' ? CIVIL : OPERADOR);
     assert.equal(r.status, 'rejected', variant);
     assert.equal(adapter.writes.length, 0, variant);
@@ -341,7 +341,7 @@ test('write-service: un PULSO se limpia incluso cuando el estado CONFIRMA', asyn
     mode: 'bitmask',
     pulse: { holdMs: 5 },
     commands: { openValve: 4096 },
-    readBack: { channel: 'intIn', sourceBuffer: 'INT_IN_TEST', index: 0, confirmsWrittenValue: false, expectedValue: 16385 },
+    readBack: { channel: 'intIn', sourceBuffer: 'INT_IN_TEST', index: 0, confirmsWrittenValue: false, expectedValue: 16385, stateVerified: true },
   };
   // preset: la palabra ya trae 16385 (bit14+bit0 de otro uso) y el estado responde 16385.
   const { service, adapter } = build({ secure: true, bridge: 'Connected', write: spec, preset: 16385 });

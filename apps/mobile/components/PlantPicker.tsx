@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   Animated,
   Easing,
@@ -12,8 +12,8 @@ import {
   View,
   useWindowDimensions,
 } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
-import Svg, { Path } from 'react-native-svg';
+import Ionicons from './AppIcon';
+import Svg, { Path } from './WaterVector';
 import { useQuery } from '@tanstack/react-query';
 import { PLANTS, usePlant, type PlantOption } from '../context/PlantContext';
 import { useReduceMotion } from '../hooks/useReduceMotion';
@@ -114,7 +114,7 @@ export function PlantPickerTrigger({ name, textStyle }: { name: string; textStyl
 function PlantSheet({ onClose }: { onClose: () => void }) {
   const reduce = useReduceMotion();
   const { height } = useWindowDimensions();
-  const progress = useRef(new Animated.Value(0)).current;
+  const [progress] = useState(() => new Animated.Value(0));
   useWebEscape(true, onClose);
 
   useEffect(() => {
@@ -355,7 +355,7 @@ const styles = StyleSheet.create({
   flex: { flex: 1 },
 
   panel: {
-    width: 300,
+    width: 264,
     backgroundColor: B.panel,
     borderRightWidth: 1,
     borderRightColor: B.divider,
@@ -442,15 +442,15 @@ const styles = StyleSheet.create({
 
   filters: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
   chip: {
-    height: 36,
-    paddingHorizontal: 12,
+    minHeight: 44,
+    paddingHorizontal: 8,
     borderRadius: 99,
     borderWidth: 1,
     borderColor: B.cardBorder,
     justifyContent: 'center',
   },
   chipOn: { backgroundColor: B.action, borderColor: B.action },
-  chipText: { fontFamily: Fonts.medium, fontSize: 13, color: B.textSecondary },
+  chipText: { fontFamily: Fonts.medium, fontSize: 12, color: B.textSecondary },
   chipTextOn: { color: B.white },
 
   note: { fontFamily: Fonts.regular, fontSize: 13, color: B.textSecondary, paddingVertical: 6 },
@@ -464,8 +464,8 @@ const styles = StyleSheet.create({
     minHeight: 56,
     paddingVertical: 8,
     paddingHorizontal: 12,
-    borderRadius: 12,
-    borderWidth: 1.5,
+    borderRadius: 10,
+    borderWidth: 1,
     borderColor: B.rowBorder,
     backgroundColor: B.row,
   },

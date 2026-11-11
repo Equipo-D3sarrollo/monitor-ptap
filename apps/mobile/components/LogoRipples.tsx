@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useState } from 'react';
 import { Animated, Easing, Platform, StyleSheet, View } from 'react-native';
 import Colors from '../constants/colors';
 import { useReduceMotion } from '../hooks/useReduceMotion';
@@ -24,10 +24,10 @@ interface Props {
  */
 export function LogoRipples({ width }: Props) {
   const reduce = useReduceMotion();
-  const float = useRef(new Animated.Value(0)).current;
+  const [float] = useState(() => new Animated.Value(0));
   // Un solo bucle para los 3 anillos; cada uno es ese bucle con otra fase (ver loop-phase.ts). Con
   // un retraso por anillo, el escalonado dependía de temporizadores separados y se desalineaba.
-  const ring = useRef(new Animated.Value(0)).current;
+  const [ring] = useState(() => new Animated.Value(0));
 
   useEffect(() => {
     if (reduce !== false) return;

@@ -171,7 +171,8 @@ function main(): void {
     : recalculado;
   const horasObjetivo = Number((inicio as { soakHours?: number } | undefined)?.soakHours ?? 24);
   const completo = Boolean(cerrado) && !v.cortadoAntes;
-  const alcanzoMinimo = v.horas >= 24;
+  const horasRequeridas = Math.max(24, horasObjetivo);
+  const alcanzoObjetivo = Number.isFinite(horasObjetivo) && horasObjetivo > 0 && v.horas >= horasRequeridas;
 
   // Reparto de estados del puente durante la corrida: si `Faulted` aparece, el criterio "toda
   // recuperación automática" hay que mirarlo a mano, porque Faulted es terminal y debe alertar.
@@ -180,7 +181,7 @@ function main(): void {
   const faulted = porEstado.get('Faulted') ?? 0;
   const reconnects = muestras[muestras.length - 1]?.reconnects ?? 0;
 
-  const ok = v.okRss && v.okHandles && alcanzoMinimo && faulted === 0;
+  const ok = v.okRss && v.okHandles && alcanzoObjetivo && completo && faulted === 0;
 
   console.log('\n' + '='.repeat(74));
   console.log(` VEREDICTO DEL SOAK (Fase 6 §4) — ${ARCHIVO}`);
@@ -190,7 +191,7 @@ function main(): void {
     console.log('  ⚠️  veredicto de formato ANTIGUO: su okRss medía dispersión, no crecimiento.');
     console.log('      El criterio de fuga se ha RECALCULADO desde las muestras (ver soak-report.ts).');
   }
-  console.log(`  duración              ${v.horas} h de ${horasObjetivo} h objetivo   ${alcanzoMinimo ? '✅ ≥ 24 h' : '❌ < 24 h (el criterio pide 24–72 h)'}`);
+  console.log(`  duración              ${v.horas} h de ${horasObjetivo} h objetivo   ${alcanzoObjetivo ? '✅ objetivo alcanzado' : `❌ objetivo incompleto (mínimo ${horasRequeridas} h)`}`);
   console.log(`  muestras              ${v.muestras}   ·   ciclos de caos: ${v.ciclosDeCaos}${caosError.length ? `  (${caosError.length} con error)` : ''}`);
   console.log(`  snapshots             ${v.snapshots}   ·   reconexiones: ${reconnects}`);
   console.log('');
@@ -205,7 +206,7 @@ function main(): void {
   console.log('');
   console.log(`  ${ok ? '✅ CUMPLE los criterios de la Fase 6 §4' : '❌ NO cumple / incompleto — ver arriba'}`);
   if (!completo) {
-    console.log(`  ⚠️  El JSONL no tiene línea de cierre: la corrida se cortó o sigue viva. Si sigue viva, esperar y repetir.`);
+    console.log(`  ⚠️  El JSONL no acredita un cierre completo: la corrida se cortó o sigue viva. Si sigue viva, esperar y repetir.`);
   }
   console.log('='.repeat(74) + '\n');
 
@@ -213,7 +214,8 @@ function main(): void {
     console.log('Pegar en docs/OPERATIONAL_VALIDATION.md §4:\n');
     console.log('| Métrica | Valor | Criterio |');
     console.log('|---|---|---|');
-    console.log(`| Duración | ${v.horas} h | ${alcanzoMinimo ? '✅ ≥ 24 h' : '❌ < 24 h'} |`);
+    console.log(`| Duración | ${v.horas} h | ${alcanzoObjetivo ? `✅ ≥ ${horasRequeridas} h` : `❌ objetivo incompleto (mínimo ${horasRequeridas} h)`} |`);
+    console.log(`| Cierre completo | ${completo ? 'Sí' : 'No'} | ${completo ? '✅' : '❌ corrida incompleta'} |`);
     console.log(`| RSS | ${v.rssMin} → ${v.rssMax} MB · crecimiento ${v.crecimientoPct ?? '—'} % | ${v.okRss ? '✅ estable' : '❌ crece'} |`);
     console.log(`| Handles activos | ${v.handlesInicio} → ${v.handlesFin} | ${v.okHandles ? '✅ sin fuga' : '❌ fuga'} |`);
     console.log(`| Dead letter final | ${v.deadLetterFinal} | ✅ acotado por el ring |`);

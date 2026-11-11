@@ -35,7 +35,7 @@ function fakeUsers(user: Partial<UserRecord> | null): UsersRepository {
   const record = user
     ? ({
         id: 'u1', email: 'a@b.com', name: 'A', role: 'admin', plant: 'montebello',
-        passwordHash: 'x', pepperVersion: 1, isActive: true, ...user,
+        passwordHash: 'x', pepperVersion: 1, isActive: true, emailVerified: true, ...user,
       } as UserRecord)
     : null;
   return { findById: async () => record } as unknown as UsersRepository;

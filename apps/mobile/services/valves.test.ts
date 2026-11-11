@@ -95,23 +95,40 @@ test('valves: stateEncoding — un valor NO declarado no se interpreta (no cae a
 
 test('valves: stateEncoding — también sirve para declarar el valor de abierta', () => {
   const enc = { stateEncoding: { closed: 251, open: 1056 } };
-  assert.equal(valvesFromSnapshot(snap({ valve1: sig(0), valve1State: sig(1056, enc) }))[0].byState, 'open');
-  assert.equal(valvesFromSnapshot(snap({ valve1: sig(0), valve1State: sig(251, enc) }))[0].byState, 'closed');
+  assert.equal(
+    valvesFromSnapshot(snap({ valve1: sig(0), valve1State: sig(1056, enc) }))[0].byState,
+    'open',
+  );
+  assert.equal(
+    valvesFromSnapshot(snap({ valve1: sig(0), valve1State: sig(251, enc) }))[0].byState,
+    'closed',
+  );
 });
 
 test('valves: sin stateEncoding se conserva la regla de bits de siempre', () => {
-  assert.equal(valvesFromSnapshot(snap({ valve1: sig(0), valve1State: sig(16384) }))[0].byState, 'closed');
-  assert.equal(valvesFromSnapshot(snap({ valve1: sig(0), valve1State: sig(251) }))[0].byState, null);
+  assert.equal(
+    valvesFromSnapshot(snap({ valve1: sig(0), valve1State: sig(16384) }))[0].byState,
+    'closed',
+  );
+  assert.equal(
+    valvesFromSnapshot(snap({ valve1: sig(0), valve1State: sig(251) }))[0].byState,
+    null,
+  );
 });
 
 function voragine(word: number | null) {
-  return valvesFromSnapshot(snap({
-    valve1: sig(4096, { commands: ['open', 'close'], flowDomainKey: 'outletFlow1' }),
-    valve2: sig(4096, { commands: ['open', 'close'], flowDomainKey: 'inletFlow1' }),
-    valve1State: sig(word, { stateEncoding: { bits: { open: 1024, close: 2048, fault: 16384 } } }),
-    valve2State: sig(word, { stateEncoding: { bits: { open: 1, close: 2, fault: 16 } } }),
-    inletFlow1: sig(0), outletFlow1: sig(50),
-  }));
+  return valvesFromSnapshot(
+    snap({
+      valve1: sig(4096, { commands: ['open', 'close'], flowDomainKey: 'outletFlow1' }),
+      valve2: sig(4096, { commands: ['open', 'close'], flowDomainKey: 'inletFlow1' }),
+      valve1State: sig(word, {
+        stateEncoding: { bits: { open: 1024, close: 2048, fault: 16384 } },
+      }),
+      valve2State: sig(word, { stateEncoding: { bits: { open: 1, close: 2, fault: 16 } } }),
+      inletFlow1: sig(0),
+      outletFlow1: sig(50),
+    }),
+  );
 }
 
 test('Vorágine: 0x4001 indica entrada abierta y falla de salida, sin inventar posición por caudal', () => {
@@ -143,22 +160,33 @@ test('Vorágine: finales de carrera distinguen salida abierta, cerrada y realime
 });
 
 test('Vorágine: la decodificación usa las máscaras del mapping de producción, no posiciones de bit', () => {
-  const mapping = JSON.parse(readFileSync(new URL('../../api/config/opc_mapping.json', import.meta.url), 'utf8'));
+  const mapping = JSON.parse(
+    readFileSync(new URL('../../api/config/opc_mapping.json', import.meta.url), 'utf8'),
+  );
   const plant = mapping.plants.find((p: { plantId: string }) => p.plantId === 'voragine');
   assert.ok(plant);
-  const signals = plant.signals as Array<{ domainKey: string; stateEncoding?: SignalDto['stateEncoding'] }>;
+  const signals = plant.signals as {
+    domainKey: string;
+    stateEncoding?: SignalDto['stateEncoding'];
+  }[];
   const outletEncoding = signals.find((s) => s.domainKey === 'valve1State')?.stateEncoding;
   const inletEncoding = signals.find((s) => s.domainKey === 'valve2State')?.stateEncoding;
   assert.deepEqual(outletEncoding?.bits, { open: 1024, close: 2048, fault: 16384 });
   assert.deepEqual(inletEncoding?.bits, { open: 1, close: 2, fault: 16 });
-  for (const [word, outletState, outletFault] of [[16385, 'unknown', true], [1025, 'open', false], [2049, 'closed', false]] as const) {
-    const [outlet, inlet] = valvesFromSnapshot(snap({
-      valve1: sig(4096, { commands: ['open', 'close'] }),
-      valve2: sig(4096, { commands: ['open', 'close'] }),
-      valve1State: sig(word, { stateEncoding: outletEncoding }),
-      valve2State: sig(word, { stateEncoding: inletEncoding }),
-      outletFlow1: sig(50),
-    }));
+  for (const [word, outletState, outletFault] of [
+    [16385, 'unknown', true],
+    [1025, 'open', false],
+    [2049, 'closed', false],
+  ] as const) {
+    const [outlet, inlet] = valvesFromSnapshot(
+      snap({
+        valve1: sig(4096, { commands: ['open', 'close'] }),
+        valve2: sig(4096, { commands: ['open', 'close'] }),
+        valve1State: sig(word, { stateEncoding: outletEncoding }),
+        valve2State: sig(word, { stateEncoding: inletEncoding }),
+        outletFlow1: sig(50),
+      }),
+    );
     assert.equal(outlet.state, outletState);
     assert.equal(outlet.fault, outletFault);
     assert.equal(inlet.state, 'open');
@@ -166,18 +194,36 @@ test('Vorágine: la decodificación usa las máscaras del mapping de producción
 });
 
 test('interpretCommand: falla PLC explica bloqueo antes y después de escribir sin afirmar posición', () => {
-  const rejected = interpretCommand({ status: 'rejected', reason: 'INTERLOCK_FAILED: VALVE_FAULT' } as ValveCommandResult, 'open', 'Salida');
+  const rejected = interpretCommand(
+    { status: 'rejected', reason: 'INTERLOCK_FAILED: VALVE_FAULT' } as ValveCommandResult,
+    'open',
+    'Salida',
+  );
   assert.equal(rejected.signalSent, false);
   assert.equal(rejected.ok, false);
   assert.match(rejected.message, /PLC reporta una falla/);
   assert.match(rejected.message, /No se envió/);
-  const failed = interpretCommand({ status: 'failed', reason: 'VALVE_FAULT' } as ValveCommandResult, 'close', 'Salida');
+  const failed = interpretCommand(
+    { status: 'failed', reason: 'VALVE_FAULT' } as ValveCommandResult,
+    'close',
+    'Salida',
+  );
   assert.equal(failed.ok, false);
   assert.match(failed.message, /no se confirma movimiento/);
 });
 
 test('interpretCommand: orden sostenida aceptada con realimentación pendiente no afirma posición ni ausencia de señal', () => {
-  const result = interpretCommand({ status: 'sent', reason: 'SENT_FEEDBACK_PENDING', writtenValue: 4096, writeEcho: 4096, writeVerified: true } as ValveCommandResult, 'open', 'Salida');
+  const result = interpretCommand(
+    {
+      status: 'sent',
+      reason: 'SENT_FEEDBACK_PENDING',
+      writtenValue: 4096,
+      writeEcho: 4096,
+      writeVerified: true,
+    } as ValveCommandResult,
+    'open',
+    'Salida',
+  );
   assert.equal(result.ok, true);
   assert.equal(result.signalSent, true);
   assert.equal(result.tone, 'warning');
@@ -194,7 +240,9 @@ test('valves: método 1 — sin bit14 el PLC no reporta estado válido → no se
 
 // ── Método 2: caudal ──
 test('valves: método 2 — caudal <= 0.1 → CERRADA; por encima → ABIERTA', () => {
-  const cerrada = valvesFromSnapshot(snap({ valve1: sig(0), outletFlow1: sig(FLOW_CLOSED_THRESHOLD) }))[0];
+  const cerrada = valvesFromSnapshot(
+    snap({ valve1: sig(0), outletFlow1: sig(FLOW_CLOSED_THRESHOLD) }),
+  )[0];
   assert.equal(cerrada.byFlow, 'closed');
   assert.equal(cerrada.source, 'caudal', 'sin palabra de estado, el veredicto sale del caudal');
 
@@ -203,7 +251,9 @@ test('valves: método 2 — caudal <= 0.1 → CERRADA; por encima → ABIERTA', 
 });
 
 test('valves: método 2 usa la SALIDA si existe, y cae a la entrada si no', () => {
-  const conSalida = valvesFromSnapshot(snap({ valve1: sig(0), inletFlow1: sig(9), outletFlow1: sig(0.05) }))[0];
+  const conSalida = valvesFromSnapshot(
+    snap({ valve1: sig(0), inletFlow1: sig(9), outletFlow1: sig(0.05) }),
+  )[0];
   assert.equal(conSalida.byFlow, 'closed', 'debe mandar el caudal de salida');
   const soloEntrada = valvesFromSnapshot(snap({ valve1: sig(0), inletFlow1: sig(9) }))[0];
   assert.equal(soloEntrada.byFlow, 'open');
@@ -211,20 +261,30 @@ test('valves: método 2 usa la SALIDA si existe, y cae a la entrada si no', () =
 
 // ── Cruce de los dos métodos ──
 test('valves: el método 1 MANDA sobre el 2 cuando ambos existen', () => {
-  const v = valvesFromSnapshot(snap({ valve1: sig(0), valve1State: sig(16385), outletFlow1: sig(0) }))[0];
+  const v = valvesFromSnapshot(
+    snap({ valve1: sig(0), valve1State: sig(16385), outletFlow1: sig(0) }),
+  )[0];
   assert.equal(v.state, 'open', 'la lectura del equipo tiene prioridad');
   assert.equal(v.source, 'estado');
 });
 
 test('valves: si los dos métodos DISCREPAN se marca (no se oculta)', () => {
-  const v = valvesFromSnapshot(snap({ valve1: sig(0), valve1State: sig(16385), outletFlow1: sig(0) }))[0];
+  const v = valvesFromSnapshot(
+    snap({ valve1: sig(0), valve1State: sig(16385), outletFlow1: sig(0) }),
+  )[0];
   assert.equal(v.byState, 'open');
   assert.equal(v.byFlow, 'closed');
-  assert.equal(v.disagreement, true, 'estado abierta + caudal 0 es una inconsistencia que hay que avisar');
+  assert.equal(
+    v.disagreement,
+    true,
+    'estado abierta + caudal 0 es una inconsistencia que hay que avisar',
+  );
 });
 
 test('valves: si coinciden, no hay discrepancia', () => {
-  const v = valvesFromSnapshot(snap({ valve1: sig(0), valve1State: sig(16384), outletFlow1: sig(0) }))[0];
+  const v = valvesFromSnapshot(
+    snap({ valve1: sig(0), valve1State: sig(16384), outletFlow1: sig(0) }),
+  )[0];
   assert.equal(v.disagreement, false);
 });
 
@@ -235,7 +295,9 @@ test('valves: sin estado ni caudal → unknown y se dice que no hay fuente', () 
 });
 
 test('valves: una señal no usable no se toma como lectura válida', () => {
-  const v = valvesFromSnapshot(snap({ valve1: sig(0), valve1State: sig(16385, { usable: false }) }))[0];
+  const v = valvesFromSnapshot(
+    snap({ valve1: sig(0), valve1State: sig(16385, { usable: false }) }),
+  )[0];
   assert.equal(v.byState, null);
 });
 
@@ -243,7 +305,10 @@ test('valves: varias válvulas se ordenan por número', () => {
   const vs = valvesFromSnapshot(
     snap({ valve2: sig(0), valve1: sig(0), valve2State: sig(16385), valve1State: sig(16384) }),
   );
-  assert.deepEqual(vs.map((v) => v.id), ['valve1', 'valve2']);
+  assert.deepEqual(
+    vs.map((v) => v.id),
+    ['valve1', 'valve2'],
+  );
   assert.equal(vs[1].state, 'open');
 });
 
@@ -258,8 +323,15 @@ test('valves: isValveSignal reconoce comando y estado (para no duplicar en el ta
 // "no funcionó" — es "salió y el equipo no acusó el cambio" (probable falla física).
 function res(over: Partial<ValveCommandResult>): ValveCommandResult {
   return {
-    http: 200, status: 'confirmed', reason: null, previousValue: 0, writtenValue: 4096,
-    confirmedValue: 16385, writeEcho: 4096, writeVerified: true, ...over,
+    http: 200,
+    status: 'confirmed',
+    reason: null,
+    previousValue: 0,
+    writtenValue: 4096,
+    confirmedValue: 16385,
+    writeEcho: 4096,
+    writeVerified: true,
+    ...over,
   };
 }
 
@@ -271,7 +343,13 @@ test('interpretCommand: confirmado → ok y señal enviada', () => {
 
 test('interpretCommand: 502 con eco verificado → escritura verificada, estado incierto', () => {
   const v = interpretCommand(
-    res({ http: 502, status: 'failed', reason: 'READBACK_UNCONFIRMED', confirmedValue: 16384, writeVerified: true }),
+    res({
+      http: 502,
+      status: 'failed',
+      reason: 'READBACK_UNCONFIRMED',
+      confirmedValue: 16384,
+      writeVerified: true,
+    }),
     'open',
     'Válvula 1',
   );
@@ -280,17 +358,35 @@ test('interpretCommand: 502 con eco verificado → escritura verificada, estado 
   assert.match(v.message, /no se pudo confirmar el estado/);
   assert.doesNotMatch(v.message, /trabada|sin energía|no cambió de estado/);
   assert.equal(v.tone, 'danger');
-  assert.match(String(v.technical), /verificado/, 'el detalle técnico existe, pero fuera de la frase');
+  assert.match(
+    String(v.technical),
+    /verificado/,
+    'el detalle técnico existe, pero fuera de la frase',
+  );
 });
 
 test('interpretCommand: tiempo de realimentación agotado explica el motivo sin afirmar el estado', () => {
-  const v = interpretCommand(res({ status: 'failed', reason: 'HOLD_FEEDBACK_TIMEOUT', writeVerified: true }), 'open', 'V1');
+  const v = interpretCommand(
+    res({ status: 'failed', reason: 'HOLD_FEEDBACK_TIMEOUT', writeVerified: true }),
+    'open',
+    'V1',
+  );
   assert.match(v.message, /realimentación/);
   assert.match(v.message, /no se pudo confirmar el estado/);
 });
 
 test('interpretCommand: WRITE_REJECTED no descarta escritura parcial', () => {
-  const v = interpretCommand(res({ http: 502, status: 'failed', reason: 'WRITE_REJECTED', writeVerified: null, writtenValue: null }), 'close', 'Válvula 1');
+  const v = interpretCommand(
+    res({
+      http: 502,
+      status: 'failed',
+      reason: 'WRITE_REJECTED',
+      writeVerified: null,
+      writtenValue: null,
+    }),
+    'close',
+    'Válvula 1',
+  );
   assert.equal(v.signalSent, false);
   assert.match(v.message, /no se puede descartar/i);
   assert.match(v.message, /antes de volver a operar/i);
@@ -303,12 +399,24 @@ test('interpretCommand: respuesta inesperada no afirma que la orden fue rechazad
 });
 
 test('interpretCommand: interlock y permisos se explican sin culpar al equipo', () => {
-  const il = interpretCommand(res({ http: 409, status: 'rejected', reason: 'INTERLOCK_FAILED: snapshot frozen' }), 'open', 'V1');
+  const il = interpretCommand(
+    res({ http: 409, status: 'rejected', reason: 'INTERLOCK_FAILED: snapshot frozen' }),
+    'open',
+    'V1',
+  );
   assert.equal(il.signalSent, false);
   assert.match(il.title, /sin conexión/i);
-  assert.equal(il.technical, 'INTERLOCK_FAILED: snapshot frozen', 'el código va aparte, para reportarlo');
+  assert.equal(
+    il.technical,
+    'INTERLOCK_FAILED: snapshot frozen',
+    'el código va aparte, para reportarlo',
+  );
   assert.doesNotMatch(il.message, /INTERLOCK_FAILED/, 'y NUNCA dentro de la frase');
-  const fb = interpretCommand(res({ http: 403, status: 'rejected', reason: 'FORBIDDEN' }), 'open', 'V1');
+  const fb = interpretCommand(
+    res({ http: 403, status: 'rejected', reason: 'FORBIDDEN' }),
+    'open',
+    'V1',
+  );
   assert.match(fb.title, /permiso/i);
 });
 
@@ -336,7 +444,11 @@ test('detectManual: si el PLC SÍ reportó el cambio, fue eléctrico (no manual)
 
 test('detectManual: sin cambio de lado del caudal no hay evento', () => {
   assert.equal(detectManual('open', 'open', 'open', 'open', false), null);
-  assert.equal(detectManual(null, 'open', null, null, false), null, 'sin lectura previa no se juzga');
+  assert.equal(
+    detectManual(null, 'open', null, null, false),
+    null,
+    'sin lectura previa no se juzga',
+  );
 });
 
 // ── Qué caudal corresponde a cada válvula ────────────────────────────────────
@@ -359,13 +471,19 @@ test('valves: elegir el caudal equivocado miente — válvula de SALIDA con la e
   // El caso real que protege esto: la válvula de salida está cerrada y la entrada sigue llenando
   // el tanque. Mirar la entrada diría ABIERTA con la válvula cerrada.
   const v = valvesFromSnapshot(
-    snap({ valve1: sig(0, { flowDomainKey: 'outletFlow1' }), inletFlow1: sig(23.3), outletFlow1: sig(0) }),
+    snap({
+      valve1: sig(0, { flowDomainKey: 'outletFlow1' }),
+      inletFlow1: sig(23.3),
+      outletFlow1: sig(0),
+    }),
   )[0];
   assert.equal(v.byFlow, 'closed');
 });
 
 test('valves: sin flowDomainKey se conserva la preferencia de siempre (salida primero)', () => {
-  const v = valvesFromSnapshot(snap({ valve1: sig(0), inletFlow1: sig(0), outletFlow1: sig(19.6) }))[0];
+  const v = valvesFromSnapshot(
+    snap({ valve1: sig(0), inletFlow1: sig(0), outletFlow1: sig(19.6) }),
+  )[0];
   assert.equal(v.byFlow, 'open', 'sin declaración explícita manda el caudal de salida');
 });
 
@@ -416,13 +534,23 @@ test('valves: stateTrusted:false → la palabra NO decide, pero se sigue viendo 
 
 test('valves: stateTrusted:false no marca discrepancia (no hay dos veredictos que comparar)', () => {
   const v = valvesFromSnapshot(
-    snap({ valve1: sig(0), valve1State: sig(16384, { stateTrusted: false }), outletFlow1: sig(19.6) }),
+    snap({
+      valve1: sig(0),
+      valve1State: sig(16384, { stateTrusted: false }),
+      outletFlow1: sig(19.6),
+    }),
   )[0];
-  assert.equal(v.disagreement, false, 'la palabra no opina, asi que no puede contradecir al caudal');
+  assert.equal(
+    v.disagreement,
+    false,
+    'la palabra no opina, asi que no puede contradecir al caudal',
+  );
 });
 
 test('valves: sin stateTrusted la palabra sigue mandando (las demás plantas no cambian)', () => {
-  const v = valvesFromSnapshot(snap({ valve1: sig(0), valve1State: sig(16384), outletFlow1: sig(19.6) }))[0];
+  const v = valvesFromSnapshot(
+    snap({ valve1: sig(0), valve1State: sig(16384), outletFlow1: sig(19.6) }),
+  )[0];
   assert.equal(v.byState, 'closed');
   assert.equal(v.source, 'estado');
 });
@@ -443,8 +571,14 @@ const DOS_VALVULAS = {
 test('valves: una planta con dos válvulas devuelve las dos, ordenadas y con su nombre', () => {
   const v = valvesFromSnapshot(snap(DOS_VALVULAS));
   assert.equal(v.length, 2);
-  assert.deepEqual(v.map((x) => x.id), ['valve1', 'valve2']);
-  assert.deepEqual(v.map((x) => x.name), ['Válvula de salida', 'Válvula de entrada']);
+  assert.deepEqual(
+    v.map((x) => x.id),
+    ['valve1', 'valve2'],
+  );
+  assert.deepEqual(
+    v.map((x) => x.name),
+    ['Válvula de salida', 'Válvula de entrada'],
+  );
 });
 
 test('valves: cada válvula se juzga con SU caudal, no con el de la otra', () => {
@@ -461,7 +595,11 @@ test('valves: la de entrada CERRADA no se contagia del caudal de salida', () => 
   const [, entrada] = valvesFromSnapshot(
     snap({ ...DOS_VALVULAS, inletFlow1: sig(0), outletFlow1: sig(12.4) }),
   );
-  assert.equal(entrada.state, 'closed', 'su caudal es 0: está cerrada aunque salga agua del tanque');
+  assert.equal(
+    entrada.state,
+    'closed',
+    'su caudal es 0: está cerrada aunque salga agua del tanque',
+  );
 });
 
 test('valves: commandable false solo en la que no tiene mando; ausente = accionable', () => {
@@ -496,7 +634,11 @@ test('interpretCommand: ningún desenlace suelta jerga en el texto que se lee', 
 // movió. Con `ok` booleano se pintaba VERDE con un tick sobre un texto que pedía ir a comprobarlo en
 // planta. El semáforo ganaba y nadie iba.
 test('interpretCommand: «no se pudo confirmar» es ÁMBAR, nunca verde', () => {
-  const v = interpretCommand(res({ http: 202, status: 'sent', writeVerified: true, writtenValue: 4096 }), 'open', 'V1');
+  const v = interpretCommand(
+    res({ http: 202, status: 'sent', writeVerified: true, writtenValue: 4096 }),
+    'open',
+    'V1',
+  );
   assert.equal(v.tone, 'warning');
   assert.notEqual(v.tone, 'success', 'un tick verde convierte «ve a mirar» en «ya está»');
   assert.equal(v.title, 'Orden enviada correctamente');
@@ -513,11 +655,24 @@ test('interpretCommand: «no se pudo confirmar» es ÁMBAR, nunca verde', () => 
 /** Válvula mínima para probar la puerta; solo varían estado, verbos y canal. */
 function valvula(over: Partial<ReturnType<typeof valvesFromSnapshot>[number]> = {}) {
   return {
-    id: 'valve1', name: 'Válvula 1', kind: 'onoff' as const, positionPct: null,
-    state: 'closed' as const, source: 'estado' as const,
-    byState: 'closed' as const, byFlow: null, flowValue: null, flowUnit: null, flowLabel: null,
-    disagreement: false, commandable: true, commands: ['open', 'close'], rawState: null, ts: null,
-    effectiveState: 'closed' as const, manualOverride: false,
+    id: 'valve1',
+    name: 'Válvula 1',
+    kind: 'onoff' as const,
+    positionPct: null,
+    state: 'closed' as const,
+    source: 'estado' as const,
+    byState: 'closed' as const,
+    byFlow: null,
+    flowValue: null,
+    flowUnit: null,
+    flowLabel: null,
+    disagreement: false,
+    commandable: true,
+    commands: ['open', 'close'],
+    rawState: null,
+    ts: null,
+    effectiveState: 'closed' as const,
+    manualOverride: false,
     ...over,
   } as ReturnType<typeof valvesFromSnapshot>[number];
 }
@@ -567,7 +722,12 @@ test('accion: congelada manda sobre todo lo demas (no revela otro motivo antes)'
 // estado salga de la apertura, y que NO se ofrezca un abrir/cerrar que no es la orden que entiende.
 
 function apertura(value: number | null, over: Partial<SignalDto> = {}): SignalDto {
-  return sig(value, { unit: '%', label: 'Válvula de salida', flowDomainKey: 'outletFlow1', ...over });
+  return sig(value, {
+    unit: '%',
+    label: 'Válvula de salida',
+    flowDomainKey: 'outletFlow1',
+    ...over,
+  });
 }
 
 /** Motivo del bloqueo, o null si la acción no está bloqueada. */
@@ -582,9 +742,18 @@ test('mando explícito: elige dirección sin inventar estado y conserva los bloq
   const valve = valvula({ state: 'unknown', commands: ['open', 'close'] });
   assert.deepEqual(accionDisponible(valve, false, 'open'), { kind: 'command', verb: 'open' });
   assert.equal(motivo(accionDisponible(valve, true, 'open')), 'frozen');
-  assert.equal(motivo(accionDisponible({ ...valve, commandable: false }, false, 'open')), 'no-channel');
-  assert.equal(motivo(accionDisponible({ ...valve, commands: ['open'] }, false, 'close')), 'verb-missing');
-  assert.equal(motivo(accionDisponible({ ...valve, kind: 'proportional' }, false, 'open')), 'setpoint-pending');
+  assert.equal(
+    motivo(accionDisponible({ ...valve, commandable: false }, false, 'open')),
+    'no-channel',
+  );
+  assert.equal(
+    motivo(accionDisponible({ ...valve, commands: ['open'] }, false, 'close')),
+    'verb-missing',
+  );
+  assert.equal(
+    motivo(accionDisponible({ ...valve, kind: 'proportional' }, false, 'open')),
+    'setpoint-pending',
+  );
 });
 
 function motivo(a: ReturnType<typeof accionDisponible>): string | null {
@@ -599,7 +768,11 @@ test('proporcional: con solo valve1Position aparece, es proporcional y NO es acc
   assert.equal(v.kind, 'proportional');
   assert.equal(v.positionPct, 47.3);
   assert.equal(v.name, 'Válvula de salida', 'el nombre sale del label de la apertura');
-  assert.equal(v.commandable, false, 'sin valve1 no hay por dónde mandar: la trampa de «ausente ⇒ accionable»');
+  assert.equal(
+    v.commandable,
+    false,
+    'sin valve1 no hay por dónde mandar: la trampa de «ausente ⇒ accionable»',
+  );
   assert.deepEqual(v.commands, []);
   assert.equal(v.state, 'open');
   assert.equal(v.source, 'posicion');
@@ -612,9 +785,14 @@ test('proporcional: sin label usa «Válvula N», igual que las on/off', () => {
 });
 
 test('proporcional: CERRADA hasta el umbral inclusive; abierta justo por encima', () => {
-  const estado = (pct: number) => valvesFromSnapshot(snap({ valve1Position: apertura(pct) }))[0].state;
+  const estado = (pct: number) =>
+    valvesFromSnapshot(snap({ valve1Position: apertura(pct) }))[0].state;
   assert.equal(estado(0), 'closed');
-  assert.equal(estado(POSITION_CLOSED_THRESHOLD_PCT), 'closed', 'en el umbral cuenta como cerrada (<=), como el caudal');
+  assert.equal(
+    estado(POSITION_CLOSED_THRESHOLD_PCT),
+    'closed',
+    'en el umbral cuenta como cerrada (<=), como el caudal',
+  );
   assert.equal(estado(POSITION_CLOSED_THRESHOLD_PCT + 0.1), 'open');
   assert.equal(estado(100), 'open');
 });
@@ -635,10 +813,16 @@ test('proporcional: congelada sigue mandando frozen (la puerta nueva va DESPUÉS
 });
 
 test('proporcional: aunque algún día declare valve1, sigue sin ofrecer abrir/cerrar', () => {
-  const [v] = valvesFromSnapshot(snap({ valve1: sig(0, { commands: ['open', 'close'] }), valve1Position: apertura(30) }));
+  const [v] = valvesFromSnapshot(
+    snap({ valve1: sig(0, { commands: ['open', 'close'] }), valve1Position: apertura(30) }),
+  );
   assert.equal(v.kind, 'proportional');
   assert.equal(v.commandable, true, 'con valve1 hay canal...');
-  assert.equal(motivo(accionDisponible(v, false)), 'setpoint-pending', '...pero la orden que entiende es una consigna');
+  assert.equal(
+    motivo(accionDisponible(v, false)),
+    'setpoint-pending',
+    '...pero la orden que entiende es una consigna',
+  );
 });
 
 test('proporcional: apertura inusable y sin caudal → unknown, sin inventar un %', () => {
@@ -650,7 +834,9 @@ test('proporcional: apertura inusable y sin caudal → unknown, sin inventar un 
 });
 
 test('proporcional: apertura inusable con caudal → cae al caudal, como una on/off sin palabra', () => {
-  const [v] = valvesFromSnapshot(snap({ valve1Position: apertura(50, { usable: false }), outletFlow1: sig(8) }));
+  const [v] = valvesFromSnapshot(
+    snap({ valve1Position: apertura(50, { usable: false }), outletFlow1: sig(8) }),
+  );
   assert.equal(v.positionPct, null);
   assert.equal(v.state, 'open');
   assert.equal(v.source, 'caudal');
@@ -662,12 +848,20 @@ test('proporcional: apertura y caudal que DISCREPAN se marcan; la apertura manda
   assert.equal(v.state, 'closed', 'manda la apertura, que es la lectura del propio equipo');
   assert.equal(v.source, 'posicion');
   assert.equal(v.byFlow, 'open');
-  assert.equal(v.disagreement, true, 'cerrada al 0 % con 23 l/s: hay que avisarlo, no elegir en silencio');
+  assert.equal(
+    v.disagreement,
+    true,
+    'cerrada al 0 % con 23 l/s: hay que avisarlo, no elegir en silencio',
+  );
 });
 
 test('proporcional: el caudal que corrobora es el que declara SU apertura (flowDomainKey)', () => {
   const [v] = valvesFromSnapshot(
-    snap({ valve1Position: apertura(60, { flowDomainKey: 'inletFlow1' }), inletFlow1: sig(0), outletFlow1: sig(20) }),
+    snap({
+      valve1Position: apertura(60, { flowDomainKey: 'inletFlow1' }),
+      inletFlow1: sig(0),
+      outletFlow1: sig(20),
+    }),
   );
   assert.equal(v.byFlow, 'closed', 'miró la entrada declarada, no la salida por defecto');
   assert.equal(v.flowLabel, 'inletFlow1');
@@ -678,14 +872,27 @@ test('proporcional: planta mixta — salida proporcional (valve1) y entrada on/o
   const vs = valvesFromSnapshot(
     snap({
       valve1Position: apertura(35),
-      valve2: sig(0, { label: 'Válvula de entrada', flowDomainKey: 'inletFlow1', commands: ['open', 'close'] }),
+      valve2: sig(0, {
+        label: 'Válvula de entrada',
+        flowDomainKey: 'inletFlow1',
+        commands: ['open', 'close'],
+      }),
       outletFlow1: sig(1.6),
       inletFlow1: sig(6.9),
     }),
   );
-  assert.deepEqual(vs.map((v) => v.id), ['valve1', 'valve2']);
-  assert.deepEqual(vs.map((v) => v.kind), ['proportional', 'onoff']);
-  assert.deepEqual(vs.map((v) => v.name), ['Válvula de salida', 'Válvula de entrada']);
+  assert.deepEqual(
+    vs.map((v) => v.id),
+    ['valve1', 'valve2'],
+  );
+  assert.deepEqual(
+    vs.map((v) => v.kind),
+    ['proportional', 'onoff'],
+  );
+  assert.deepEqual(
+    vs.map((v) => v.name),
+    ['Válvula de salida', 'Válvula de entrada'],
+  );
   const [salida, entrada] = vs;
   assert.equal(salida.commandable, false);
   assert.equal(salida.flowValue, 1.6, 'la salida se corrobora con su caudal');
@@ -717,7 +924,11 @@ test('proporcional: no se le aplica la detección de operación manual de las on
 
 test('proporcional: texto y barra de la apertura', () => {
   assert.equal(textoApertura(47.3), 'Apertura 47 %');
-  assert.equal(textoApertura(2.4), 'Apertura 2,4 %', 'cerca del umbral no se redondea a un número que contradiga el badge');
+  assert.equal(
+    textoApertura(2.4),
+    'Apertura 2,4 %',
+    'cerca del umbral no se redondea a un número que contradiga el badge',
+  );
   assert.equal(textoApertura(0), 'Apertura 0 %');
   assert.equal(textoApertura(null), 'Apertura sin dato');
   assert.equal(anchoBarraApertura(120), 100, 'la barra no crece más allá del 100 %');
@@ -736,11 +947,23 @@ test('presentación: caudal cero o positivo no afirma una posición física', ()
   assert.equal(displayValve(closedByFlow).physicalState, 'unknown');
   assert.equal(displayValve(openByFlow).label, 'Con flujo');
   assert.equal(displayValve(openByFlow).physicalState, 'unknown');
-  assert.equal(accionDisponible({ ...openByFlow, commands: ['open', 'close'] }, false, 'open').kind, 'command', 'la aclaración no bloquea un mando normal explícito');
+  assert.equal(
+    accionDisponible({ ...openByFlow, commands: ['open', 'close'] }, false, 'open').kind,
+    'command',
+    'la aclaración no bloquea un mando normal explícito',
+  );
 });
 
 test('presentación: finales/posición y falla conservan prioridad sobre el caudal', () => {
-  const measured = valvesFromSnapshot(snap({ valve1: sig(0), valve1State: sig(1025, { stateEncoding: { bits: { open: 1024, close: 2048, fault: 16384 } } }), outletFlow1: sig(0) }))[0];
+  const measured = valvesFromSnapshot(
+    snap({
+      valve1: sig(0),
+      valve1State: sig(1025, {
+        stateEncoding: { bits: { open: 1024, close: 2048, fault: 16384 } },
+      }),
+      outletFlow1: sig(0),
+    }),
+  )[0];
   assert.equal(displayValve(measured).label, 'Abierta');
   assert.equal(displayValve(measured).physicalState, 'open');
   assert.equal(displayValve({ ...measured, fault: true }).label, 'Falla');
@@ -757,13 +980,16 @@ test('presentación: un override por caudal no se cuenta como final de carrera',
 
 test('resumen: separa posiciones leídas, inferencias por caudal y fallas', () => {
   const base = valvesFromSnapshot(snap({ valve1: sig(0), outletFlow1: sig(1) }))[0];
-  assert.deepEqual(summarizeValves([
-    { ...base, source: 'estado', state: 'open' },
-    { ...base, source: 'posicion', state: 'closed' },
-    { ...base, source: 'caudal', state: 'open' },
-    { ...base, source: 'ninguno', state: 'unknown' },
-    { ...base, source: 'estado', state: 'open', fault: true },
-  ]), { openCount: 1, closedCount: 1, unconfirmedCount: 2, faultCount: 1 });
+  assert.deepEqual(
+    summarizeValves([
+      { ...base, source: 'estado', state: 'open' },
+      { ...base, source: 'posicion', state: 'closed' },
+      { ...base, source: 'caudal', state: 'open' },
+      { ...base, source: 'ninguno', state: 'unknown' },
+      { ...base, source: 'estado', state: 'open', fault: true },
+    ]),
+    { openCount: 1, closedCount: 1, unconfirmedCount: 2, faultCount: 1 },
+  );
 });
 
 test('memo: cambiar de caudal inferido a posición leída repinta aunque siga figurando abierta', () => {
