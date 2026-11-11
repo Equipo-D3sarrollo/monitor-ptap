@@ -107,15 +107,13 @@ export function useValveSupervisor(plantId: string, valves: ValveView[]) {
    * respuesta lo corrige. Se avisa cuando ya estaba en ese estado.
    */
   const send = useCallback(
-    async (valve: SupervisedValve, verb: 'open' | 'close' | 'setpoint', value?: number): Promise<CommandVerdict> => {
+    async (valve: SupervisedValve, verb: 'open' | 'close'): Promise<CommandVerdict> => {
       setBusy(valve.id);
       lastCommandAt.current[valve.id] = Date.now();
-      // «Ya estaba» solo tiene sentido en abrir/cerrar: una consigna siempre lleva su número.
-      const yaEstaba = verb !== 'setpoint' && valve.effectiveState === (verb === 'open' ? 'open' : 'closed');
+      const yaEstaba = valve.effectiveState === (verb === 'open' ? 'open' : 'closed');
       try {
-        const res = await sendValveCommand(plantId, verb, valve.id, verb === 'setpoint' ? value : undefined);
-        const verdict = interpretCommand(res, verb, valve.name,
-          verb === 'setpoint' && value !== undefined ? { value, unit: valve.setpoint?.unit ?? null } : undefined);
+        const res = await sendValveCommand(plantId, verb, valve.id);
+        const verdict = interpretCommand(res, verb, valve.name);
         const evidence = presentacionDeValvula(valve);
         const message = yaEstaba && evidence.kind !== 'fault' && evidence.kind !== 'unknown'
           ? `La lectura previa indicaba: ${evidence.label.toUpperCase()}.\n\n${verdict.message}`

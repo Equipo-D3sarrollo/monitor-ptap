@@ -6,8 +6,6 @@ export const commandRequestSchema = z
   .object({
     command: z.string().min(1).max(64),
     target: z.string().min(1).max(64),
-    /** Solo con `command: "setpoint"` (Fase 4): la consigna. Límites y redondeo los aplica el WriteService. */
-    value: z.number().optional(),
     idempotencyKey: z.string().min(1).max(120).optional(),
   })
   .strict();
@@ -29,20 +27,7 @@ export const REJECT = {
   FORBIDDEN: 'FORBIDDEN',
   INTERLOCK_FAILED: 'INTERLOCK_FAILED',
   IN_PROGRESS: 'IN_PROGRESS',
-  /** `setpoint` sin `value`, o `value` en un verbo que no lo admite (open/close). */
-  VALUE_REQUIRED: 'VALUE_REQUIRED',
-  /** Consigna fuera de los límites del mapping (o no finita). Aquora no delega en la saturación del PLC. */
-  VALUE_OUT_OF_RANGE: 'VALUE_OUT_OF_RANGE',
-  /**
-   * La palabra de consigna YA contiene un valor fuera de [min, max] (p. ej. 257 = bits): puede que otro
-   * equipo la use. Escribirla en absoluto pisaría esos bits, así que no se escribe nada.
-   */
-  SETPOINT_WORD_IN_USE: 'SETPOINT_WORD_IN_USE',
 } as const;
-
-/** Texto del rechazo `SETPOINT_WORD_IN_USE`: va en `reason` tras el código, como los de interlock. */
-export const MENSAJE_PALABRA_EN_USO =
-  'La palabra de consigna contiene un valor fuera de rango: posible uso por otro equipo; verificar con el integrador';
 
 export const FAIL = {
   /** Se escribió (write aceptado) pero el canal de ESTADO no confirmó dentro del timeout. */
@@ -108,12 +93,6 @@ export const SENT = {
    * tras un reinicio, qué órdenes se quedaron sin resultado (ver `FAIL.HOLD_INTERRUPTED`).
    */
   SENT_HOLDING_UNTIL_FEEDBACK: 'SENT_HOLDING_UNTIL_FEEDBACK',
-  /**
-   * CONSIGNA (Fase 4): el valor quedó escrito (eco verificado) pero la apertura medida no llegó a
-   * ±tolerancia dentro de `timeoutMs`. La consigna se queda puesta; la apertura real sigue llegando
-   * por la telemetría. No es un fallo: la rampa del actuador es desconocida.
-   */
-  SENT_POSITION_PENDING: 'SENT_POSITION_PENDING',
 } as const;
 
 /** Resultado del sostenido con realimentación: lo que va al aviso, a la auditoría y a `command_log`. */
@@ -175,8 +154,8 @@ export function httpStatusForCommand(result: CommandResult): number {
   if (result.status === 'failed') return 502;
   const reason = result.reason ?? '';
   if (reason === REJECT.FORBIDDEN || reason === REJECT.WRITES_DISABLED_INSECURE_SESSION) return 403;
-  if (reason === REJECT.UNKNOWN_COMMAND || reason === REJECT.VALUE_REQUIRED || reason === REJECT.VALUE_OUT_OF_RANGE) return 400;
-  if (reason.startsWith(REJECT.INTERLOCK_FAILED) || reason === REJECT.IN_PROGRESS || reason.startsWith(REJECT.SETPOINT_WORD_IN_USE)) return 409;
+  if (reason === REJECT.UNKNOWN_COMMAND) return 400;
+  if (reason.startsWith(REJECT.INTERLOCK_FAILED) || reason === REJECT.IN_PROGRESS) return 409;
   if (reason === REJECT.TARGET_NOT_WRITABLE) return 404;
   return 400;
 }

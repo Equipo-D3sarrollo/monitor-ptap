@@ -227,23 +227,6 @@ export interface WriteSpec {
    */
   rollbackValue?: number | boolean;
   permission: string; // Permission de @ptap/shared (control_valves | acknowledge_alarms | adjust_setpoints)
-  /**
-   * CONSIGNA (Fase 4, válvula de salida proporcional). Presente ⇒ el único verbo es `setpoint` y el
-   * valor lo trae la petición, no el mapping: Aquora lo rechaza fuera de [min, max], lo redondea a
-   * entero y lo escribe en absoluto en `target` (la palabra es solo de la consigna). Se confirma
-   * cuando `readBack` (la apertura medida) llega a ±`tolerance` del valor dentro de `timeoutMs`; si
-   * no, `sent`. Sin rollback: volver a otro valor movería la válvula. Reglas en `motivoConsignaInvalida`.
-   */
-  setpoint?: SetpointSpec;
-}
-
-/** Límites y tolerancia de una consigna (ver `WriteSpec.setpoint`). */
-export interface SetpointSpec {
-  min: number;
-  max: number;
-  unit: string | null;
-  /** Banda de confirmación, en las unidades de la consigna (±). */
-  tolerance: number;
 }
 
 /** Señal de proceso mapeada: un elemento de un buffer con semántica de dominio. */
@@ -362,7 +345,6 @@ interface RawWriteSpec {
   timeoutMs?: number;
   rollbackValue?: number | boolean;
   permission?: string;
-  setpoint?: unknown;
 }
 
 interface RawSignal {
@@ -562,47 +544,6 @@ export function motivoSostenidaInvalida(spec: {
       return `${verbo} (${valor}) comparte bits con otro verbo de la misma válvula: activarlo dejaría puesto parte del contrario — abrir y cerrar a la vez`;
     }
     usados |= valor;
-  }
-  return null;
-}
-
-/**
- * Reglas de una CONSIGNA (`write.setpoint`) que JSON Schema no expresa del todo. La usan el loader
- * (el backend no arranca con una consigna inválida) y `validate:mapping`. Mira el JSON crudo.
- *
- * Una consigna escribe un NÚMERO en una palabra que es solo suya: nada de bits (bitmask), nada de
- * pulso que se limpie, nada de rollback (volver a un valor movería la válvula) y un único verbo.
- */
-export function motivoConsignaInvalida(spec: {
-  setpoint?: unknown;
-  commands?: unknown;
-  mode?: unknown;
-  pulse?: unknown;
-  rollbackValue?: unknown;
-  sequences?: unknown;
-  sustained?: unknown;
-  latched?: unknown;
-  target?: { channel?: unknown };
-  readBack?: { channel?: unknown; mask?: unknown; faultMask?: unknown; expectedByCommand?: unknown; expectedValue?: unknown };
-}): string | null {
-  const sp = spec.setpoint as { min?: unknown; max?: unknown; tolerance?: unknown; unit?: unknown } | undefined;
-  if (!sp || typeof sp !== 'object') return 'setpoint debe ser un objeto { min, max, tolerance }';
-  const finito = (v: unknown): v is number => typeof v === 'number' && Number.isFinite(v);
-  if (!finito(sp.min) || !finito(sp.max) || sp.min >= sp.max) return `setpoint.min < setpoint.max, ambos números (min ${JSON.stringify(sp.min)}, max ${JSON.stringify(sp.max)})`;
-  if (!finito(sp.tolerance) || sp.tolerance <= 0) return `setpoint.tolerance debe ser un número > 0 (vale ${JSON.stringify(sp.tolerance)})`;
-  if (sp.unit !== undefined && typeof sp.unit !== 'string') return 'setpoint.unit debe ser texto';
-  if (spec.mode !== 'absolute') return `una consigna se escribe en absoluto (mode: 'absolute'), y mode es ${JSON.stringify(spec.mode ?? 'indefinido')}`;
-  const verbos = spec.commands && typeof spec.commands === 'object' ? Object.keys(spec.commands) : [];
-  if (verbos.length !== 1 || verbos[0] !== 'setpoint') return `una consigna tiene un único verbo, "setpoint" (hay: ${verbos.join(', ') || 'ninguno'})`;
-  if (declarado(spec.pulse)) return 'una consigna no es un pulso: el valor se queda puesto';
-  if (declarado(spec.rollbackValue)) return 'una consigna no lleva rollbackValue: volver a otro valor movería la válvula';
-  if (declarado(spec.sequences)) return 'una consigna no admite sequences';
-  if (spec.sustained === true || spec.latched === true) return 'una consigna no admite sustained ni latched (son de verbos abrir/cerrar)';
-  if (spec.target?.channel !== 'intOut' && spec.target?.channel !== 'realOut') return 'la consigna se escribe en intOut o realOut';
-  const rb = spec.readBack;
-  if (rb?.channel !== 'realIn' && rb?.channel !== 'intIn') return 'el readBack de una consigna es la medida de la apertura: realIn o intIn';
-  if (declarado(rb.mask) || declarado(rb.faultMask) || declarado(rb.expectedByCommand) || declarado(rb.expectedValue)) {
-    return 'el readBack de una consigna se compara con tolerancia: no admite mask, faultMask, expectedValue ni expectedByCommand';
   }
   return null;
 }
@@ -853,14 +794,6 @@ function parseWriteSpec(raw: RawWriteSpec | undefined, donde: string): WriteSpec
       );
     }
   }
-  if (raw.setpoint !== undefined) {
-    const motivo = motivoConsignaInvalida(raw);
-    if (motivo) {
-      throw new Error(
-        `opc_mapping.json: ${donde}: CONSIGNA inválida — ${motivo}. El backend no arranca con este mapping; \`npm run validate:mapping\` lo detecta antes de desplegar.`,
-      );
-    }
-  }
   const conRealimentacion = tieneRealimentacionPorBits(raw);
   if (conRealimentacion) {
     const motivo = motivoRealimentacionInvalida(raw);
@@ -869,7 +802,7 @@ function parseWriteSpec(raw: RawWriteSpec | undefined, donde: string): WriteSpec
         `opc_mapping.json: ${donde}: orden con REALIMENTACIÓN inválida — ${motivo}. El backend no arranca con este mapping; \`npm run validate:mapping\` lo detecta antes de desplegar.`,
       );
     }
-  } else if (raw.sustained !== true && raw.setpoint === undefined && raw.rollbackValue === undefined) {
+  } else if (raw.sustained !== true && raw.rollbackValue === undefined) {
     return undefined;
   }
 
@@ -933,14 +866,7 @@ function parseWriteSpec(raw: RawWriteSpec | undefined, donde: string): WriteSpec
     // aparece, para que nadie pueda leer un `undefined` como «limpiar a 0».
     ...(raw.rollbackValue !== undefined ? { rollbackValue: raw.rollbackValue } : {}),
     permission: raw.permission,
-    ...(raw.setpoint !== undefined ? { setpoint: parseSetpoint(raw.setpoint) } : {}),
   };
-}
-
-/** `write.setpoint` ya validado por `motivoConsignaInvalida`: solo se copia. */
-function parseSetpoint(raw: unknown): SetpointSpec {
-  const sp = raw as { min: number; max: number; tolerance: number; unit?: string };
-  return { min: sp.min, max: sp.max, tolerance: sp.tolerance, unit: sp.unit ?? null };
 }
 
 /** `pulse.feedback` ya validado por `motivoRealimentacionInvalida`: solo se copia, campo a campo. */

@@ -165,10 +165,8 @@ export interface ValveCommandResult {
  */
 export async function sendValveCommand(
   plantId: string,
-  command: 'open' | 'close' | 'setpoint',
+  command: 'open' | 'close',
   target: string,
-  /** Solo con `setpoint` (Fase 4): la consigna. */
-  value?: number,
 ): Promise<ValveCommandResult> {
   const requestGeneration = authGeneration;
   const headers: Record<string, string> = { 'Content-Type': 'application/json' };
@@ -177,7 +175,7 @@ export async function sendValveCommand(
     const res = await fetch(`${API_BASE_URL}/api/plants/${plantId}/commands`, {
       method: 'POST',
       headers,
-      body: JSON.stringify(value === undefined ? { command, target } : { command, target, value }),
+      body: JSON.stringify({ command, target }),
     });
     if (res.status === 401) {
       if (requestGeneration === authGeneration) onUnauthorized?.();

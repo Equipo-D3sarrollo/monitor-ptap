@@ -154,7 +154,7 @@ test('mapping de PRODUCCIÓN: Cabuyo salió de integración con los 6 tags del i
   });
   assert.deepEqual(
     (cabuyo.signals ?? []).map((s) => s.domainKey).sort(),
-    ['inletFlow1', 'inletPressure1', 'outletFlow1', 'valve1', 'valve1Position', 'valve2', 'valve2State'],
+    ['inletFlow1', 'inletPressure1', 'outletFlow1', 'valve1Position', 'valve2', 'valve2State'],
   );
 });
 
@@ -173,7 +173,7 @@ test('mapping de PRODUCCIÓN: conCanal en 11 — Cabuyo tiene intOut/intIn y su 
     assert.ok(!writables.some((w) => w.startsWith(`${id}/`)), `${id}: ninguna válvula escribible`);
   }
   assert.ok(conCanal.includes('cabuyo'), 'cabuyo: con canal de comando');
-  assert.deepEqual(writables.filter((w) => w.startsWith('cabuyo/')), ['cabuyo/valve2', 'cabuyo/valve1'], 'cabuyo: la entrada on/off y la consigna de la salida (Fase 4)');
+  assert.deepEqual(writables.filter((w) => w.startsWith('cabuyo/')), ['cabuyo/valve2'], 'cabuyo: solo la de entrada; la salida es Fase 4');
 });
 
 // ── 2. De punta a punta: una planta sin buffers no rompe nada ni dice lo que no es ───────────────
@@ -190,9 +190,9 @@ test('validate:mapping, loadMapping() y la resolución de namespaces aceptan una
     assert.equal(cargado.targets.filter((t) => t.plantId === id).length, 0, `${id}: nada que suscribir`);
     assert.equal(cargado.signals.filter((s) => s.plantId === id).length, 0, `${id}: nada que extraer`);
   }
-  // Cabuyo: sus 3 buffers de datos (las MSG no se suscriben) y sus 7 señales (6 + la consigna de la Fase 4).
+  // Cabuyo: sus 3 buffers de datos (las MSG no se suscriben) y sus 6 señales.
   assert.deepEqual(cargado.targets.filter((t) => t.plantId === 'cabuyo').map((t) => t.browseName).sort(), ['INT_IN_CABUYO', 'INT_OUT_CABUYO', 'REAL_IN_CABUYO']);
-  assert.equal(cargado.signals.filter((s) => s.plantId === 'cabuyo').length, 7);
+  assert.equal(cargado.signals.filter((s) => s.plantId === 'cabuyo').length, 6);
   // Las que tienen buffers: la regla de liveness de las plantas sin buffers no las toca.
   for (const id of CON_BUFFERS) {
     assert.ok(cargado.targets.some((t) => t.plantId === id), `${id} tiene al menos un buffer de datos`);
@@ -357,7 +357,7 @@ test(
       // Cabuyo: su snapshot trae sus señales, ya no un cascarón vacío.
       assert.deepEqual(
         Object.keys(cache.get('cabuyo')!.signals).sort(),
-        ['inletFlow1', 'inletPressure1', 'outletFlow1', 'valve1', 'valve1Position', 'valve2', 'valve2State'],
+        ['inletFlow1', 'inletPressure1', 'outletFlow1', 'valve1Position', 'valve2', 'valve2State'],
       );
       assert.equal(pipeline.getDeadLetter().recent.filter((e) => PENDIENTES.includes(e.plantId)).length, 0, 'sin señales no hay dead-letters');
 

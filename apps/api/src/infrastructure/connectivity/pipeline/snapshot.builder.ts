@@ -67,7 +67,6 @@ export function buildSnapshot(input: SnapshotInput): PlantSnapshotDto {
     // aunque haya verbos (no solo en el caso negativo): el front necesita SABER cuáles hay para no
     // ofrecer un "cerrar" que en ocho plantas vuelve como UNKNOWN_COMMAND.
     if (ex.commands.length > 0 && /^valve\d+$/.test(ex.domainKey)) dto.commands = ex.commands;
-    if (ex.setpoint && /^valve\d+$/.test(ex.domainKey)) dto.setpoint = ex.setpoint;
     signals[ex.domainKey] = dto;
   }
 

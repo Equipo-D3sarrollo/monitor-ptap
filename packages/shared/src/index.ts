@@ -215,11 +215,6 @@ export interface SignalDto {
    * señal `writable` sin verbos no pasa la validación del mapping.
    */
   commands?: string[];
-  /**
-   * Solo en una válvula con CONSIGNA (Fase 4, proporcional): límites del valor que acepta
-   * `{ command: "setpoint", value }`. Ausente = la válvula no acepta consigna.
-   */
-  setpoint?: { min: number; max: number; unit: string | null };
 }
 
 /**

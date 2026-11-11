@@ -104,7 +104,7 @@ test('mapping: write.target.sourceBuffer inexistente es rechazado (validación s
   assert.ok(result.errors.some((e) => /NO_EXISTE/.test(e)));
 });
 
-test('mapping de PRODUCCIÓN: la válvula 1 está en las plantas CON canal de comando (Cabuyo: entrada on/off y CONSIGNA de la salida), y la segunda solo donde el integrador la entregó', () => {
+test('mapping de PRODUCCIÓN: la válvula 1 está en las plantas CON canal de comando (Cabuyo: solo la de entrada), y la segunda solo donde el integrador la entregó', () => {
   // Invariante (2026-07-30): la ruta de la válvula se replicó a todas las plantas por instrucción
   // del operador («mín. 1 válvula, se escribe por el canal 0, abrir = 4096 en todas»), tras
   // verificarla en campo en Sirena (docs/archivo/PRUEBA_VALVULA_SIRENA.md: pulso capturado por testigo
@@ -134,10 +134,10 @@ test('mapping de PRODUCCIÓN: la válvula 1 está en las plantas CON canal de co
     writables,
     conCanal.flatMap((id) =>
       SOLO_ENTRADA.includes(id)
-        ? [`${id}/valve2`, ...CONSIGNAS.filter((c) => c.startsWith(`${id}/`))]
+        ? [`${id}/valve2`]
         : CON_DOS_VALVULAS.includes(id) ? [`${id}/valve1`, `${id}/valve2`] : [`${id}/valve1`],
     ),
-    'una valve1 por planta con canal de comando (donde la salida es proporcional, solo como CONSIGNA), la valve2 donde el integrador la entregó, y nada más',
+    'una valve1 por planta con canal de comando (salvo donde la salida es proporcional sin mando), la valve2 donde el integrador la entregó, y nada más',
   );
   assert.equal(conCanal.length, 11, 'hoy son 11 plantas con canal (Cabuyo desde el 2026-11-10; san-antonio y quijote no tienen intOut/intIn)');
   for (const sinCanal of ['san-antonio', 'quijote']) {
@@ -288,13 +288,8 @@ const ENTREGA_INTEGRADOR_2026_10_16: Record<string, { open: number; close: numbe
 const ENTREGA_CABUYO_2026_11_10: Record<string, { open: number; close: number }> = {
   'cabuyo/valve2': { open: 4, close: 8 },
 };
-/** Plantas cuya única válvula ON/OFF es la de entrada (la salida es proporcional: se manda por consigna). */
+/** Plantas cuya única válvula accionable es la de entrada (salida proporcional sin mando hasta la Fase 4). */
 const SOLO_ENTRADA = ['cabuyo'];
-/**
- * Válvulas de salida proporcionales con CONSIGNA (Fase 4, ficha del integrador 2026-11-09/10). No son
- * on/off: no tienen verbos abrir/cerrar, ni sostenida, ni canal 0. Las reglas de las on/off no les aplican.
- */
-const CONSIGNAS = ['cabuyo/valve1'];
 /** Plantas que comparten su palabra de mando con bits ajenos: escriben en `bitmask`, nunca en absoluto. */
 const EN_BITMASK = ['cabuyo'];
 /** Plantas con realimentación entregada en INT_IN[1] (las demás confirman por eco en intOut). */
@@ -317,16 +312,14 @@ interface ProdWrite {
   pulse?: { holdMs?: number; until?: { channel?: string; sourceBuffer?: string; index?: number; equals?: number } };
   readBack?: { channel?: string; confirmsWrittenValue?: boolean; expectedValue?: number; stateVerified?: boolean };
   rollbackValue?: number;
-  setpoint?: { min?: number; max?: number; unit?: string; tolerance?: number };
 }
 
-/** Las válvulas ON/OFF de producción (abrir/cerrar). Las CONSIGNAS (Fase 4) tienen sus propias reglas. */
 function valvulasDeProduccion(): Array<{ plantId: string; domainKey: string; w: ProdWrite | undefined }> {
   const prod = loadJson(join(__dirname, '..', 'config', 'opc_mapping.json')) as {
     plants: Array<{ plantId: string; signals?: Array<{ domainKey?: string; writable?: boolean; write?: ProdWrite }> }>;
   };
   return prod.plants.flatMap((p) =>
-    (p.signals ?? []).filter((s) => s.writable && !s.write?.setpoint).map((s) => ({ plantId: p.plantId, domainKey: String(s.domainKey), w: s.write })),
+    (p.signals ?? []).filter((s) => s.writable).map((s) => ({ plantId: p.plantId, domainKey: String(s.domainKey), w: s.write })),
   );
 }
 
@@ -386,7 +379,7 @@ test('mapping de PRODUCCIÓN: solo las válvulas de la entrega del integrador so
   assert.deepEqual(conUntil, []);
 });
 
-test('mapping de PRODUCCIÓN: Cabuyo — la ENTRADA on/off en bitmask (bits ajenos en la palabra) con read-back SIN verificar, y la SALIDA solo por CONSIGNA (integrador 2026-11-10)', () => {
+test('mapping de PRODUCCIÓN: Cabuyo — solo la válvula de ENTRADA, en bitmask (bits ajenos en la palabra), read-back SIN verificar y palabra de estado de confianza (integrador 2026-11-10)', () => {
   const prod = loadJson(join(__dirname, '..', 'config', 'opc_mapping.json')) as {
     plants: Array<{
       plantId: string;
@@ -396,19 +389,8 @@ test('mapping de PRODUCCIÓN: Cabuyo — la ENTRADA on/off en bitmask (bits ajen
   const senales = prod.plants.find((p) => p.plantId === 'cabuyo')?.signals ?? [];
   const por = (k: string) => senales.find((s) => s.domainKey === k);
 
-  // La salida es proporcional: su mando es la CONSIGNA 0-100 % (Fase 4) en INT_OUT_CABUYO[1], con la
-  // apertura como read-back. Nada de abrir/cerrar.
-  const salida = por('valve1');
-  assert.deepEqual(salida?.write?.target, { channel: 'intOut', sourceBuffer: 'INT_OUT_CABUYO', index: 1 });
-  assert.deepEqual(salida?.write?.commands, { setpoint: true });
-  assert.equal(salida?.write?.mode, 'absolute');
-  assert.deepEqual(salida?.write?.setpoint, { min: 0, max: 100, unit: '%', tolerance: 2 });
-  assert.equal(salida?.write?.sustained, undefined);
-  assert.equal(salida?.write?.rollbackValue, undefined, 'una consigna no se deshace');
-  assert.equal(salida?.write?.readBack?.channel, 'realIn');
-  assert.equal(salida?.write?.readBack?.index, 16, 'read-back = valve1Position');
-  assert.equal(salida?.write?.readBack?.stateVerified, false);
-  assert.ok(/PENDIENTES DEL INTEGRADOR/.test(String(salida?.write?._riesgo)) && /NO desplegar/.test(String(salida?.write?._riesgo)));
+  // La salida es proporcional: se ve su apertura, pero su mando (consigna 0-100 %) es la Fase 4.
+  assert.equal(por('valve1'), undefined, 'sin valve1: la consigna de la salida es la Fase 4');
   assert.equal(por('valve1Position')?.writable, false);
   assert.equal(por('valve1Position')?.flowDomainKey, 'outletFlow1');
 

@@ -20,7 +20,6 @@ import { CommandSignatureService } from './command-signature.service';
 import { avisoDeManiobra } from './valve-notice';
 import {
   FAIL,
-  MENSAJE_PALABRA_EN_USO,
   REJECT,
   SENT,
   httpStatusForCommand,
@@ -211,23 +210,6 @@ export class WriteService {
       return this.audit(actor, req, await this.finalizeNoReserve(reject(REJECT.UNKNOWN_COMMAND)));
     }
 
-    // 2-quater) CONSIGNA (Fase 4): el valor viene en la petición. Se valida aquí, antes de reservar y
-    // de tocar nada: fuera de límites Aquora RECHAZA (no delega en que el PLC sature). Un verbo de
-    // abrir/cerrar con `value` también se rechaza: ese número no iría a ningún sitio y el operador
-    // creería haberlo mandado.
-    let consigna: number | null = null;
-    if (write.setpoint) {
-      const v = req.value;
-      if (v === undefined) return this.audit(actor, req, await this.finalizeNoReserve(reject(REJECT.VALUE_REQUIRED)));
-      if (!Number.isFinite(v) || v < write.setpoint.min || v > write.setpoint.max) {
-        return this.audit(actor, req, await this.finalizeNoReserve(reject(REJECT.VALUE_OUT_OF_RANGE)));
-      }
-      // El PLC recibe un INT: se redondea aquí, y lo redondeado es lo que se escribe y se audita.
-      consigna = Math.round(v);
-    } else if (req.value !== undefined) {
-      return this.audit(actor, req, await this.finalizeNoReserve(reject(REJECT.VALUE_REQUIRED)));
-    }
-
     // 2-bis) GUARDA ELÉCTRICA de la orden compuesta, antes de reservar y de tocar nada. El loader ya
     // la aplicó al arrancar; se repite aquí porque es barata y lo que hay al otro lado del cable es
     // una válvula: energizar dos direcciones opuestas a la vez es el fallo que el protocolo prohíbe.
@@ -298,30 +280,6 @@ export class WriteService {
       }
     }
 
-    // 5-bis) CONSIGNA: la palabra se escribe en ABSOLUTO, así que antes se comprueba que hoy contiene
-    // una consigna (un número dentro de [min, max]). Cualquier otra cosa —257, un valor ilegible— puede
-    // ser el uso de otro equipo, y escribir encima lo borraría. Falla CERRADO, sin reservar ni escribir.
-    if (write.setpoint) {
-      let actual: { value: CommandValue; quality: string } | null = null;
-      try {
-        actual = await this.adapter.readBufferElement({
-          plantId, channel: write.target.channel, sourceBuffer: write.target.sourceBuffer, index: write.target.index,
-        });
-      } catch {
-        actual = null;
-      }
-      const v = actual?.value;
-      if (!actual || actual.quality !== 'Good' || typeof v !== 'number' || !Number.isFinite(v)
-        || v < write.setpoint.min || v > write.setpoint.max) {
-        this.logger.warn(`consigna ${plantId}/${req.target} rechazada: la palabra vale ${String(v)} (${actual?.quality ?? 'sin lectura'})`);
-        return this.audit(actor, req, await this.finalizeNoReserve({
-          ...reject(REJECT.SETPOINT_WORD_IN_USE),
-          previousValue: v ?? null,
-          reason: `${REJECT.SETPOINT_WORD_IN_USE}: ${MENSAJE_PALABRA_EN_USO}`,
-        }));
-      }
-    }
-
     // 6) Idempotencia (insert-pending-first): reserva ANTES de escribir (evita doble accionamiento).
     const reservation = await this.repo.reserve({
       idempotencyKey: req.idempotencyKey ?? null,
@@ -335,10 +293,6 @@ export class WriteService {
     });
     if (!reservation.reserved) {
       return this.audit(actor, req, this.replay(base, reservation.existing));
-    }
-
-    if (write.setpoint && consigna !== null) {
-      return this.ejecutarConsigna(plantId, req, actor, write, base, reservation.id, consigna);
     }
 
     // 7) Ejecutar: leer valor previo → escribir → read-back con timeout.
@@ -493,92 +447,6 @@ export class WriteService {
       commandLogId: reservation.id,
       estadoVerificado: write.readBack.stateVerified !== false,
     });
-  }
-
-  /**
-   * CONSIGNA (Fase 4): escribe el valor en absoluto en su palabra (que es solo suya), verifica el eco
-   * y espera a que la apertura medida llegue a ±tolerancia dentro de `timeoutMs`.
-   *
-   *  - llega → `confirmed`, aunque el canal esté `stateVerified: false`: aquí el read-back es una
-   *    medida analógica directa, no una codificación inferida (decisión aprobada el 2026-11-10);
-   *  - no llega y el eco está verificado → `sent` / `SENT_POSITION_PENDING`: la rampa del actuador
-   *    es desconocida, y no llegar a tiempo no es un fallo del equipo;
-   *  - no llega y el eco no cuadra → `failed` / `READBACK_UNCONFIRMED`.
-   *
-   * Sin rollback en ningún caso: volver a otro valor movería la válvula.
-   */
-  private async ejecutarConsigna(
-    plantId: string,
-    req: CommandRequest,
-    actor: CommandActor,
-    write: WriteSpec,
-    base: Omit<CommandResult, 'status' | 'reason'>,
-    commandLogId: number,
-    valor: number,
-  ): Promise<CommandResult> {
-    const targetEl: BufferElementTarget = {
-      plantId, channel: write.target.channel, sourceBuffer: write.target.sourceBuffer, index: write.target.index,
-    };
-    const traza = { commandLogId, estadoVerificado: write.readBack.stateVerified !== false };
-    const soltarTurno = await this.turnoDe(targetEl);
-    let rechazo: unknown = null;
-    try {
-      try {
-        base.previousValue = (await this.adapter.readBufferElement(targetEl)).value;
-        await this.adapter.writeBufferElement(targetEl, valor);
-        base.writtenValue = valor;
-      } catch (err) {
-        rechazo = err ?? new Error('escritura rechazada');
-      }
-      if (!rechazo) {
-        try {
-          const echo = await this.adapter.readBufferElement(targetEl);
-          base.writeEcho = echo.value;
-          base.writeVerified = echo.value === valor;
-        } catch {
-          base.writeEcho = null;
-          base.writeVerified = null;
-        }
-      }
-    } finally {
-      soltarTurno();
-    }
-    if (rechazo) {
-      this.logger.error(`consigna ${valor} en ${plantId}/${req.target} RECHAZADA: ${rechazo instanceof Error ? rechazo.message : rechazo}`);
-      return this.audit(actor, req, { ...base, status: 'failed', reason: FAIL.WRITE_REJECTED }, undefined, { ...traza, estadoVerificado: false });
-    }
-    const escritos: WriteStep[] = [{ index: write.target.index, value: valor }];
-
-    const tolerancia = write.setpoint!.tolerance;
-    const rbTarget: BufferElementTarget = {
-      plantId, channel: write.readBack.channel,
-      sourceBuffer: write.readBack.sourceBuffer ?? write.target.sourceBuffer, index: write.readBack.index,
-    };
-    const deadline = Date.now() + write.timeoutMs;
-    const pollMs = Math.max(5, Math.min(1000, Math.floor(write.timeoutMs / 4)));
-    let llego = false;
-    for (;;) {
-      try {
-        const rb = await this.adapter.readBufferElement(rbTarget);
-        if (typeof rb.value === 'number' && Number.isFinite(rb.value)) base.confirmedValue = rb.value;
-        if (rb.quality === 'Good' && typeof rb.value === 'number' && Math.abs(rb.value - valor) <= tolerancia) {
-          llego = true;
-          break;
-        }
-      } catch (err) {
-        // Un fallo de lectura no cambia lo escrito: se reintenta hasta el tope.
-        this.logger.warn(`no se pudo leer la apertura de ${plantId}/${req.target}: ${err instanceof Error ? err.message : err}`);
-      }
-      if (Date.now() >= deadline) break;
-      await sleep(pollMs);
-    }
-
-    const result: CommandResult = llego
-      ? { ...base, status: 'confirmed', reason: null }
-      : base.writeVerified === true
-        ? { ...base, status: 'sent', reason: SENT.SENT_POSITION_PENDING }
-        : { ...base, status: 'failed', reason: FAIL.READBACK_UNCONFIRMED };
-    return this.audit(actor, req, result, escritos, traza);
   }
 
   /** Interlock: BridgeStatus Connected + snapshot fresco (liveness live) + connection OK si está mapeada. */
@@ -887,8 +755,6 @@ export class WriteService {
         writeEcho: result.writeEcho,
         writeVerified: result.writeVerified,
         interlockSequence: result.interlockSequence,
-        // Consigna: lo que pidió el operador, antes de redondear (lo escrito va en writtenValue).
-        requestedValue: req.value,
         idempotencyKey: req.idempotencyKey ?? null,
         idempotent: result.idempotent,
         firma,
@@ -924,7 +790,7 @@ export class WriteService {
       const aviso = avisoDeManiobra({
         userName: actor.userName,
         userEmail: actor.userEmail,
-        valveName: this.nombreEnAviso(result),
+        valveName: this.nombreDeValvula(result.plantId, result.target),
         command: result.command,
         status: result.status,
         at: result.at,
@@ -960,13 +826,5 @@ export class WriteService {
     // `signals` es un mapa por domainKey, no una lista: el target ES la clave.
     const senal = snap?.signals?.[target];
     return senal?.label?.trim() || target;
-  }
-
-  /** Nombre para el aviso; en una consigna añade el valor: «Válvula de salida a 40 %». */
-  private nombreEnAviso(result: CommandResult): string {
-    const nombre = this.nombreDeValvula(result.plantId, result.target);
-    if (result.command !== 'setpoint' || typeof result.writtenValue !== 'number') return nombre;
-    const unidad = this.resolver.resolve(result.plantId, result.target)?.write.setpoint?.unit;
-    return `${nombre} a ${result.writtenValue}${unidad ? ' ' + unidad : ''}`;
   }
 }

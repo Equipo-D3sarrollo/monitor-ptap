@@ -26,10 +26,8 @@ interface Props {
   valveName: string;
   /** Nombre de la planta: evita operar la válvula correcta en el sitio equivocado. */
   plantName: string;
-  /** Maniobra a ejecutar. `setpoint` = ajustar la consigna de una proporcional (Fase 4). */
-  verb: 'open' | 'close' | 'setpoint';
-  /** Solo con `setpoint`: de qué apertura a qué consigna. Es lo que el operador debe releer. */
-  consigna?: { desde: number | null; hasta: number; unit: string | null };
+  /** Maniobra a ejecutar. */
+  verb: 'open' | 'close';
   /** Hay una orden en vuelo: se bloquea todo y se muestra el spinner. */
   busy?: boolean;
   /**
@@ -49,7 +47,6 @@ export function ValveConfirmDialog({
   valveName,
   plantName,
   verb,
-  consigna,
   busy = false,
   conLecturaDeEstado = true,
   onConfirm,
@@ -78,10 +75,9 @@ export function ValveConfirmDialog({
     };
   }, [visible]);
 
-  const unidad = consigna?.unit ? ` ${consigna.unit}` : '';
-  const accion = verb === 'open' ? 'ABRIR' : verb === 'close' ? 'CERRAR' : `AJUSTAR A ${consigna?.hasta ?? '—'}${unidad}`;
+  const accion = verb === 'open' ? 'ABRIR' : 'CERRAR';
   const listo = restante === 0 && !busy;
-  const colorAccion = verb === 'open' ? Colors.success : verb === 'close' ? Colors.danger : Colors.primary;
+  const colorAccion = verb === 'open' ? Colors.success : Colors.danger;
 
   // Escape cancela — pero NUNCA con una orden en vuelo: cerrar el diálogo no la detendría, y
   // dejaría al operador creyendo que canceló algo que ya salió al PLC.
@@ -110,14 +106,6 @@ export function ValveConfirmDialog({
               <Text style={styles.detalleLabel}>Válvula</Text>
               <Text style={styles.detalleValor}>{valveName}</Text>
             </View>
-            {verb === 'setpoint' && (
-              <View style={styles.detalleFila}>
-                <Text style={styles.detalleLabel}>Apertura actual</Text>
-                <Text style={styles.detalleValor}>
-                  {consigna?.desde == null ? 'sin dato' : `${consigna.desde.toLocaleString('es-CO', { maximumFractionDigits: 1 })}${unidad}`}
-                </Text>
-              </View>
-            )}
             <View style={styles.detalleFila}>
               <Text style={styles.detalleLabel}>Acción</Text>
               <Text style={[styles.detalleValor, { color: colorAccion }]}>{accion}</Text>
@@ -168,7 +156,7 @@ export function ValveConfirmDialog({
               activeOpacity={0.8}
               accessibilityRole="button"
               accessibilityState={{ disabled: !listo }}
-              accessibilityLabel={listo ? (verb === 'setpoint' ? `Aceptar y ${accion.toLowerCase()} la apertura` : `Aceptar y ${accion.toLowerCase()} la válvula`) : `Espere ${restante} segundos`}
+              accessibilityLabel={listo ? `Aceptar y ${accion.toLowerCase()} la válvula` : `Espere ${restante} segundos`}
             >
               {busy ? (
                 <>

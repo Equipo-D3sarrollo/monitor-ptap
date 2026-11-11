@@ -22,7 +22,6 @@ import {
   anchoBarraApertura,
   presentacionDeValvula,
   resumenDeValvulas,
-  validarConsigna,
 } from './valves';
 import type { PlantSnapshotDto, SignalDto, ValveCommandResult } from './api';
 
@@ -772,69 +771,4 @@ test('memo: cambiar de caudal inferido a posición leída repinta aunque siga fi
   const inferred = { ...base, effectiveState: 'open' as const, manualOverride: false };
   const measured = { ...inferred, source: 'estado' as const };
   assert.equal(sameValveItem({ valve: inferred }, { valve: measured }), false);
-});
-
-// ── CONSIGNA de la válvula proporcional (Fase 4, Cabuyo) ──────────────────────────────────────
-
-const CONSIGNA_0_100 = { min: 0, max: 100, unit: '%' };
-
-test('consigna: con valve1 declarando consigna, la proporcional ofrece «Ajustar apertura» (no abrir/cerrar)', () => {
-  const [v] = valvesFromSnapshot(snap({
-    valve1: sig(40, { unit: '%', label: 'Válvula de salida', commands: ['setpoint'], setpoint: CONSIGNA_0_100 }),
-    valve1Position: apertura(38),
-  }));
-  assert.equal(v.kind, 'proportional');
-  assert.deepEqual(v.setpoint, CONSIGNA_0_100);
-  assert.equal(v.setpointPct, 40, 'la consigna vigente es el valor de valve1, no la apertura');
-  assert.equal(v.positionPct, 38);
-  assert.deepEqual(accionDisponible(v, false), { kind: 'setpoint', ...CONSIGNA_0_100 });
-});
-
-test('consigna: las puertas duras siguen delante — congelada → frozen; sin consigna declarada → setpoint-pending', () => {
-  const conConsigna = valvesFromSnapshot(snap({
-    valve1: sig(40, { commands: ['setpoint'], setpoint: CONSIGNA_0_100 }), valve1Position: apertura(38),
-  }))[0];
-  assert.equal(motivo(accionDisponible(conConsigna, true)), 'frozen');
-  const sinCanal = { ...conConsigna, commandable: false };
-  assert.equal(motivo(accionDisponible(sinCanal, false)), 'setpoint-pending', 'sin canal no se ofrece');
-  // Las on/off no cambian: una válvula sin `setpoint` no tiene consigna aunque traiga valor.
-  const [onoff] = valvesFromSnapshot(snap({ valve1: sig(0, { commands: ['open', 'close'] }) }));
-  assert.equal(onoff.setpoint, null);
-  assert.equal(onoff.setpointPct, null);
-});
-
-test('consigna: validarConsigna acepta coma decimal, redondea como el backend y rechaza fuera de límites', () => {
-  assert.deepEqual(validarConsigna('40', CONSIGNA_0_100), { ok: true, value: 40 });
-  assert.deepEqual(validarConsigna(' 40,6 ', CONSIGNA_0_100), { ok: true, value: 41 });
-  assert.deepEqual(validarConsigna('0', CONSIGNA_0_100), { ok: true, value: 0 });
-  assert.deepEqual(validarConsigna('100', CONSIGNA_0_100), { ok: true, value: 100 });
-  for (const malo of ['', 'abc', '-1', '101', '100.5']) {
-    assert.equal(validarConsigna(malo, CONSIGNA_0_100).ok, false, malo);
-  }
-});
-
-test('consigna: el resultado se dice en términos de apertura, no de abrir/cerrar', () => {
-  const ok = interpretCommand(res({ status: 'confirmed', writtenValue: 40, confirmedValue: 39.2 }), 'setpoint', 'Válvula de salida', { value: 40, unit: '%' });
-  assert.equal(ok.tone, 'success');
-  assert.match(ok.message, /llegó a la consigna de 40 %/);
-  assert.equal(ok.technical, 'apertura leída: 39,2 %', 'un decimal, sin ruido de coma flotante');
-  const pend = interpretCommand(res({ http: 202, status: 'sent', reason: 'SENT_POSITION_PENDING', writtenValue: 80, confirmedValue: 52 }), 'setpoint', 'Válvula de salida', { value: 80, unit: '%' });
-  assert.equal(pend.tone, 'warning');
-  assert.equal(pend.ok, true);
-  assert.match(pend.message, /80 % quedó escrita/);
-  const fuera = interpretCommand(res({ http: 400, status: 'rejected', reason: 'VALUE_OUT_OF_RANGE', writtenValue: null }), 'setpoint', 'Válvula de salida', { value: 120, unit: '%' });
-  assert.equal(fuera.tone, 'danger');
-  assert.equal(fuera.signalSent, false);
-  const enUso = interpretCommand(res({ http: 409, status: 'rejected', reason: 'SETPOINT_WORD_IN_USE: La palabra de consigna contiene un valor fuera de rango', previousValue: 257, writtenValue: null }), 'setpoint', 'Válvula de salida', { value: 40, unit: '%' });
-  assert.equal(enUso.signalSent, false);
-  assert.equal(enUso.technical, 'valor encontrado: 257');
-  const prohibido = interpretCommand(res({ http: 403, status: 'rejected', reason: 'FORBIDDEN' }), 'setpoint', 'Válvula de salida', { value: 40, unit: '%' });
-  assert.equal(prohibido.title, 'Sin permiso');
-});
-
-test('consigna: la fila se repinta cuando cambia la consigna vigente (memo)', () => {
-  const [v] = valvesFromSnapshot(snap({ valve1: sig(40, { commands: ['setpoint'], setpoint: CONSIGNA_0_100 }), valve1Position: apertura(38) }));
-  const a = { ...v, effectiveState: v.state, manualOverride: false };
-  assert.equal(sameValveItem({ valve: a }, { valve: { ...a, setpointPct: 80 } }), false);
-  assert.equal(sameValveItem({ valve: a }, { valve: { ...a } }), true);
 });

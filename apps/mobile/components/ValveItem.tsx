@@ -12,8 +12,6 @@ interface Props {
    *  Recibe la válvula en vez de cerrarse sobre ella para que la pantalla pueda pasar UNA función
    *  estable a todas las filas y el `memo` sirva de algo. */
   onToggle?: (valve: SupervisedValve, verb?: 'open' | 'close') => void;
-  /** Ajustar la consigna de una proporcional (Fase 4). Si falta, no hay botón (rol sin permiso). */
-  onSetpoint?: (valve: SupervisedValve) => void;
   /** La planta perdió la conexión: los valores mostrados son la última lectura. */
   frozen?: boolean;
   /** Hay una orden en vuelo para esta válvula. */
@@ -34,17 +32,16 @@ interface Props {
  * Una válvula PROPORCIONAL suma su apertura («Apertura 47 %») y una barra de 0 a 100 %, con el mismo
  * trazo que la barra de `FlowMeterCard`: un `View` con ancho en %, nada de módulo nativo de slider
  * (la app no se autoactualiza y un módulo nativo obliga a recompilar la APK). Es de solo lectura: la
- * consigna se ajusta con «Ajustar apertura» solo si el mapping la declara (Fase 4); si no, la fila
- * lo dice con el motivo de `setpoint-pending`.
+ * consigna aún no se puede enviar y la fila lo dice con el motivo de `setpoint-pending`.
  */
-function ValveItemBase({ valve, onToggle, onSetpoint, frozen = false, busy = false }: Props) {
+function ValveItemBase({ valve, onToggle, frozen = false, busy = false }: Props) {
   const evidence = presentacionDeValvula(valve);
   const color = evidence.kind === 'fault' ? Colors.danger : evidence.physicalState === 'open' ? Colors.success : evidence.physicalState === 'closed' ? Colors.danger : Colors.neutral;
 
   const accion = accionDisponible(valve, frozen);
   // El mando exige LAS DOS cosas: que la válvula lo permita y que el rol tenga el permiso (sin
   // `onToggle` la pantalla ya decidió que esta persona no acciona).
-  const accionable = (accion.kind === 'command' && Boolean(onToggle)) || (accion.kind === 'setpoint' && Boolean(onSetpoint));
+  const accionable = accion.kind === 'command' && Boolean(onToggle);
 
   return (
     <View style={[styles.row, frozen && styles.rowFrozen]}>
@@ -87,13 +84,6 @@ function ValveItemBase({ valve, onToggle, onSetpoint, frozen = false, busy = fal
                 <View style={[styles.barFill, { width: `${anchoBarraApertura(valve.positionPct)}%`, backgroundColor: color }]} />
               )}
             </View>
-            {valve.setpoint && (
-              <Text style={styles.aperturaTexto}>
-                {valve.setpointPct === null
-                  ? 'Consigna sin dato'
-                  : `Consigna ${valve.setpointPct.toLocaleString('es-CO', { maximumFractionDigits: 0 })}${valve.setpoint.unit ? ` ${valve.setpoint.unit}` : ''}`}
-              </Text>
-            )}
           </View>
         )}
       </View>
@@ -123,23 +113,6 @@ function ValveItemBase({ valve, onToggle, onSetpoint, frozen = false, busy = fal
             <Text style={[styles.toggleText, { color: Colors.primary }]}>
               {busy ? 'Enviando…' : accion.verb === 'close' ? 'Cerrar' : 'Abrir'}
             </Text>
-          </TouchableOpacity>
-        )}
-
-        {accion.kind === 'setpoint' && onSetpoint && (
-          <TouchableOpacity
-            style={[styles.toggleBtn, { backgroundColor: Colors.primary + '15', opacity: busy ? 0.5 : 1 }]}
-            onPress={() => onSetpoint(valve)}
-            activeOpacity={0.7}
-            disabled={busy}
-            accessibilityRole="button"
-            accessibilityState={{ disabled: busy, busy }}
-            accessibilityLabel={`Ajustar apertura de ${valve.name}. Pedirá confirmación.`}
-          >
-            {busy ? <ActivityIndicator size="small" color={Colors.primary} /> : (
-              <Ionicons name="options-outline" size={16} color={Colors.primary} />
-            )}
-            <Text style={[styles.toggleText, { color: Colors.primary }]}>{busy ? 'Enviando…' : 'Ajustar apertura'}</Text>
           </TouchableOpacity>
         )}
 
