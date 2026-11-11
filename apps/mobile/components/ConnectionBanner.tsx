@@ -1,6 +1,6 @@
 import { memo } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import Ionicons from './AppIcon';
 import { router } from 'expo-router';
 import { CONNECTION_CODES } from '@ptap/shared';
 import Colors from '../constants/colors';

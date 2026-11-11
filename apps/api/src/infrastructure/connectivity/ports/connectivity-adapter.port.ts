@@ -138,6 +138,9 @@ export interface ConnectivityAdapter {
   /** Detiene y libera recursos. Idempotente. */
   stop(): Promise<void>;
 
+  /** Lectura administrativa explícita sobre la sesión activa, nunca por Subscription. */
+  readBufferFreshness?(plantId: string, browseName: string): Promise<{ sourceTimestamp: string | null; statusCode: string; good: boolean }>;
+
   getBridgeStatus(): BridgeStatus;
 
   onFrame(listener: (frame: RawPlantFrame) => void): void;

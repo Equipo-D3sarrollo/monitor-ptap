@@ -185,7 +185,7 @@ test('REST /plants/:id/snapshot responde desde cache en < 50 ms y sin UNA sola l
     const samples: number[] = [];
     for (let i = 0; i < N; i++) {
       const t0 = process.hrtime.bigint();
-      const res = await request(app.getHttpServer()).get(`/plants/${plantId}/snapshot`).expect(200);
+      const res: request.Response = await request(app.getHttpServer()).get(`/plants/${plantId}/snapshot`).expect(200);
       samples.push(Number(process.hrtime.bigint() - t0) / 1e6);
       assert.equal(res.body.plantId, plantId);
       assert.equal(typeof res.body.sequence, 'number');

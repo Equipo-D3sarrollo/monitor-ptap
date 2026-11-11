@@ -133,6 +133,7 @@ test('novedades: el archivo REAL del repo se puede leer y está ordenado', () =>
   delete process.env.NOVEDADES_FILE;
   const n = new NovedadesService().get();
   assert.ok(n.length > 0, 'docs/NOVEDADES.md tiene que tener al menos una entrada legible');
+  assert.deepEqual(n.slice(0, 2).map(entrada => entrada.version), ['1.4.1', '1.4.0']);
   for (const entrada of n) {
     assert.match(entrada.version, /^\d+(\.\d+)*$/);
     assert.ok(entrada.puntos.length > 0, `${entrada.version} sin puntos`);

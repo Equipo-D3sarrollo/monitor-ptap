@@ -16,7 +16,11 @@ import {
 } from '../services/notification-sync';
 import { escucharCambiosDeToken, probarPush, registrarPush } from '../services/push-registration';
 import type { EstadoPush } from '../services/push-rules';
-import { isNotificationSession, notificationSession } from '../services/notification-session';
+import {
+  isNotificationSession,
+  notificationSession,
+  type NotificationSession,
+} from '../services/notification-session';
 
 /**
  * Notificaciones del sistema operativo: permiso, push y sincronización de respaldo.
@@ -54,12 +58,29 @@ export function useDeviceNotifications(): {
   probar: () => Promise<PruebaPushDto>;
 } {
   const [permission, setPermission] = useState<PermissionState>('undetermined');
-  const [push, setPush] = useState<EstadoPush>('pendiente');
+  const [pushResult, setPushResult] = useState<{
+    session: NotificationSession;
+    state: EstadoPush;
+  } | null>(null);
   const supported = isSupported();
   // Mismo permiso que exige el servidor para registrar el teléfono: el Civil no recibe avisos de
   // proceso, así que ni se intenta (sería un 403 cada vez que abre la app).
   const { token, hasPermission } = useAuth();
   const recibeAvisos = hasPermission('view_dashboard');
+  const sessionGeneration = notificationSession()?.generation;
+  const canRegister =
+    !!token &&
+    permission === 'granted' &&
+    recibeAvisos &&
+    (Platform.OS === 'android' || Platform.OS === 'web');
+  const push =
+    canRegister && pushResult && isNotificationSession(pushResult.session)
+      ? pushResult.state
+      : 'pendiente';
+  const updatePermission = useCallback((next: PermissionState) => {
+    setPermission(next);
+    if (next !== 'granted') setPushResult(null);
+  }, []);
 
   // El permiso se vuelve a leer CADA VEZ que la app pasa a primer plano, con o sin permiso actual.
   // Quien lo había denegado lo concede desde los ajustes del sistema («Abrir ajustes» en la tarjeta)
@@ -67,12 +88,17 @@ export function useDeviceNotifications(): {
   // fondo no se registraba. También cubre lo contrario: si lo quita allí, la app deja de sincronizar
   // desde primer plano.
   useEffect(() => {
-    void getPermission().then(setPermission).catch(() => undefined);
+    void getPermission()
+      .then(updatePermission)
+      .catch(() => undefined);
     const sub = AppState.addEventListener('change', (state) => {
-      if (state === 'active') void getPermission().then(setPermission).catch(() => undefined);
+      if (state === 'active')
+        void getPermission()
+          .then(updatePermission)
+          .catch(() => undefined);
     });
     return () => sub.remove();
-  }, []);
+  }, [updatePermission]);
 
   // Con permiso concedido: registrar la tarea periódica y sincronizar ya, para no esperar a que
   // Android decida ejecutarla por primera vez.
@@ -87,20 +113,33 @@ export function useDeviceNotifications(): {
   // día la marca que lee la consulta de respaldo— y cuando FCM rota el token. Si el registro falla, la
   // marca se quita y la consulta de respaldo sigue publicando: el teléfono nunca queda mudo.
   useEffect(() => {
-    if (!token || permission !== 'granted' || !recibeAvisos || (Platform.OS !== 'android' && Platform.OS !== 'web')) {
-      setPush('pendiente');
+    if (
+      !token ||
+      permission !== 'granted' ||
+      !recibeAvisos ||
+      (Platform.OS !== 'android' && Platform.OS !== 'web')
+    ) {
       return;
     }
+    const session = notificationSession();
+    if (!session || session.generation !== sessionGeneration) return;
     let vivo = true;
     let retry: ReturnType<typeof setTimeout> | undefined;
     let failures = 0;
-    const cancelRetry = () => { if (retry) clearTimeout(retry); retry = undefined; };
+    const cancelRetry = () => {
+      if (retry) clearTimeout(retry);
+      retry = undefined;
+    };
     const actualizar = (estado: EstadoPush): void => {
-      if (!vivo) return;
-      setPush(estado);
+      if (!vivo || !isNotificationSession(session)) return;
+      setPushResult({ session, state: estado });
       cancelRetry();
-      if ((estado === 'error' || estado === 'servidor-apagado') && AppState.currentState === 'active') {
-        const delay = estado === 'servidor-apagado' ? 300_000 : Math.min(30_000 * 2 ** failures++, 300_000);
+      if (
+        (estado === 'error' || estado === 'servidor-apagado') &&
+        AppState.currentState === 'active'
+      ) {
+        const delay =
+          estado === 'servidor-apagado' ? 300_000 : Math.min(30_000 * 2 ** failures++, 300_000);
         retry = setTimeout(intentar, delay);
       } else if (estado === 'activo') failures = 0;
     };
@@ -120,7 +159,7 @@ export function useDeviceNotifications(): {
       dejarDeEscuchar();
       sub.remove();
     };
-  }, [token, permission, recibeAvisos]);
+  }, [token, permission, recibeAvisos, sessionGeneration]);
 
   // Al volver a primer plano se sincroniza también: es el camino FIABLE. La tarea en segundo plano
   // es "lo mejor posible" y algunos fabricantes no la ejecutan nunca; esto garantiza que, al menos
@@ -185,7 +224,10 @@ export function useDeviceNotifications(): {
 
         // 2) App viva: los toques que lleguen a partir de ahora.
         const sub = Notifications.addNotificationResponseReceivedListener((r) => {
-          abrirSiEsActualizacion(r.notification.request.content.data, r.notification.request.identifier);
+          abrirSiEsActualizacion(
+            r.notification.request.content.data,
+            r.notification.request.identifier,
+          );
         });
         quitar = () => sub.remove();
       } catch {
@@ -203,13 +245,13 @@ export function useDeviceNotifications(): {
     const session = notificationSession();
     const next = await requestPermission();
     if (!session || !isNotificationSession(session)) return;
-    setPermission(next);
+    updatePermission(next);
     // Keep explicit activation available for browsers that require a user gesture to subscribe.
     if (next === 'granted') {
       const result = await registrarPush();
-      if (isNotificationSession(session)) setPush(result);
+      if (isNotificationSession(session)) setPushResult({ session, state: result });
     }
-  }, []);
+  }, [updatePermission]);
 
   const probar = useCallback(() => probarPush(), []);
 

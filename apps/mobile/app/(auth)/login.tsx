@@ -1,4 +1,4 @@
-import { forwardRef, useEffect, useRef, useState, type ComponentRef, type ReactNode } from 'react';
+import { forwardRef, useEffect, useRef, useState, type ReactNode, type ComponentRef } from 'react';
 import {
   View,
   Text,
@@ -9,19 +9,19 @@ import {
   ScrollView,
   ActivityIndicator,
   StyleSheet,
+  Image,
   Animated,
   Easing,
   useWindowDimensions,
   type TextInputProps,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Ionicons } from '@expo/vector-icons';
+import Ionicons from '../../components/AppIcon';
 import { router } from 'expo-router';
 import { AppUpdateBanner } from '../../components/AppUpdateBanner';
 import { WaterBackground } from '../../components/WaterBackground';
-import { LogoRipples } from '../../components/LogoRipples';
+import { useReducedMotion } from '../../hooks/useReducedMotion';
 import { useAuth } from '../../context/AuthContext';
-import { useReduceMotion } from '../../hooks/useReduceMotion';
 import { checkServerHealth } from '../../services/api';
 import { runningVersion } from '../../services/app-release';
 import { apiLogin } from '../../services/auth';
@@ -34,53 +34,49 @@ const L = Colors.login;
 /** Desde este ancho el login usa dos columnas (panel de agua + formulario). */
 const WIDE_BREAKPOINT = 900;
 /** Fracción del panel izquierdo que cubre el agua en escritorio. */
-const WIDE_WATER_LEVEL = 0.34;
+const WIDE_WATER_LEVEL = 0.26;
 
 export default function LoginScreen() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
+  const [remember, setRemember] = useState(true);
   const [isLoading, setIsLoading] = useState(false);
+  const [pressScale] = useState(() => new Animated.Value(1));
+  const reducedMotion = useReducedMotion();
+  useEffect(() => {
+    if (isLoading || reducedMotion) pressScale.setValue(1);
+    return () => pressScale.stopAnimation();
+  }, [isLoading, reducedMotion, pressScale]);
+  function animatePress(value: number) {
+    pressScale.stopAnimation();
+    if (reducedMotion) return pressScale.setValue(1);
+    Animated.timing(pressScale, {
+      toValue: value,
+      duration: 120,
+      easing: Easing.out(Easing.cubic),
+      useNativeDriver: Platform.OS !== 'web',
+    }).start();
+  }
   const [errors, setErrors] = useState<LoginFieldErrors>({});
-  // La INSTANCIA de TextInput (con .focus()); en RN 0.88 `TextInput` como tipo es el componente.
   const emailRef = useRef<ComponentRef<typeof TextInput>>(null);
   const passwordRef = useRef<ComponentRef<typeof TextInput>>(null);
   // `disabled` del botón llega un render tarde: dos Enter seguidos mandaban dos logins.
   const submitting = useRef(false);
   const { login } = useAuth();
-  const { width, height } = useWindowDimensions();
+  const { width } = useWindowDimensions();
   const isWide = width >= WIDE_BREAKPOINT;
   const [fontsLoaded, fontError] = usePoppins();
-  const reduce = useReduceMotion();
-  const appear = useRef(new Animated.Value(0)).current;
   // null = comprobando. Nunca se asume "en línea" sin respuesta real del backend.
   const [serverUp, setServerUp] = useState<boolean | null>(null);
 
   useEffect(() => {
     let alive = true;
-    checkServerHealth().then(ok => alive && setServerUp(ok));
+    checkServerHealth().then((ok) => alive && setServerUp(ok));
     return () => {
       alive = false;
     };
   }, []);
-
-  // El formulario entra con fade + subida de 16 px mientras el agua sube.
-  useEffect(() => {
-    if (reduce === null) return;
-    if (reduce) {
-      appear.setValue(1);
-      return;
-    }
-    const anim = Animated.timing(appear, {
-      toValue: 1,
-      duration: 700,
-      delay: 500,
-      easing: Easing.out(Easing.cubic),
-      useNativeDriver: Platform.OS !== 'web',
-    });
-    anim.start();
-    return () => anim.stop();
-  }, [reduce, appear]);
 
   async function handleLogin() {
     if (submitting.current) return;
@@ -93,20 +89,29 @@ export default function LoginScreen() {
     setIsLoading(true);
     try {
       const { token, user } = await apiLogin(email.trim(), password);
-      await login(token, user);
+      await login(token, user, remember);
+      toast.success('Sesión iniciada', 'Bienvenido a Aquora.');
       router.replace(user.role === 'civil' ? '/(app)/estado' : '/(app)/tablero');
     } catch (err) {
       // Mostrar el motivo REAL: un servidor caído o un rate-limit no son una contraseña mala.
       // Decir siempre "credenciales inválidas" manda a la gente a revisar lo que no falla.
-      toast.error('Error de acceso', err instanceof Error ? err.message : 'No se pudo iniciar sesión.');
+      toast.error(
+        'Error de acceso',
+        err instanceof Error ? err.message : 'No se pudo iniciar sesión.',
+      );
     } finally {
       submitting.current = false;
       setIsLoading(false);
     }
   }
 
-  // Poppins carga en milisegundos desde el paquete; si falla, se sigue con la fuente del sistema.
-  if (!fontsLoaded && !fontError) return <View style={styles.safe} />;
+  // Mantener una señal de carga accesible mientras se cargan las fuentes.
+  if (Platform.OS !== 'web' && !fontsLoaded && !fontError)
+    return (
+      <View style={[styles.safe, styles.loading]}>
+        <ActivityIndicator color={L.brandBlue} accessibilityLabel="Cargando Aquora" />
+      </View>
+    );
 
   const version = runningVersion();
   const serverLabel =
@@ -117,15 +122,7 @@ export default function LoginScreen() {
         : 'Sin conexión con el servidor';
 
   const form = (
-    <Animated.View
-      style={[
-        styles.form,
-        {
-          opacity: appear,
-          transform: [{ translateY: appear.interpolate({ inputRange: [0, 1], outputRange: [16, 0] }) }],
-        },
-      ]}
-    >
+    <View style={styles.form}>
       <Text style={styles.title} accessibilityRole="header">
         Ingresa a Aquora
       </Text>
@@ -142,9 +139,9 @@ export default function LoginScreen() {
         icon="mail-outline"
         error={errors.email}
         value={email}
-        onChangeText={v => {
+        onChangeText={(v) => {
           setEmail(v);
-          if (errors.email) setErrors(e => ({ ...e, email: undefined }));
+          if (errors.email) setErrors((e) => ({ ...e, email: undefined }));
         }}
         placeholder="nombre@empresa.co"
         keyboardType="email-address"
@@ -164,9 +161,9 @@ export default function LoginScreen() {
         icon="lock-closed-outline"
         error={errors.password}
         value={password}
-        onChangeText={v => {
+        onChangeText={(v) => {
           setPassword(v);
-          if (errors.password) setErrors(e => ({ ...e, password: undefined }));
+          if (errors.password) setErrors((e) => ({ ...e, password: undefined }));
         }}
         secureTextEntry={!showPassword}
         autoComplete="current-password"
@@ -178,7 +175,7 @@ export default function LoginScreen() {
         onSubmitEditing={handleLogin}
         accessory={
           <Pressable
-            onPress={() => setShowPassword(v => !v)}
+            onPress={() => setShowPassword((v) => !v)}
             style={styles.eye}
             accessibilityRole="button"
             accessibilityLabel={showPassword ? 'Ocultar contraseña' : 'Mostrar contraseña'}
@@ -193,31 +190,53 @@ export default function LoginScreen() {
       />
 
       <Pressable
-        onPress={handleLogin}
+        onPress={() => setRemember((value) => !value)}
         disabled={isLoading}
-        accessibilityRole="button"
-        accessibilityState={{ busy: isLoading, disabled: isLoading }}
-        // react-native-web 0.21 ya no traduce accessibilityState: los aria-* cubren la web.
-        aria-busy={isLoading}
-        aria-disabled={isLoading}
-        style={({ pressed }) => [
-          styles.btnPrimary,
-          (pressed || isLoading) && { backgroundColor: L.buttonPressed },
-        ]}
+        accessibilityRole="checkbox"
+        accessibilityState={{ checked: remember, disabled: isLoading }}
+        aria-checked={remember}
+        style={styles.rememberRow}
       >
-        {isLoading && <ActivityIndicator color={L.buttonText} />}
-        <Text style={styles.btnPrimaryText}>{isLoading ? 'Ingresando…' : 'Ingresar'}</Text>
+        <Ionicons name={remember ? 'checkbox' : 'square-outline'} size={22} color={L.brandBlue} />
+        <Text style={styles.rememberText}>Recordar sesión en este dispositivo</Text>
       </Pressable>
+      {!remember && (
+        <Text style={styles.hint}>Al recargar o cerrar la app tendrás que iniciar sesión.</Text>
+      )}
+
+      <Animated.View style={{ transform: [{ scale: pressScale }] }}>
+        <Pressable
+          onPressIn={() => animatePress(0.985)}
+          onPressOut={() => animatePress(1)}
+          onPress={handleLogin}
+          disabled={isLoading}
+          accessibilityRole="button"
+          accessibilityState={{ busy: isLoading, disabled: isLoading }}
+          // react-native-web 0.21 ya no traduce accessibilityState: los aria-* cubren la web.
+          aria-busy={isLoading}
+          aria-disabled={isLoading}
+          style={({ pressed }) => [
+            styles.btnPrimary,
+            (pressed || isLoading) && { backgroundColor: L.buttonPressed },
+          ]}
+        >
+          {isLoading && <ActivityIndicator color={L.buttonText} />}
+          <Text style={styles.btnPrimaryText}>{isLoading ? 'Ingresando…' : 'Ingresar'}</Text>
+        </Pressable>
+      </Animated.View>
 
       <Pressable
         onPress={() =>
           // No hay endpoint de recuperación de contraseña: el acceso lo restablece un administrador.
-          toast.info('¿Problemas para ingresar?', 'Contacta al administrador de Aquora para recuperar tu acceso.')
+          toast.info(
+            '¿Problemas para ingresar?',
+            'Contacta al administrador de Aquora para recuperar tu acceso.',
+          )
         }
         accessibilityRole="button"
         style={styles.linkTap}
       >
-        <Text style={styles.linkMuted}>¿Problemas para ingresar?</Text>
+        <Text style={styles.linkMuted}>¿Olvidaste tu contraseña?</Text>
       </Pressable>
 
       <View style={styles.divider} />
@@ -246,21 +265,18 @@ export default function LoginScreen() {
 
       <View style={styles.footer} accessible accessibilityLabel={serverLabel}>
         <View
-          style={[
-            styles.dot,
-            { backgroundColor: serverUp ? L.telcobrasGreen : L.placeholder },
-          ]}
+          style={[styles.dot, { backgroundColor: serverUp ? L.telcobrasGreen : L.placeholder }]}
         />
         <Text style={styles.footerText}>
           {serverLabel}
           {version ? ` · v${version}` : ''}
         </Text>
       </View>
-    </Animated.View>
+    </View>
   );
 
   return (
-    <SafeAreaView style={styles.safe}>
+    <SafeAreaView style={styles.safe} role="main">
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         style={styles.flex}
@@ -268,9 +284,14 @@ export default function LoginScreen() {
         {isWide ? (
           <View style={styles.wideRow}>
             {/* El logo y la frase se centran en la parte seca, por encima del agua. */}
-            <View style={[styles.wideWater, { paddingBottom: height * WIDE_WATER_LEVEL }]}>
+            <View style={styles.wideWater}>
               <WaterBackground level={WIDE_WATER_LEVEL} />
-              <LogoRipples width={200} />
+              <Image
+                source={require('../../assets/aquora-logo.png')}
+                style={styles.logoWide}
+                resizeMode="contain"
+                accessibilityLabel="Aquora, creado por Xpertic"
+              />
               <Text style={styles.tagline}>El agua de 12 plantas, en una sola pantalla.</Text>
               <Text style={styles.taglineSub}>
                 Caudal, presión, niveles y calidad del agua en tiempo real.
@@ -285,10 +306,18 @@ export default function LoginScreen() {
             </ScrollView>
           </View>
         ) : (
-          <ScrollView contentContainerStyle={styles.narrowScroll} keyboardShouldPersistTaps="handled">
+          <ScrollView
+            contentContainerStyle={styles.narrowScroll}
+            keyboardShouldPersistTaps="handled"
+          >
             <View style={styles.narrowWater}>
               <WaterBackground level={0.2} />
-              <LogoRipples width={152} />
+              <Image
+                source={require('../../assets/aquora-logo.png')}
+                style={styles.logoNarrow}
+                resizeMode="contain"
+                accessibilityLabel="Aquora, creado por Xpertic"
+              />
             </View>
             <View style={styles.narrowForm}>{form}</View>
           </ScrollView>
@@ -332,11 +361,11 @@ const Field = forwardRef<ComponentRef<typeof TextInput>, FieldProps>(function Fi
             placeholderTextColor={L.placeholder}
             accessibilityLabel={label}
             aria-invalid={!!error}
-            onFocus={e => {
+            onFocus={(e) => {
               setFocused(true);
               onFocus?.(e);
             }}
-            onBlur={e => {
+            onBlur={(e) => {
               setFocused(false);
               onBlur?.(e);
             }}
@@ -354,13 +383,20 @@ const Field = forwardRef<ComponentRef<typeof TextInput>, FieldProps>(function Fi
 });
 
 const styles = StyleSheet.create({
+  rememberRow: { minHeight: 44, flexDirection: 'row', alignItems: 'center', gap: 10 },
+  rememberText: { flex: 1, fontFamily: Fonts.regular, fontSize: 13, color: L.textSecondary },
   safe: { flex: 1, backgroundColor: L.pageBg },
   flex: { flex: 1 },
+  loading: { alignItems: 'center', justifyContent: 'center' },
+  logoWide: { width: 200, height: 168 },
+  logoNarrow: { width: 108, height: 91 },
 
   // Escritorio/tablet: panel de agua a la izquierda, formulario centrado a la derecha.
-  wideRow: { flex: 1, flexDirection: 'row' },
+  wideRow: { flex: 1, flexDirection: 'row', padding: 24, gap: 24 },
   wideWater: {
-    flex: 1,
+    flex: 0.9,
+    borderRadius: 16,
+    paddingVertical: 96,
     backgroundColor: L.waterPanel,
     alignItems: 'center',
     justifyContent: 'center',
@@ -377,8 +413,8 @@ const styles = StyleSheet.create({
   tagline: {
     marginTop: 28,
     fontFamily: Fonts.semibold,
-    fontSize: 26,
-    lineHeight: 36,
+    fontSize: 32,
+    lineHeight: 44,
     color: L.text,
     textAlign: 'center',
     maxWidth: 440,
@@ -393,21 +429,28 @@ const styles = StyleSheet.create({
     maxWidth: 440,
   },
 
-  // Celular: zona del logo (~330 px) arriba y formulario debajo con 24 px de margen.
+  // En celular, el logo compacto deja visible la acción principal sin recorrer un hero.
   narrowScroll: { flexGrow: 1 },
   narrowWater: {
-    height: 330,
+    height: 152,
     backgroundColor: L.waterPanel,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingBottom: 56,
+    paddingBottom: 12,
     overflow: 'hidden',
   },
-  narrowForm: { paddingHorizontal: 24, paddingTop: 28, paddingBottom: 20 },
+  narrowForm: { paddingHorizontal: 24, paddingTop: 24, paddingBottom: 28, alignItems: 'center' },
 
-  form: { width: '100%', maxWidth: 400 },
-  title: { fontFamily: Fonts.semibold, fontSize: 26, lineHeight: 34, color: L.text },
-  brandBar: { flexDirection: 'row', width: 72, height: 4, marginTop: 10, borderRadius: 2, overflow: 'hidden' },
+  form: { width: '100%', maxWidth: 440 },
+  title: { fontFamily: Fonts.semibold, fontSize: 28, lineHeight: 38, color: L.text },
+  brandBar: {
+    flexDirection: 'row',
+    width: 72,
+    height: 4,
+    marginTop: 10,
+    borderRadius: 2,
+    overflow: 'hidden',
+  },
   brandSeg: { height: '100%' },
   subtitle: {
     marginTop: 12,
@@ -467,10 +510,20 @@ const styles = StyleSheet.create({
   btnPrimaryText: { fontFamily: Fonts.semibold, color: L.buttonText, fontSize: 16 },
 
   linkTap: { minHeight: 44, justifyContent: 'center', alignSelf: 'center', paddingHorizontal: 8 },
-  linkMuted: { fontFamily: Fonts.medium, fontSize: 14, color: L.textSecondary, textDecorationLine: 'underline' },
+  linkMuted: {
+    fontFamily: Fonts.medium,
+    fontSize: 14,
+    color: L.textSecondary,
+    textDecorationLine: 'underline',
+  },
   linkGreen: { fontFamily: Fonts.semibold, fontSize: 14, color: L.linkGreen },
   divider: { height: 1, backgroundColor: L.fieldBorder, marginVertical: 12 },
-  registerRow: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'center' },
+  registerRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   registerText: { fontFamily: Fonts.regular, fontSize: 14, color: L.textSecondary },
   hint: {
     fontFamily: Fonts.regular,
@@ -486,7 +539,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: 8,
-    marginTop: 24,
+    marginTop: 20,
   },
   dot: { width: 8, height: 8, borderRadius: 4 },
   footerText: { fontFamily: Fonts.regular, fontSize: 13, color: L.textSecondary },

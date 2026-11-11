@@ -6,7 +6,7 @@ La pestaña «Novedades» de la bandeja de notificaciones lee este archivo a tra
 
 Tres reglas para mantenerlo:
 
-1. **Una entrada por versión PUBLICADA**, con el mismo texto que se le pone a
+1. **Una entrada por versión publicada**, con el mismo texto que se le pone a
    `~/deploy-scripts/notas-version.txt` en la VM. Son las dos caras del mismo aviso: ese archivo
    viaja junto al APK y alimenta el banner de «hay versión nueva»; este alimenta el historial.
 2. **La entrada se añade cuando se publica**, no cuando se escribe el código. Anunciar en la app una
@@ -19,6 +19,18 @@ El formato lo lee `novedades.parser.ts`: `## <versión> — <fecha>` y debajo lo
 Las secciones de prosa como esta se ignoran, así que se puede escribir con libertad alrededor.
 
 ---
+
+## 1.4.1 — 2026-11-02
+
+- Los avisos importantes pueden llegar como notificaciones al teléfono incluso cuando Aquora no está abierta. En la web también se pueden recibir avisos si el navegador lo permite.
+- Cada persona recibe avisos de las plantas que tiene asignadas.
+- El estado de las válvulas se confirma con la respuesta del equipo; si la respuesta indica una falla, la app bloquea la maniobra.
+- La autonomía estimada de los tanques y su presentación se ajustaron para que la lectura sea más clara.
+
+## 1.4.0 — 2026-10-21
+
+- Se incorporaron notificaciones push para que los avisos importantes puedan llegar aunque no estés mirando la app.
+- Se mejoró la recepción de avisos en segundo plano y el manejo del permiso de notificaciones.
 
 ## 1.3.0 — 2026-08-26
 

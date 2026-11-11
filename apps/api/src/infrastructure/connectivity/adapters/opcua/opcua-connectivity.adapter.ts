@@ -730,6 +730,18 @@ export class OpcUaConnectivityAdapter implements ConnectivityAdapter {
     await escribirElemento(this.session!, resolved.nodeId, target, value, dataType);
   }
 
+  async readBufferFreshness(plantId: string, browseName: string) {
+    if (!this.session) throw new Error('sin sesión OPC UA activa');
+    const target = this.targets.find((t) => t.plantId === plantId && t.browseName === browseName);
+    if (!target) throw new Error('buffer desconocido');
+    const value = await this.session.read({ nodeId: target.nodeId, attributeId: AttributeIds.Value });
+    return {
+      sourceTimestamp: value.sourceTimestamp?.toISOString() ?? null,
+      statusCode: value.statusCode.toString(),
+      good: isGoodStatus(value.statusCode),
+    };
+  }
+
   async readBufferElement(target: BufferElementTarget): Promise<BufferElementRead> {
     const resolved = this.findResolvedElement(target);
     return leerElemento(this.session!, resolved.nodeId, target);

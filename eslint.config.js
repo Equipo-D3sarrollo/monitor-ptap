@@ -24,10 +24,15 @@ module.exports = [
     // __dirname/module/require son globales legítimos de Node, no del bundle. Se declaran para que no
     // salten como no-undef. app.config.js lo ejecuta el CLI de Expo en Node, nunca entra en la app, y
     // usa __dirname para saber si google-services.json está junto a él.
-    files: ['**/ecosystem.config.js', 'apps/mobile/app.config.js'],
+    files: ['**/ecosystem.config.js', 'apps/mobile/app.config.js', 'apps/api/**/*.cjs'],
     languageOptions: {
       sourceType: 'commonjs',
-      globals: { module: 'writable', require: 'readonly', __dirname: 'readonly', process: 'readonly' },
+      globals: {
+        module: 'writable',
+        require: 'readonly',
+        __dirname: 'readonly',
+        process: 'readonly',
+      },
     },
   },
   {
@@ -39,6 +44,7 @@ module.exports = [
     ignores: [
       '**/node_modules/**',
       '**/dist/**',
+      '**/dist-audit/**',
       '**/.expo/**',
       '**/coverage/**',
     ],

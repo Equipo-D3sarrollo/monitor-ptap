@@ -1,7 +1,15 @@
 import { memo, useEffect, useMemo, useState } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, TextInput, StyleSheet, RefreshControl } from 'react-native';
+import {
+  View,
+  Text,
+  ScrollView,
+  TouchableOpacity,
+  TextInput,
+  StyleSheet,
+  RefreshControl,
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Ionicons } from '@expo/vector-icons';
+import Ionicons from '../../components/AppIcon';
 import { router } from 'expo-router';
 import { useNotifications } from '../../hooks/useNotifications';
 import { useNovedades } from '../../hooks/useNovedades';
@@ -20,6 +28,7 @@ import { RegistroIntegridadCard } from '../../components/RegistroIntegridadCard'
 import { NovedadesLista } from '../../components/NovedadesLista';
 import { versionMasReciente } from '../../services/novedades';
 import Colors from '../../constants/colors';
+import { Fonts } from '../../constants/fonts';
 
 /**
  * Bandeja de notificaciones.
@@ -126,7 +135,10 @@ export default function AlertasScreen() {
   /** Versión que estaba sin ver al ABRIR la pestaña; fija el resalte mientras se lee. */
   const [versionNueva, setVersionNueva] = useState<string | null>(null);
 
-  const visibles = useMemo(() => filtrarAvisos(notifications, familia, busqueda), [notifications, familia, busqueda]);
+  const visibles = useMemo(
+    () => filtrarAvisos(notifications, familia, busqueda),
+    [notifications, familia, busqueda],
+  );
 
   // Cuántos hay de cada familia, para que las pestañas digan si vale la pena entrar. Un filtro que
   // lleva a una lista vacía sin avisar antes es peor que no tenerlo.
@@ -207,7 +219,11 @@ export default function AlertasScreen() {
               returnKeyType="search"
             />
             {busqueda.length > 0 && (
-              <TouchableOpacity onPress={() => setBusqueda('')} hitSlop={10} accessibilityLabel="Borrar la búsqueda">
+              <TouchableOpacity
+                onPress={() => setBusqueda('')}
+                hitSlop={10}
+                accessibilityLabel="Borrar la búsqueda"
+              >
                 <Ionicons name="close-circle" size={16} color={Colors.textSecondary} />
               </TouchableOpacity>
             )}
@@ -217,7 +233,11 @@ export default function AlertasScreen() {
         {/* La tira de pestañas aparece si hay ALGO que ofrecer: con la bandeja vacía, Novedades
             sigue teniendo contenido y esconderla la dejaría inalcanzable. */}
         {(notifications.length > 0 || novedadesQ.novedades.length > 0) && (
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.pestanias}>
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.pestanias}
+          >
             <Pestania
               etiqueta="Todo"
               cuantos={notifications.length}
@@ -265,8 +285,8 @@ export default function AlertasScreen() {
             <Ionicons name="checkmark-circle-outline" size={44} color={Colors.success} />
             <Text style={styles.emptyTitle}>Sin avisos</Text>
             <Text style={styles.emptyText}>
-              No se ha registrado ningún aviso en los últimos 3 días. Aquí aparecerán las maniobras de
-              válvula, las señales fuera de rango y los sensores que dejen de refrescarse.
+              No se ha registrado ningún aviso en los últimos 3 días. Aquí aparecerán las maniobras
+              de válvula, las señales fuera de rango y los sensores que dejen de refrescarse.
             </Text>
           </View>
         ) : visibles.length === 0 ? (
@@ -274,8 +294,8 @@ export default function AlertasScreen() {
             <Ionicons name="search-outline" size={40} color={Colors.textSecondary} />
             <Text style={styles.emptyTitle}>Nada con ese filtro</Text>
             <Text style={styles.emptyText}>
-              Hay {notifications.length} avisos en los últimos 3 días, pero ninguno coincide con lo que
-              estás buscando.
+              Hay {notifications.length} avisos en los últimos 3 días, pero ninguno coincide con lo
+              que estás buscando.
             </Text>
             <TouchableOpacity
               style={styles.limpiar}
@@ -322,7 +342,13 @@ const styles = StyleSheet.create({
     minHeight: 44,
     marginBottom: 10,
   },
-  buscadorInput: { flex: 1, fontSize: 14, color: Colors.textPrimary, paddingVertical: 10 },
+  buscadorInput: {
+    fontFamily: Fonts.regular,
+    flex: 1,
+    fontSize: 14,
+    color: Colors.textPrimary,
+    paddingVertical: 10,
+  },
   pestanias: { gap: 8, paddingBottom: 12 },
   pestania: {
     flexDirection: 'row',
@@ -336,13 +362,13 @@ const styles = StyleSheet.create({
   },
   pestaniaActiva: { borderColor: Colors.primary, backgroundColor: Colors.primary + '22' },
   pestaniaDot: { backgroundColor: Colors.danger },
-  pestaniaTexto: { fontSize: 12.5, fontWeight: '600', color: Colors.textSecondary },
+  pestaniaTexto: { fontFamily: Fonts.medium, fontSize: 13, color: Colors.textSecondary },
   pestaniaTextoActiva: { color: Colors.primary },
-  pestaniaNum: { fontSize: 11, color: Colors.textSecondary },
+  pestaniaNum: { fontFamily: Fonts.medium, fontSize: 12, color: Colors.textSecondary },
   limpiar: { marginTop: 12, paddingHorizontal: 16, paddingVertical: 10 },
-  limpiarTexto: { fontSize: 13, fontWeight: '600', color: Colors.primary },
-  heading: { fontSize: 20, fontWeight: '800', color: Colors.textPrimary },
-  sub: { fontSize: 13, color: Colors.textSecondary, marginTop: 2 },
+  limpiarTexto: { fontFamily: Fonts.medium, fontSize: 13, color: Colors.primary },
+  heading: { fontFamily: Fonts.semibold, fontSize: 20, color: Colors.textPrimary },
+  sub: { fontFamily: Fonts.regular, fontSize: 13, color: Colors.textSecondary, marginTop: 2 },
   card: {
     flexDirection: 'row',
     alignItems: 'flex-start',
@@ -361,15 +387,22 @@ const styles = StyleSheet.create({
   body: { flex: 1, gap: 3 },
   titleRow: { flexDirection: 'row', alignItems: 'center', gap: 7 },
   dot: { width: 7, height: 7, borderRadius: 4 },
-  title: { flex: 1, fontSize: 14, fontWeight: '600', color: Colors.textPrimary },
-  titleNuevo: { fontWeight: '800' },
-  message: { fontSize: 12.5, color: Colors.textSecondary, lineHeight: 17 },
-  when: { fontSize: 11.5, color: Colors.textSecondary, fontStyle: 'italic', marginTop: 2 },
+  title: { fontFamily: Fonts.medium, flex: 1, fontSize: 14, color: Colors.textPrimary },
+  titleNuevo: { fontFamily: Fonts.semibold },
+  message: { fontFamily: Fonts.regular, fontSize: 14, color: Colors.textSecondary, lineHeight: 21 },
+  when: { fontFamily: Fonts.regular, fontSize: 12, color: Colors.textSecondary, marginTop: 2 },
   empty: { alignItems: 'center', paddingVertical: 56, paddingHorizontal: 24, gap: 8 },
-  emptyTitle: { fontSize: 16, fontWeight: '700', color: Colors.textPrimary },
-  emptyText: { fontSize: 13, color: Colors.textSecondary, textAlign: 'center', lineHeight: 19 },
+  emptyTitle: { fontFamily: Fonts.semibold, fontSize: 16, color: Colors.textPrimary },
+  emptyText: {
+    fontFamily: Fonts.regular,
+    fontSize: 14,
+    color: Colors.textSecondary,
+    textAlign: 'center',
+    lineHeight: 21,
+  },
   pie: {
-    fontSize: 11.5,
+    fontFamily: Fonts.regular,
+    fontSize: 12,
     color: Colors.textSecondary,
     textAlign: 'center',
     fontStyle: 'italic',

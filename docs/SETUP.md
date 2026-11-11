@@ -15,6 +15,26 @@ agente de IA: cada paso trae su **verificación**, y si una falla hay que resolv
 
 Monorepo npm workspaces: `apps/api` (backend NestJS), `apps/mobile` (Expo), `packages/shared`.
 
+### Entorno aislado en Docker para esta copia
+
+La configuración `.devcontainer/devcontainer.json` usa Node 26.12.1 fijado por digest,
+usuario sin privilegios y cuatro volúmenes para las dependencias del monorepo y la
+herramienta PLC. En VS Code, abrir la carpeta y ejecutar **Dev Containers: Reopen in
+Container**. Ejecutar los comandos npm en la terminal del contenedor, no en Windows:
+
+```bash
+npm ci --ignore-scripts
+npm run build -w @ptap/shared
+npm run typecheck
+npm audit --audit-level=low
+```
+
+El contenedor local ya preparado se llama `aquora-node26-dev`; también admite
+`docker exec -it aquora-node26-dev bash`. Los puertos 4000 y 8081 se publican solo en
+localhost. `.npmrc` deshabilita scripts de instalación por defecto. Esto no crea
+MySQL, una cuenta ni los secretos de la API: completar los pasos siguientes para
+iniciar sesión. No apuntar una prueba local al PLC de producción.
+
 **Hay DOS arranques distintos y confundirlos es la causa #1 de problemas:**
 
 | Arranque | Comando | ¿MySQL? | ¿Login? |

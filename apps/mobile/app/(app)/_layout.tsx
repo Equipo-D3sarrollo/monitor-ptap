@@ -1,6 +1,6 @@
-import { useMemo, useState } from 'react';
-import { Tabs, Redirect, router } from 'expo-router';
-import { PlatformPressable } from 'expo-router/react-navigation';
+import { createElement, useMemo, useState, type ReactNode } from 'react';
+import { Tabs, Redirect, router, useIsFocused } from 'expo-router';
+import { NavigationTabButton } from '../../components/NavigationTabButton';
 import {
   View,
   Text,
@@ -10,13 +10,15 @@ import {
   StyleSheet,
   ActivityIndicator,
   useWindowDimensions,
+  Platform,
 } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import Ionicons from '../../components/AppIcon';
 import Colors from '../../constants/colors';
 import { Fonts, usePoppins } from '../../constants/fonts';
 import { useAuth } from '../../context/AuthContext';
 import { usePlant } from '../../context/PlantContext';
 import { useUnseenNotifications } from '../../hooks/useNotifications';
+import { NavigationSearch, ProfileButton } from '../../components/NavigationSearch';
 import { NotificationOptIn } from '../../components/NotificationOptIn';
 import { usePendingUsers } from '../../hooks/usePendingUsers';
 import { useReducedMotion } from '../../hooks/useReducedMotion';
@@ -26,6 +28,47 @@ const B = Colors.brand;
 /** Desde este ancho las pestañas pasan a una barra lateral (como el panel de plantas del tablero). */
 const SIDEBAR_MIN_WIDTH = 1024;
 
+function MainScene({ children }: { children: ReactNode }) {
+  const focused = useIsFocused();
+  // A stable tag preserves tab state when focus changes; inactive scenes cannot receive focus.
+  if (Platform.OS === 'web')
+    return createElement(
+      'div',
+      {
+        role: focused ? 'main' : undefined,
+        inert: !focused,
+        style: {
+          display: 'flex',
+          flexDirection: 'column',
+          flex: 1,
+          minWidth: 0,
+          minHeight: 0,
+          position: 'relative',
+        },
+      },
+      children,
+    );
+  return <View style={styles.layout}>{children}</View>;
+}
+
+const renderMainScene = ({ children }: { children: ReactNode }) => (
+  <MainScene>{children}</MainScene>
+);
+
+function HeaderFocusGroup({ children }: { children: ReactNode }) {
+  const focused = useIsFocused();
+  if (Platform.OS === 'web')
+    return createElement(
+      'div',
+      {
+        inert: !focused,
+        style: { display: 'contents' },
+      },
+      children,
+    );
+  return <>{children}</>;
+}
+
 /**
  * Título de la cabecera: "Aquora · planta". Aislado para que el cambio de planta repinte solo este
  * texto y no las opciones de las 7 pestañas. Sin el logo: a la altura de la cabecera sus letras son
@@ -33,6 +76,7 @@ const SIDEBAR_MIN_WIDTH = 1024;
  */
 function HeaderTitle() {
   const { selectedPlant } = usePlant();
+  const wide = useWindowDimensions().width >= 700;
   return (
     <View
       style={styles.titleRow}
@@ -41,9 +85,11 @@ function HeaderTitle() {
       accessibilityLabel={`Aquora, planta ${selectedPlant.name}`}
     >
       <Text style={styles.titleBrand}>Aquora</Text>
-      <Text style={styles.titlePlant} numberOfLines={1}>
-        · {selectedPlant.name}
-      </Text>
+      {wide && (
+        <Text style={styles.titlePlant} numberOfLines={1}>
+          · {selectedPlant.name}
+        </Text>
+      )}
     </View>
   );
 }
@@ -62,12 +108,14 @@ function AlertBell() {
   const unseen = useUnseenNotifications();
   return (
     <TouchableOpacity
-      style={{ marginRight: 16 }}
+      style={{ width: 44, height: 44, alignItems: 'center', justifyContent: 'center' }}
       hitSlop={8}
       onPress={() => router.push('/(app)/alertas')}
       accessibilityRole="button"
       accessibilityLabel={
-        unseen > 0 ? `Notificaciones: ${unseen > 9 ? '9+' : unseen} sin ver` : 'Notificaciones: ninguna sin ver'
+        unseen > 0
+          ? `Notificaciones: ${unseen > 9 ? '9+' : unseen} sin ver`
+          : 'Notificaciones: ninguna sin ver'
       }
     >
       <View>
@@ -144,7 +192,12 @@ function MenuModal({
   const reducedMotion = useReducedMotion();
 
   return (
-    <Modal visible={visible} transparent animationType={reducedMotion ? 'none' : 'fade'} onRequestClose={onClose}>
+    <Modal
+      visible={visible}
+      transparent
+      animationType={reducedMotion ? 'none' : 'fade'}
+      onRequestClose={onClose}
+    >
       <Pressable
         style={styles.overlay}
         onPress={onClose}
@@ -156,7 +209,8 @@ function MenuModal({
           onPress={() => {}}
           // Aísla el menú del resto del árbol para los lectores de pantalla mientras está abierto.
           accessibilityViewIsModal
-          accessibilityRole="menu"
+          role="dialog"
+          accessibilityLabel="Menú de usuario"
         >
           <View style={styles.drawerHeader}>
             <View style={styles.drawerAvatar}>
@@ -180,7 +234,8 @@ function MenuModal({
               {pendingCount > 0 && (
                 <View style={styles.pendingPill}>
                   <Text style={styles.pendingPillText}>
-                    {pendingCount > 9 ? '9+' : pendingCount} pendiente{pendingCount === 1 ? '' : 's'}
+                    {pendingCount > 9 ? '9+' : pendingCount} pendiente
+                    {pendingCount === 1 ? '' : 's'}
                   </Text>
                 </View>
               )}
@@ -203,7 +258,12 @@ function MenuModal({
 
           <View style={styles.drawerDivider} />
 
-          <TouchableOpacity style={styles.drawerLogout} onPress={handleLogout}>
+          <TouchableOpacity
+            style={styles.drawerLogout}
+            onPress={handleLogout}
+            accessibilityRole="button"
+            accessibilityLabel="Cerrar sesión"
+          >
             <Ionicons name="log-out-outline" size={20} color={Colors.danger} />
             <Text style={styles.drawerLogoutText}>Cerrar sesión</Text>
           </TouchableOpacity>
@@ -215,14 +275,14 @@ function MenuModal({
 
 export default function AppLayout() {
   const [menuVisible, setMenuVisible] = useState(false);
+  const [navigationCollapsed, setNavigationCollapsed] = useState(false);
   const { user, token, isLoading } = useAuth();
   // Poppins para los componentes del tablero; si falla la carga se sigue con la fuente del sistema.
   const [fontsLoaded, fontError] = usePoppins();
   const isCivil = user?.role === 'civil';
   const sidebar = useWindowDimensions().width >= SIDEBAR_MIN_WIDTH;
 
-  // Opciones de cabecera ESTABLES: se esparcen en 7 `Tabs.Screen`, así que recrearlas en cada
-  // render obligaba a react-navigation a re-evaluar las 7. `setMenuVisible` es estable (useState),
+  // Las opciones solo cambian al adaptar o contraer la navegación. `setMenuVisible` es estable,
   // y los conteos viven ahora dentro de `<AlertBell/>` y `<MenuButton/>`, no aquí. La planta vive
   // dentro de `<HeaderTitle/>` por la misma razón. Las pantallas con título propio (Alertas,
   // Usuarios…) lo sobrescriben con `headerTitle: 'texto'` y heredan el estilo.
@@ -234,8 +294,20 @@ export default function AppLayout() {
       headerTitleAlign: 'left' as const,
       headerTitle: () => <HeaderTitle />,
       headerTitleStyle: { fontFamily: Fonts.semibold, fontSize: 17, color: B.text },
-      headerLeft: () => <MenuButton onPress={() => setMenuVisible(true)} />,
-      headerRight: () => <AlertBell />,
+      headerLeft: () => (
+        <HeaderFocusGroup>
+          <MenuButton onPress={() => setMenuVisible(true)} />
+        </HeaderFocusGroup>
+      ),
+      headerRight: () => (
+        <HeaderFocusGroup>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, paddingRight: 12 }}>
+            <NavigationSearch />
+            <AlertBell />
+            <ProfileButton onPress={() => setMenuVisible(true)} />
+          </View>
+        </HeaderFocusGroup>
+      ),
     }),
     [],
   );
@@ -246,9 +318,11 @@ export default function AppLayout() {
   //  2. El cierre AUTOMÁTICO a las 8 h (AuthContext vence el token y deja token=null).
   //  3. Un 401 del backend (token revocado/vencido): onUnauthorized hace logout y esto redirige.
   // Mientras se restaura la sesión persistida no se decide nada (evita el parpadeo al login).
-  if (isLoading || (!fontsLoaded && !fontError)) {
+  if (isLoading || (Platform.OS !== 'web' && !fontsLoaded && !fontError)) {
     return (
-      <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: B.page }}>
+      <View
+        style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: B.page }}
+      >
         <ActivityIndicator size="large" color={B.blue} />
       </View>
     );
@@ -256,7 +330,7 @@ export default function AppLayout() {
   if (!token) return <Redirect href="/(auth)/login" />;
 
   return (
-    <>
+    <View style={styles.layout}>
       {/* La franja de permiso vive AQUÍ, no en Ajustes. El permiso del sistema no se puede pedir
           solo —los navegadores lo rechazan y Android lo cuenta como denegado para siempre—, así que
           hace falta un gesto del usuario; y hasta ahora ese gesto solo era posible si alguien
@@ -269,32 +343,48 @@ export default function AppLayout() {
           cada 60 s. El badge del botón de menú sigue vivo por su cuenta. */}
       {menuVisible && <MenuModal visible onClose={() => setMenuVisible(false)} user={user} />}
       <Tabs
+        screenLayout={renderMainScene}
         screenOptions={{
           tabBarActiveTintColor: B.link,
           tabBarInactiveTintColor: B.textSecondary,
-          // Escritorio: barra lateral de 76 px con la pestaña activa resaltada (referencia
-          // TableroEscritorio). Celular: barra inferior.
+          // Escritorio: navegación agrupada bajo la cabecera. Celular: barra inferior.
           tabBarPosition: sidebar ? 'left' : 'bottom',
-          tabBarVariant: sidebar ? 'material' : 'uikit',
-          tabBarLabelPosition: 'below-icon',
+          tabBarVariant: 'uikit',
+          tabBarLabelPosition: sidebar ? 'beside-icon' : 'below-icon',
+          tabBarShowLabel: !sidebar || !navigationCollapsed,
           tabBarActiveBackgroundColor: sidebar ? B.selected : undefined,
           tabBarStyle: isCivil
             ? { display: 'none' }
             : sidebar
-              ? styles.rail
+              ? [styles.rail, navigationCollapsed && styles.railCollapsed]
               : styles.bottomBar,
           tabBarItemStyle: sidebar ? styles.railItem : styles.bottomItem,
+          tabBarBackground: sidebar
+            ? () => (
+                <View style={styles.railSurface} pointerEvents="none">
+                  <View style={styles.railHeading}>
+                    {!navigationCollapsed && <Text style={styles.railHeadingText}>Navegación</Text>}
+                  </View>
+                </View>
+              )
+            : undefined,
           // Celular: raya azul de 2 px arriba de la pestaña activa (referencia TableroMovil). Es el
           // mismo botón que pinta la barra por defecto; solo se le añade el borde según aria-selected.
-          tabBarButton: sidebar
-            ? undefined
-            : ({ style, ...props }) => (
-                <PlatformPressable
-                  {...props}
-                  style={[style, styles.tabTop, props['aria-selected'] && styles.tabTopActive]}
-                />
-              ),
-          tabBarLabelStyle: { fontFamily: Fonts.medium, fontSize: 11, lineHeight: 16 },
+          tabBarButton: ({ style, ...props }) => (
+            <NavigationTabButton
+              {...props}
+              style={[
+                style,
+                !sidebar && styles.tabTop,
+                !sidebar && props['aria-selected'] && styles.tabTopActive,
+              ]}
+            />
+          ),
+          tabBarLabelStyle: {
+            fontFamily: Fonts.medium,
+            fontSize: sidebar ? 14 : 11,
+            lineHeight: sidebar ? 20 : 18,
+          },
         }}
       >
         <Tabs.Screen
@@ -302,6 +392,7 @@ export default function AppLayout() {
           options={{
             ...HEADER_OPTS,
             tabBarLabel: 'Tablero',
+            tabBarAccessibilityLabel: 'Tablero',
             tabBarIcon: ({ color, size, focused }) => (
               <Ionicons
                 name={focused ? 'grid' : 'grid-outline'}
@@ -313,9 +404,12 @@ export default function AppLayout() {
         />
         <Tabs.Screen
           name="electrovalvulas"
+          // Mantener los efectos de supervisión activos mientras una maniobra está pendiente.
+          activityEnabled={false}
           options={{
             ...HEADER_OPTS,
             tabBarLabel: 'Válvulas',
+            tabBarAccessibilityLabel: 'Válvulas',
             tabBarIcon: ({ color, size, focused }) => (
               <Ionicons
                 name={focused ? 'toggle' : 'toggle-outline'}
@@ -330,6 +424,7 @@ export default function AppLayout() {
           options={{
             ...HEADER_OPTS,
             tabBarLabel: 'Reportes',
+            tabBarAccessibilityLabel: 'Reportes',
             tabBarIcon: ({ color, size, focused }) => (
               <Ionicons
                 name={focused ? 'document-text' : 'document-text-outline'}
@@ -378,6 +473,15 @@ export default function AppLayout() {
             headerTitle: 'Ajustes',
           }}
         />
+        <Tabs.Screen
+          name="ayuda"
+          options={{
+            tabBarButton: () => null,
+            tabBarItemStyle: { display: 'none' },
+            ...HEADER_OPTS,
+            headerTitle: 'Ayuda',
+          }}
+        />
         {/* Fuera del tab bar: se entra desde Ajustes, y el backend solo la sirve con
             `system_config`. La pantalla vuelve a comprobarlo por su cuenta. */}
         <Tabs.Screen
@@ -390,24 +494,66 @@ export default function AppLayout() {
           }}
         />
       </Tabs>
-    </>
+      {sidebar && !isCivil && (
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={navigationCollapsed ? 'Expandir navegación' : 'Contraer navegación'}
+          aria-expanded={!navigationCollapsed}
+          onPress={() => setNavigationCollapsed((value) => !value)}
+          style={({ pressed }) => [
+            styles.navigationToggle,
+            { left: (navigationCollapsed ? 72 : 220) - 44 - 8 },
+            pressed && styles.navigationTogglePressed,
+          ]}
+        >
+          <Ionicons
+            name="chevron-forward"
+            style={!navigationCollapsed ? styles.navigationArrowBack : undefined}
+            size={20}
+            color={B.link}
+          />
+        </Pressable>
+      )}
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
+  layout: { flex: 1 },
+  navigationToggle: {
+    position: 'absolute',
+    top: '50%',
+    marginTop: -22,
+    zIndex: 30,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: B.panel,
+    borderWidth: 1,
+    borderColor: B.divider,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  navigationTogglePressed: { backgroundColor: B.selected },
+  navigationArrowBack: { transform: [{ rotate: '180deg' }] },
   titleRow: { flexDirection: 'row', alignItems: 'center', gap: 6, maxWidth: '100%' },
   titleBrand: { fontFamily: Fonts.semibold, fontSize: 17, color: B.text },
   titlePlant: { fontFamily: Fonts.regular, fontSize: 15, color: B.textSecondary, flexShrink: 1 },
-  // 96 px: con menos, el ítem de la barra lateral deja ~43 px a la etiqueta y "Válvulas" se corta.
+  // Etiquetas junto al icono en escritorio; navegación inferior en móvil.
   rail: {
-    width: 96,
+    width: 220,
+    minWidth: 220,
+    maxWidth: 220,
     backgroundColor: B.panel,
-    borderRightWidth: 1,
-    borderRightColor: B.divider,
-    paddingTop: 12,
-    paddingHorizontal: 4,
+    borderRightWidth: 0,
+    paddingTop: 80,
+    paddingHorizontal: 12,
   },
-  railItem: { borderRadius: 12, marginVertical: 3, minHeight: 60, paddingHorizontal: 0 },
+  railSurface: { flex: 1, backgroundColor: B.panel },
+  railCollapsed: { width: 72, minWidth: 72, maxWidth: 72 },
+  railHeading: { height: 64, justifyContent: 'center', paddingHorizontal: 24 },
+  railHeadingText: { fontFamily: Fonts.semibold, fontSize: 14, color: B.textSecondary },
+  railItem: { borderRadius: 10, marginVertical: 4, minHeight: 48, paddingHorizontal: 4 },
   bottomItem: { height: 58 },
   tabTop: { borderTopWidth: 2, borderTopColor: 'transparent' },
   tabTopActive: { borderTopColor: B.blue },

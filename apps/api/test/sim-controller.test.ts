@@ -31,7 +31,7 @@ const RUTA_PRUEBA = join(__dirname, '..', 'fixtures', 'sim-scenarios', 'mappings
 const usuarios = {
   findById: async (id: string): Promise<UserRecord | null> => {
     const role = id.replace(/^u-/, '');
-    return { id, email: `${role}@ptap.co`, name: role, role, plant: 'sim-una', passwordHash: 'x', pepperVersion: 1, isActive: true } as UserRecord;
+    return { id, email: `${role}@ptap.co`, name: role, role, plant: 'sim-una', passwordHash: 'x', pepperVersion: 1, isActive: true, emailVerified: true } as UserRecord;
   },
 } as unknown as UsersRepository;
 

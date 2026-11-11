@@ -219,6 +219,20 @@ function authFixture(store: Record<string, (...args: any[]) => any>, options: {
   };
 }
 
+test('session-only login removes persisted credentials and keeps the authorized token in memory', async () => {
+  for (const platform of ['web', 'android']) {
+    const { store } = fixture();
+    const auth = authFixture(store, { platform });
+    auth.disk.set('ptap_auth_user', JSON.stringify(alice));
+    await auth.auth.login('temporary', alice, false);
+    assert.equal(auth.disk.has('ptap_auth_token'), false);
+    assert.equal(auth.disk.has('ptap_auth_user'), false);
+    assert.equal(auth.token(), 'temporary');
+    await auth.auth.login('remembered', alice, true);
+    assert.equal(auth.disk.get('ptap_auth_token'), 'remembered');
+  }
+});
+
 test('logout immediately removes query data and fallback before push unregister finishes', async () => {
   const { store } = fixture();
   await store.setLastDataSession(alice);

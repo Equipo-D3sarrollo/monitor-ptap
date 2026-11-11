@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Modal, View, Text, ScrollView, StyleSheet, TouchableOpacity, ActivityIndicator, Platform } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import Ionicons from './AppIcon';
 import Colors from '../constants/colors';
 import { useReducedMotion } from '../hooks/useReducedMotion';
 import { HapticFeedback } from '../services/haptics';
