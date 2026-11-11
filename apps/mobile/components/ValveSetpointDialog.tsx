@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useMemo, useState } from 'react';
 import {
   Modal,
   View,
@@ -9,6 +9,7 @@ import {
   TouchableOpacity,
   PanResponder,
   Platform,
+  type GestureResponderEvent,
   type LayoutChangeEvent,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
@@ -44,43 +45,31 @@ export function ValveSetpointDialog({ visible, valveName, plantName, positionPct
   const reducedMotion = useReducedMotion();
   const { min, max } = limites;
   const unidad = limites.unit ? ` ${limites.unit}` : '';
-  const [texto, setTexto] = useState('');
-  const anchoPista = useRef(0);
-  const desdeAlEmpezar = useRef(0);
-
-  // Valor de partida en cada apertura: la consigna vigente; si no se conoce, la apertura medida.
-  useEffect(() => {
-    if (!visible) return;
-    const inicial = setpointPct ?? (positionPct === null ? min : positionPct);
-    setTexto(String(Math.round(Math.min(max, Math.max(min, inicial)))));
-    // Solo al abrir: mientras el operador elige, una lectura nueva no debe pisar lo que escribió.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [visible]);
+  // Valor de partida: la consigna vigente; si no se conoce, la apertura medida. La pantalla monta el
+  // diálogo al abrirlo, así que esto corre en cada apertura y una lectura nueva no pisa lo escrito.
+  const [texto, setTexto] = useState(() =>
+    String(Math.round(Math.min(max, Math.max(min, setpointPct ?? (positionPct === null ? min : positionPct))))),
+  );
+  const [anchoPista, setAnchoPista] = useState(0);
 
   const validacion = validarConsigna(texto, limites);
   const valor = validacion.ok ? validacion.value : null;
   const fijar = (n: number) => setTexto(String(Math.round(Math.min(max, Math.max(min, n)))));
 
-  const responder = useMemo(
-    () =>
-      PanResponder.create({
-        onStartShouldSetPanResponder: () => true,
-        onMoveShouldSetPanResponder: () => true,
-        onPanResponderGrant: (e) => {
-          if (anchoPista.current <= 0) return;
-          const n = min + (e.nativeEvent.locationX / anchoPista.current) * (max - min);
-          desdeAlEmpezar.current = n;
-          fijar(n);
-        },
-        onPanResponderMove: (_e, g) => {
-          if (anchoPista.current <= 0) return;
-          fijar(desdeAlEmpezar.current + (g.dx / anchoPista.current) * (max - min));
-        },
-      }),
-    // `fijar` solo depende de min/max.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [min, max],
-  );
+  // El valor sale de dónde está el dedo SOBRE la pista (`locationX`: las piezas no capturan el toque),
+  // al tocar y al arrastrar: sin refs ni estado entre eventos.
+  const responder = useMemo(() => {
+    const aValor = (x: number) => min + (x / anchoPista) * (max - min);
+    const mover = (e: GestureResponderEvent) => {
+      if (anchoPista > 0) setTexto(String(Math.round(Math.min(max, Math.max(min, aValor(e.nativeEvent.locationX))))));
+    };
+    return PanResponder.create({
+      onStartShouldSetPanResponder: () => true,
+      onMoveShouldSetPanResponder: () => true,
+      onPanResponderGrant: mover,
+      onPanResponderMove: mover,
+    });
+  }, [anchoPista, min, max]);
 
   const pctBarra = (n: number | null) => (n === null ? 0 : ((Math.min(max, Math.max(min, n)) - min) / (max - min)) * 100);
 
@@ -113,9 +102,7 @@ export function ValveSetpointDialog({ visible, valveName, plantName, positionPct
 
           <View
             style={styles.pista}
-            onLayout={(e: LayoutChangeEvent) => {
-              anchoPista.current = e.nativeEvent.layout.width;
-            }}
+            onLayout={(e: LayoutChangeEvent) => setAnchoPista(e.nativeEvent.layout.width)}
             accessible
             accessibilityRole="adjustable"
             accessibilityLabel={`Nueva consigna de ${valveName}`}
