@@ -248,21 +248,23 @@ export default function ElectrovalvulasScreen() {
         onCancel={() => setPendiente(null)}
       />
 
+      {/* Se MONTA al abrirlo (no solo `visible`): así arranca cada vez con la consigna vigente. */}
+      {eligiendo && (
       <ValveSetpointDialog
-        visible={eligiendo !== null}
-        valveName={eligiendo?.name ?? ''}
+        visible
+        valveName={eligiendo.name}
         plantName={plantName}
         // La apertura en vivo, no la del momento de abrir el diálogo.
-        positionPct={valves.find((v) => v.id === eligiendo?.id)?.positionPct ?? eligiendo?.positionPct ?? null}
-        setpointPct={eligiendo?.setpointPct ?? null}
-        limites={eligiendo?.setpoint ?? { min: 0, max: 100, unit: '%' }}
+        positionPct={valves.find((v) => v.id === eligiendo.id)?.positionPct ?? eligiendo.positionPct}
+        setpointPct={eligiendo.setpointPct}
+        limites={eligiendo.setpoint ?? { min: 0, max: 100, unit: '%' }}
         onCancel={() => setEligiendo(null)}
         onContinue={(value) => {
-          if (!eligiendo) return;
           setPendiente({ plantId: selectedPlant.id, valve: eligiendo, verb: 'setpoint', value });
           setEligiendo(null);
         }}
       />
+      )}
 
       <ValveResultDialog verdict={resultado} onClose={() => setResultado(null)} />
 
