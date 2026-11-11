@@ -177,9 +177,7 @@ export function semanticErrors(mapping: unknown): string[] {
         // Mando RETIRADO (writable: false con write): solo sirve para la limpieza de bits huérfanos,
         // y la limpieza solo puede apagar bits concretos en una palabra compartida. Un spec que no sea
         // bitmask con máscaras enteras no le dice qué apagar sin pisar a otra válvula.
-        // Una CONSIGNA apagada (writable: false con setpoint) no es un mando retirado: no tiene bits
-        // que limpiar; ya la validó motivoConsignaInvalida arriba.
-        if (retirada && w.setpoint === undefined) {
+        if (retirada) {
           const cmds = w.commands as Record<string, unknown> | undefined;
           const mascarasOk =
             !!cmds && typeof cmds === 'object' && Object.values(cmds).every((v) => typeof v === 'number' && Number.isInteger(v) && v >= 1 && v <= 0xffff);

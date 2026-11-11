@@ -1,4 +1,4 @@
-import type { LoadedMapping, SetpointSpec, SignalMapping } from '../mapping/opc-mapping.loader';
+import type { LoadedMapping, SignalMapping } from '../mapping/opc-mapping.loader';
 import type { OpcQuality, RawBufferSample } from '../ports/connectivity-adapter.port';
 import type { DeadLetterBuffer } from './dead-letter.buffer';
 import { esFinDeSemanaOFestivo } from './dia-operativo';
@@ -66,11 +66,6 @@ function rangoDelDia(sig: SignalMapping): { opMin: number | null; opMax: number 
  * igual tamaño (SOLEDAD: REAL_IN_SOLEDAD Float[50] y DATOS_IN_PTAP_SOLEDAD Int16[50]),
  * donde "el de más elementos" empataría y la elección sería no determinista.
  */
-/** Límites de una consigna para el snapshot (sin la tolerancia, que es del backend). */
-function limitesDeConsigna(sp: SetpointSpec | undefined): { setpoint?: { min: number; max: number; unit: string | null } } {
-  return sp ? { setpoint: { min: sp.min, max: sp.max, unit: sp.unit } } : {};
-}
-
 export class MappingEngine {
   private readonly signalsByPlant = new Map<string, SignalMapping[]>();
 
@@ -111,8 +106,9 @@ export class MappingEngine {
       // Los verbos salen del mapping, nunca de una lista en el código (regla 2). Sin write spec
       // queda vacío, y el builder solo lo publica en las señales de válvula.
       commands: Object.keys(sig.write?.commands ?? {}),
-      // Encendida (write.setpoint) o APAGADA (consignaApagada): la app distingue las dos por `commandable`.
-      ...limitesDeConsigna(sig.write?.setpoint ?? sig.consignaApagada),
+      ...(sig.write?.setpoint
+        ? { setpoint: { min: sig.write.setpoint.min, max: sig.write.setpoint.max, unit: sig.write.setpoint.unit } }
+        : {}),
       mappingStatus: sig.mappingStatus,
       confidence: sig.confidence,
     };

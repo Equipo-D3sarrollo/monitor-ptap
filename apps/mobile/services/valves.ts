@@ -336,7 +336,7 @@ export type ValveAction =
   | { kind: 'setpoint'; min: number; max: number; unit: string | null }
   | {
       kind: 'blocked';
-      reason: 'frozen' | 'fault' | 'setpoint-off' | 'setpoint-pending' | 'no-channel' | 'unknown-state' | 'verb-missing';
+      reason: 'frozen' | 'fault' | 'setpoint-pending' | 'no-channel' | 'unknown-state' | 'verb-missing';
       explain: string;
     };
 
@@ -349,11 +349,6 @@ export function accionDisponible(valve: ValveView, frozen: boolean, explicitVerb
   }
   if (valve.kind === 'proportional' && valve.setpoint && valve.commandable && valve.commands.includes('setpoint')) {
     return { kind: 'setpoint', ...valve.setpoint };
-  }
-  // Consigna implementada pero APAGADA en el mapping (writable: false): existe, pero Operación aún no
-  // la autorizó. Se dice eso, no «todavía no se puede enviar», que sonaría a una función que falta.
-  if (valve.kind === 'proportional' && valve.setpoint && !valve.commandable) {
-    return { kind: 'blocked', reason: 'setpoint-off', explain: 'Consigna pendiente de autorización de Operación.' };
   }
   if (valve.kind === 'proportional') {
     return {

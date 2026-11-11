@@ -278,12 +278,6 @@ export interface SignalMapping {
    */
   mandoConservado?: MandoConservado;
   /**
-   * CONSIGNA APAGADA: `writable: false` con un `write.setpoint` válido. La consigna está implementada
-   * pero no autorizada: no da mando (el WriteService no la resuelve), pero viaja al snapshot para que
-   * la app diga «pendiente de autorización» en vez de «no existe». Ver `motivoConsignaInvalida`.
-   */
-  consignaApagada?: SetpointSpec;
-  /**
    * Valores literales de la palabra de estado de válvula para sitios que NO usan la máscara
    * bit14/bit0. Viaja al DTO para que el front no tenga que conocer cada planta. Ver `SignalDto`.
    */
@@ -1053,18 +1047,10 @@ export function loadMapping(explicitPath?: string): LoadedMapping {
       if (!s.buffer || typeof s.index !== 'number' || !s.domainKey) {
         throw new Error(`opc_mapping.json: signal inválida en ${plant.plantId} (buffer/index/domainKey)`);
       }
-      // CONSIGNA APAGADA (`writable: false` con `write.setpoint`): se valida igual que una encendida —
-      // activarla es cambiar UN campo y no puede destapar un spec roto— y no es un mando retirado: no
-      // hay bits huérfanos que limpiar en una palabra que es solo de la consigna.
-      const apagada = s.writable !== true && s.write?.setpoint !== undefined;
-      if (apagada) {
-        const motivo = motivoConsignaInvalida(s.write!);
-        if (motivo) throw new Error(`opc_mapping.json: ${plant.plantId}/${s.domainKey}: CONSIGNA (apagada) inválida — ${motivo}. El backend no arranca con este mapping.`);
-      }
       // Mando RETIRADO: `writable: false` con el `write` de cuando se accionaba. No da mando; solo
       // dice a la limpieza de huérfanos qué bits pudo dejar puestos.
       const mandoConservado =
-        s.writable !== true && s.write && !apagada ? parseMandoConservado(s.write, `${plant.plantId}/${s.domainKey}`) : undefined;
+        s.writable !== true && s.write ? parseMandoConservado(s.write, `${plant.plantId}/${s.domainKey}`) : undefined;
       signals.push({
         plantId: plant.plantId,
         buffer: s.buffer,
@@ -1083,7 +1069,6 @@ export function loadMapping(explicitPath?: string): LoadedMapping {
         writable: s.writable === true,
         write: s.writable === true ? parseWriteSpec(s.write, `${plant.plantId}/${s.domainKey}`) : undefined,
         ...(mandoConservado ? { mandoConservado } : {}),
-        ...(apagada ? { consignaApagada: parseSetpoint(s.write!.setpoint) } : {}),
         stateEncoding: parseStateEncoding(s.stateEncoding),
         flowDomainKey: typeof s.flowDomainKey === 'string' ? s.flowDomainKey : undefined,
         stateTrusted: typeof s.stateTrusted === 'boolean' ? s.stateTrusted : undefined,

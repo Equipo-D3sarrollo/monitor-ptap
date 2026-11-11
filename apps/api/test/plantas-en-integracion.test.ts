@@ -173,7 +173,7 @@ test('mapping de PRODUCCIÓN: conCanal en 11 — Cabuyo tiene intOut/intIn y su 
     assert.ok(!writables.some((w) => w.startsWith(`${id}/`)), `${id}: ninguna válvula escribible`);
   }
   assert.ok(conCanal.includes('cabuyo'), 'cabuyo: con canal de comando');
-  assert.deepEqual(writables.filter((w) => w.startsWith('cabuyo/')), ['cabuyo/valve2'], 'cabuyo: solo la entrada; la consigna de la salida (Fase 4) está apagada');
+  assert.deepEqual(writables.filter((w) => w.startsWith('cabuyo/')), ['cabuyo/valve2', 'cabuyo/valve1'], 'cabuyo: la entrada on/off y la consigna de la salida (Fase 4)');
 });
 
 // ── 2. De punta a punta: una planta sin buffers no rompe nada ni dice lo que no es ───────────────

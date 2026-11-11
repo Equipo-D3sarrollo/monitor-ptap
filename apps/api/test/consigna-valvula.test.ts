@@ -12,7 +12,7 @@
 import 'reflect-metadata';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { join, resolve } from 'node:path';
+import { join } from 'node:path';
 import { loadJson, validateMapping } from '../scripts/validate-mapping';
 import {
   clearMappingCache,
@@ -21,17 +21,12 @@ import {
   type WriteSpec,
 } from '../src/infrastructure/connectivity/mapping/opc-mapping.loader';
 import type { AuditEntry, AuditLogService } from '../src/infrastructure/audit/audit-log.service';
-import { writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
-import { DeadLetterBuffer } from '../src/infrastructure/connectivity/pipeline/dead-letter.buffer';
-import { MappingEngine } from '../src/infrastructure/connectivity/pipeline/mapping.engine';
-import { buildSnapshot } from '../src/infrastructure/connectivity/pipeline/snapshot.builder';
 import type { ConnectivityConfig } from '../src/infrastructure/connectivity/connectivity.config';
 import type { PlantCache } from '../src/infrastructure/connectivity/pipeline/plant-cache';
 import type { LivenessState, PlantSnapshotDto } from '../src/infrastructure/connectivity/pipeline/plant-snapshot.dto';
 import type { ConnectivityAdapter } from '../src/infrastructure/connectivity/ports/connectivity-adapter.port';
 import { SimulatedPlc, CONSIGNA_UNIDADES_POR_S } from '../src/infrastructure/connectivity/adapters/simulator/simulated-plc';
-import { encenderConsignas, leerEscenario, opcionesPorDefecto, resolverRutaEscenario } from '../src/infrastructure/connectivity/adapters/simulator/sim-scenario';
+import { opcionesPorDefecto } from '../src/infrastructure/connectivity/adapters/simulator/sim-scenario';
 import type { CommandLogRepository, StoredCommand } from '../src/modules/commands/command-log.repository';
 import { CommandMappingResolver } from '../src/modules/commands/command-mapping.resolver';
 import type { CommandSignatureService } from '../src/modules/commands/command-signature.service';
@@ -135,96 +130,20 @@ const pedir = (value: number | undefined, extra: Partial<CommandRequest> = {}): 
 
 // ── Mapping ────────────────────────────────────────────────────────────────────────────────────
 
-/** El mapping de producción con la consigna de Cabuyo ENCENDIDA (writable: true), solo en memoria. */
-function produccionConConsignaEncendida(): unknown {
-  return encenderConsignas(loadJson(RUTA_MAPPING), ['cabuyo/valve1']);
-}
-
-test('consigna: el escenario produccion-consigna la ENCIENDE solo en la simulación, sin tocar el mapping de producción', () => {
-  const leido = leerEscenario(resolverRutaEscenario('produccion-consigna', join(__dirname, '..')));
-  assert.deepEqual(leido.escenario.consignasEncendidas, ['cabuyo/valve1']);
-  assert.equal(resolve(leido.rutaMapping ?? ''), resolve(RUTA_MAPPING), 'el mapping REAL');
-
-  const original = loadJson(RUTA_MAPPING);
-  const antes = JSON.stringify(original);
-  const copia = encenderConsignas(original, ['cabuyo/valve1']) as { plants: Array<{ plantId: string; signals: Array<{ domainKey: string; writable?: boolean }> }> };
-  assert.equal(JSON.stringify(original), antes, 'el documento original no se modifica');
-  const cabuyo = copia.plants.find((p) => p.plantId === 'cabuyo')!.signals;
-  assert.equal(cabuyo.find((s) => s.domainKey === 'valve1')!.writable, true);
-  assert.equal(cabuyo.find((s) => s.domainKey === 'valve2')!.writable, true, 'el resto, igual');
-  assert.deepEqual(validateMapping(loadJson(RUTA_SCHEMA) as object, copia).errors, []);
-  // Solo enciende consignas APAGADAS: nada de inventar mandos.
-  assert.throws(() => encenderConsignas(original, ['cabuyo/valve1Position']), /no es una consigna APAGADA/);
-  assert.throws(() => encenderConsignas(original, ['cabuyo/valve2']), /no es una consigna APAGADA/);
-  assert.throws(() => encenderConsignas(original, ['cabuyo/valve9']), /no existe/);
-});
-
-test('consigna APAGADA: el mapping de producción declara cabuyo/valve1 con writable: false; validate:mapping la acepta y el loader arranca', () => {
-  const doc = loadJson(RUTA_MAPPING) as { plants: Array<{ plantId: string; signals: Array<{ domainKey: string; writable?: boolean; _nota?: string; write?: { setpoint?: unknown } }> }> };
-  const json = doc.plants.find((p) => p.plantId === 'cabuyo')!.signals.find((s) => s.domainKey === 'valve1')!;
-  assert.equal(json.writable, false, 'apagada hasta la autorización escrita de Operación');
-  assert.match(String(json._nota), /^Consigna implementada, APAGADA: pendiente de autorización escrita de Operación\. Para activarla: writable: true/);
-  assert.ok(json.write?.setpoint, 'el spec se conserva: activarla es cambiar UN campo');
-  assert.deepEqual(validateMapping(loadJson(RUTA_SCHEMA) as object, doc).errors, []);
-
+test('consigna: el mapping de producción declara cabuyo/valve1 como CONSIGNA válida y el loader la carga', () => {
+  assert.deepEqual(validateMapping(loadJson(RUTA_SCHEMA) as object, loadJson(RUTA_MAPPING)).errors, []);
   clearMappingCache();
   const s = loadMapping(RUTA_MAPPING).signals.find((x) => x.plantId === 'cabuyo' && x.domainKey === 'valve1');
-  assert.equal(s?.writable, false);
-  assert.equal(s?.write, undefined, 'sin write spec: no hay mando');
-  assert.equal(s?.mandoConservado, undefined, 'no es un mando retirado: no hay bits huérfanos que limpiar');
-  assert.deepEqual(s?.consignaApagada, { min: 0, max: 100, unit: '%', tolerance: 2 });
-  assert.equal(new CommandMappingResolver().resolve('cabuyo', 'valve1'), null, 'el WriteService no la resuelve');
+  assert.ok(s?.writable && s.write?.setpoint);
+  assert.deepEqual(s.write.setpoint, { min: 0, max: 100, unit: '%', tolerance: 2 });
+  assert.deepEqual(s.write.target, { channel: 'intOut', sourceBuffer: 'INT_OUT_CABUYO', index: 1 });
+  assert.equal(s.write.timeoutMs, 120_000);
+  assert.equal(s.write.readBack.stateVerified, false);
+  assert.equal(s.write.rollbackValue, undefined);
+  const r = new CommandMappingResolver().resolve('cabuyo', 'valve1');
+  assert.ok(r?.write.setpoint, 'el WriteService la resuelve');
+  // La consigna no entra en la limpieza de bits huérfanos: no es un bit de mando.
   assert.ok(!new CommandMappingResolver().mandosParaLimpieza().some((m) => m.plantId === 'cabuyo' && m.domainKey === 'valve1'));
-
-  // Y encendida (writable: true) sigue siendo un spec válido: activarla no destapa nada roto.
-  assert.deepEqual(validateMapping(loadJson(RUTA_SCHEMA) as object, produccionConConsignaEncendida()).errors, []);
-});
-
-test('consigna APAGADA: el WriteService rechaza cualquier setpoint a cabuyo/valve1 sin escribir, y queda auditado', async () => {
-  clearMappingCache();
-  const adapter = adaptador({ pasoPorLectura: 50 });
-  const audit: AuditEntry[] = [];
-  const snapshot = {
-    plantId: 'cabuyo', displayName: 'Cabuyo', sequence: 3, protocolVersion: 'v2', dtoVersion: 'v1', bridgeStatus: 'Connected',
-    liveness: { state: 'live', lastChangeAt: null, windowSec: 300 }, signals: {},
-  } as unknown as PlantSnapshotDto;
-  const service = new WriteService(
-    adapter as unknown as ConnectivityAdapter,
-    { opcua: { writesEnabled: true } } as unknown as ConnectivityConfig,
-    { get: () => snapshot } as unknown as PlantCache,
-    new CommandMappingResolver(), // el resolver REAL, sobre el mapping de producción
-    repo(),
-    { record: async (e: AuditEntry) => { audit.push(e); } } as unknown as AuditLogService,
-    { firmar: async () => null } as unknown as CommandSignatureService,
-    { create: async () => true } as unknown as NotificationRepository,
-  );
-  for (const value of [0, 40, 100]) {
-    const r = await service.execute('cabuyo', pedir(value), OPERADOR);
-    assert.equal(r.status, 'rejected', String(value));
-    assert.equal(r.reason, REJECT.TARGET_NOT_WRITABLE, String(value));
-  }
-  assert.equal(adapter.writes.length, 0, 'nada escrito');
-  assert.equal(audit.length, 3, 'cada intento queda auditado');
-  assert.ok(audit.every((e) => (e.detail as Record<string, unknown>).command === 'setpoint'));
-});
-
-test('consigna APAGADA: el snapshot publica la apertura y los límites de la consigna con commandable: false', () => {
-  clearMappingCache();
-  const dl = new DeadLetterBuffer();
-  const ahora = new Date().toISOString();
-  const latest = new Map([
-    ['REAL_IN_CABUYO', { browseName: 'REAL_IN_CABUYO', channel: 'realIn', values: Array.from({ length: 30 }, (_, i) => (i === 16 ? 37.5 : 1)), quality: 'Good', statusCode: 'Good', sourceTimestamp: ahora, serverTimestamp: ahora }],
-    ['INT_OUT_CABUYO', { browseName: 'INT_OUT_CABUYO', channel: 'intOut', values: [257, 0, 0, 0, 0, 0, 0, 0, 0, 0], quality: 'Good', statusCode: 'Good', sourceTimestamp: ahora, serverTimestamp: ahora }],
-  ]) as never;
-  const extracted = new MappingEngine(loadMapping(RUTA_MAPPING)).extract('cabuyo', latest, dl);
-  const snapshot = buildSnapshot({
-    plantId: 'cabuyo', displayName: 'Cabuyo', protocolVersion: 'v2', dtoVersion: 'v1', sequence: 1, bridgeStatus: 'Connected',
-    liveness: { state: 'live', lastChangeAt: null, windowSec: 300 }, extracted, deadLetter: dl,
-  });
-  assert.equal(snapshot.signals.valve1Position?.value, 37.5, 'la apertura se sigue viendo');
-  assert.equal(snapshot.signals.valve1?.commandable, false);
-  assert.deepEqual(snapshot.signals.valve1?.setpoint, { min: 0, max: 100, unit: '%' }, 'la app sabe que la consigna existe');
-  assert.equal(snapshot.signals.valve1?.commands, undefined, 'sin verbos');
 });
 
 test('consigna: validate:mapping y el loader RECHAZAN una consigna mal declarada', () => {
@@ -377,11 +296,8 @@ test('consigna: la palabra con una consigna previa (40) → escribe normal', asy
 // ── Simulador ──────────────────────────────────────────────────────────────────────────────────
 
 test(`consigna: el PLC simulado lleva REAL_IN_CABUYO[16] hacia la consigna a ${CONSIGNA_UNIDADES_POR_S} %/s y satura a [0, 100]`, () => {
-  // Con la consigna ENCENDIDA (como en el escenario de desarrollo): en producción está apagada.
-  const ruta = join(tmpdir(), `consigna-encendida-${process.pid}.json`);
-  writeFileSync(ruta, JSON.stringify(produccionConConsignaEncendida()));
   clearMappingCache();
-  const plc = new SimulatedPlc(loadMapping(ruta), opcionesPorDefecto(), 0);
+  const plc = new SimulatedPlc(loadMapping(RUTA_MAPPING), opcionesPorDefecto(), 0);
   const mando = { plantId: 'cabuyo', channel: 'intOut', sourceBuffer: 'INT_OUT_CABUYO', index: 1 };
   const apertura = { plantId: 'cabuyo', channel: 'realIn', sourceBuffer: 'REAL_IN_CABUYO', index: 16 };
   assert.equal(plc.leer(apertura, 0), 0, 'arranca sincronizada con la consigna (0) y sin ruido');

@@ -186,38 +186,10 @@ export const escenarioSchema = z
     plants: z.record(z.string(), z.object(plantaShape).strict()).optional(),
     valves: z.record(z.string(), z.object(valvulaShape).strict()).optional(),
     initialValues: initialValuesSchema.optional(),
-    /**
-     * CONSIGNAS que este escenario ENCIENDE (`planta/valveN`), solo en la simulación. En el mapping de
-     * producción están apagadas (`writable: false`) hasta la autorización de Operación; `dev:sim` arma
-     * una copia temporal del mapping con `writable: true` en estas, y nada más cambia. Ver
-     * `encenderConsignas` y docs/CONSIGNA_VALVULA_PROPORCIONAL.md.
-     */
-    consignasEncendidas: z.array(z.string().regex(/^[a-z][a-z0-9-]*\/valve\d+$/)).min(1).optional(),
   })
   .strict();
 
 export type SimScenarioFile = z.infer<typeof escenarioSchema>;
-
-/**
- * Copia del mapping (JSON crudo) con las consignas indicadas ENCENDIDAS (`writable: true`). Solo acepta
- * señales que ya son una consigna apagada (`writable: false` con `write.setpoint`): encender por error
- * otra cosa —una válvula retirada, una señal de lectura— sería inventar un mando. No modifica `doc`.
- */
-export function encenderConsignas(doc: unknown, claves: string[]): unknown {
-  const copia = JSON.parse(JSON.stringify(doc)) as {
-    plants?: Array<{ plantId?: string; signals?: Array<{ domainKey?: string; writable?: boolean; write?: { setpoint?: unknown } }> }>;
-  };
-  for (const clave of claves) {
-    const [plantId, domainKey] = clave.split('/');
-    const senal = copia.plants?.find((p) => p.plantId === plantId)?.signals?.find((s) => s.domainKey === domainKey);
-    if (!senal) throw new Error(`consignasEncendidas: ${clave} no existe en el mapping`);
-    if (senal.write?.setpoint === undefined || senal.writable !== false) {
-      throw new Error(`consignasEncendidas: ${clave} no es una consigna APAGADA (writable: false con write.setpoint)`);
-    }
-    senal.writable = true;
-  }
-  return copia;
-}
 
 // ── Resolución de rutas ─────────────────────────────────────────────────────────────
 
