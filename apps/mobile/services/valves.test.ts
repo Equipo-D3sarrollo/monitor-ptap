@@ -790,13 +790,15 @@ test('consigna: con valve1 declarando consigna, la proporcional ofrece «Ajustar
   assert.deepEqual(accionDisponible(v, false), { kind: 'setpoint', ...CONSIGNA_0_100 });
 });
 
-test('consigna: las puertas duras siguen delante — congelada → frozen; sin consigna declarada → setpoint-pending', () => {
+test('consigna: las puertas duras siguen delante — congelada → frozen; declarada sin canal → setpoint-off', () => {
   const conConsigna = valvesFromSnapshot(snap({
     valve1: sig(40, { commands: ['setpoint'], setpoint: CONSIGNA_0_100 }), valve1Position: apertura(38),
   }))[0];
   assert.equal(motivo(accionDisponible(conConsigna, true)), 'frozen');
   const sinCanal = { ...conConsigna, commandable: false };
-  assert.equal(motivo(accionDisponible(sinCanal, false)), 'setpoint-pending', 'sin canal no se ofrece');
+  assert.equal(motivo(accionDisponible(sinCanal, false)), 'setpoint-off', 'sin canal no se ofrece: está apagada');
+  const sinConsigna = { ...conConsigna, setpoint: null };
+  assert.equal(motivo(accionDisponible(sinConsigna, false)), 'setpoint-pending', 'sin consigna declarada, la de siempre');
   // Las on/off no cambian: una válvula sin `setpoint` no tiene consigna aunque traiga valor.
   const [onoff] = valvesFromSnapshot(snap({ valve1: sig(0, { commands: ['open', 'close'] }) }));
   assert.equal(onoff.setpoint, null);
@@ -837,4 +839,28 @@ test('consigna: la fila se repinta cuando cambia la consigna vigente (memo)', ()
   const a = { ...v, effectiveState: v.state, manualOverride: false };
   assert.equal(sameValveItem({ valve: a }, { valve: { ...a, setpointPct: 80 } }), false);
   assert.equal(sameValveItem({ valve: a }, { valve: { ...a } }), true);
+});
+
+test('consigna APAGADA (writable: false): se ve la apertura y el aviso de autorización, sin «Ajustar apertura»', () => {
+  // Así llega del backend: valve1 con los límites de la consigna, commandable: false y sin verbos.
+  const [v] = valvesFromSnapshot(snap({
+    valve1: sig(0, { unit: '%', label: 'Válvula de salida', commandable: false, setpoint: CONSIGNA_0_100 }),
+    valve1Position: apertura(37.5),
+  }));
+  assert.equal(v.kind, 'proportional');
+  assert.equal(v.positionPct, 37.5, 'la apertura se sigue mostrando');
+  assert.equal(v.commandable, false);
+  const a = accionDisponible(v, false);
+  assert.equal(a.kind, 'blocked', 'sin acción: la fila no dibuja el botón');
+  assert.equal(motivo(a), 'setpoint-off');
+  assert.equal(a.kind === 'blocked' ? a.explain : '', 'Consigna pendiente de autorización de Operación.');
+  // Congelada manda antes, como en todas las válvulas.
+  assert.equal(motivo(accionDisponible(v, true)), 'frozen');
+});
+
+test('consigna APAGADA: ValveItem no pinta el botón «Ajustar apertura» ni la consigna vigente', () => {
+  const src = readFileSync(new URL('../components/ValveItem.tsx', import.meta.url), 'utf8');
+  // El botón solo sale con la acción `setpoint`, que una consigna apagada nunca devuelve (test de arriba).
+  assert.match(src, /accion\.kind === 'setpoint' && onSetpoint &&/);
+  assert.match(src, /valve\.setpoint && valve\.commandable &&/, 'la consigna vigente solo se pinta si se puede mandar');
 });

@@ -3363,14 +3363,14 @@
           "index": 1,
           "domainKey": "valve1",
           "label": "Válvula de salida",
-          "_nota": "CONSIGNA de apertura de la válvula de SALIDA proporcional (Fase 4): el valor de esta señal es la última consigna escrita en INT_OUT_CABUYO[1], no la apertura (esa es valve1Position). Se manda con { command: \"setpoint\", value } y solo el número entre setpoint.min y setpoint.max. Ver docs/CONSIGNA_VALVULA_PROPORCIONAL.md.",
+          "_nota": "Consigna implementada, APAGADA: pendiente de autorización escrita de Operación. Para activarla: writable: true. CONSIGNA de apertura de la válvula de SALIDA proporcional (Fase 4): el valor de esta señal es la última consigna escrita en INT_OUT_CABUYO[1], no la apertura (esa es valve1Position). Se manda con { command: \"setpoint\", value } y solo el número entre setpoint.min y setpoint.max. Ver docs/CONSIGNA_VALVULA_PROPORCIONAL.md.",
           "unit": "%",
           "min": 0,
           "max": 100,
           "flowDomainKey": "outletFlow1",
           "mappingStatus": "mapped",
           "confidence": "confirmed",
-          "writable": true,
+          "writable": false,
           "write": {
             "target": {
               "channel": "intOut",
@@ -3396,7 +3396,7 @@
             },
             "timeoutMs": 120000,
             "permission": "control_valves",
-            "_riesgo": "FUENTE: integrador del PLC (Brayan Grueso, Telcobras, ficha 2026-11-09/10). Consigna de la válvula de SALIDA proporcional en INT_OUT_CABUYO[1], INT, escala 0-100 % (valor directo en %), límites 0-100; fuera de límites el PLC satura, pero Aquora RECHAZA antes de escribir y redondea a entero. Sin modo local/manual. Se escribe en ABSOLUTO (palabra completa): se asume que INT_OUT_CABUYO[1] es SOLO de la consigna. Confirmación: la apertura REAL_IN_CABUYO[16] (valve1Position) a ±2 % dentro de 120 s; si no llega, sent (SENT_POSITION_PENDING), sin rollback. PENDIENTES DEL INTEGRADOR: (1) confirmar el uso EXCLUSIVO de INT_OUT_CABUYO[1] para la consigna (si comparte bits, el modo absoluto los pisaría); (2) tiempo de recorrido 0-100 % del actuador (fija el timeoutMs); (3) tolerancia aceptable entre consigna y apertura (±2 % es PROVISIONAL); (4) rampa permitida. stateVerified: false hasta la prueba en campo con Aquora. Fase 4: pendiente de autorización de Operación, NO desplegar."
+            "_riesgo": "FUENTE: integrador del PLC (Brayan Grueso, Telcobras, ficha 2026-11-09/10). Consigna de la válvula de SALIDA proporcional en INT_OUT_CABUYO[1], INT, escala 0-100 % (valor directo en %), límites 0-100; fuera de límites el PLC satura, pero Aquora RECHAZA antes de escribir y redondea a entero. Sin modo local/manual. Se escribe en ABSOLUTO (palabra completa): se asume que INT_OUT_CABUYO[1] es SOLO de la consigna. Confirmación: la apertura REAL_IN_CABUYO[16] (valve1Position) a ±2 % dentro de 120 s; si no llega, sent (SENT_POSITION_PENDING), sin rollback. PENDIENTES DEL INTEGRADOR: (1) confirmar el uso EXCLUSIVO de INT_OUT_CABUYO[1] para la consigna (si comparte bits, el modo absoluto los pisaría); (2) tiempo de recorrido 0-100 % del actuador (fija el timeoutMs); (3) tolerancia aceptable entre consigna y apertura (±2 % es PROVISIONAL); (4) rampa permitida. stateVerified: false hasta la prueba en campo con Aquora. Fase 4: desplegada APAGADA (writable: false) hasta la autorización escrita de Operación; ver docs/CONSIGNA_VALVULA_PROPORCIONAL.md."
           }
         },
         {
