@@ -320,7 +320,7 @@ export function resolverRutaDelMapping(explicitPath?: string): string {
 interface RawWriteSpec {
   target?: { channel?: string; sourceBuffer?: string; index?: number };
   commands?: Record<string, number | boolean>;
-  sequences?: Record<string, Array<{ index?: unknown; value?: unknown }>>;
+  sequences?: Record<string, { index?: unknown; value?: unknown }[]>;
   latched?: unknown;
   sustained?: unknown;
   mode?: string;
@@ -692,8 +692,8 @@ export interface SenalConMando {
  */
 export function bitsCompartidosEntreValvulas(
   senales: SenalConMando[],
-): Array<{ motivo: string; sostenida: boolean; estricta: boolean; valvulas: [string, string] }> {
-  const porPalabra = new Map<string, Array<{ domainKey: string; bits: number; sostenida: boolean; estricta: boolean }>>();
+): { motivo: string; sostenida: boolean; estricta: boolean; valvulas: [string, string] }[] {
+  const porPalabra = new Map<string, { domainKey: string; bits: number; sostenida: boolean; estricta: boolean }[]>();
   for (const s of senales) {
     const w = s.write;
     if (!w || w.mode !== 'bitmask' || !w.target || !w.commands || typeof w.commands !== 'object') continue;
@@ -709,7 +709,7 @@ export function bitsCompartidosEntreValvulas(
     lista.push({ domainKey: s.domainKey, bits, sostenida, estricta: sostenida || s.retirada === true || tieneRealimentacionPorBits(w) });
     porPalabra.set(palabra, lista);
   }
-  const conflictos: Array<{ motivo: string; sostenida: boolean; estricta: boolean; valvulas: [string, string] }> = [];
+  const conflictos: { motivo: string; sostenida: boolean; estricta: boolean; valvulas: [string, string] }[] = [];
   for (const [palabra, valvulas] of porPalabra) {
     for (let i = 0; i < valvulas.length; i++) {
       for (let j = i + 1; j < valvulas.length; j++) {
@@ -924,16 +924,16 @@ export function loadMapping(explicitPath?: string): LoadedMapping {
     version?: string;
     protocolVersion?: string;
     dtoVersion?: string;
-    plants?: Array<{
+    plants?: {
       plantId?: string;
       displayName?: string;
       livenessWindowSec?: number;
       opcBuffers?: Record<
         string,
-        Array<{ browseName?: string; node?: { nsUri?: string; identifier?: string }; arrayLength?: number | null; dataType?: string | null }>
+        { browseName?: string; node?: { nsUri?: string; identifier?: string }; arrayLength?: number | null; dataType?: string | null }[]
       >;
       signals?: RawSignal[];
-    }>;
+    }[];
   };
 
   if (!Array.isArray(doc.plants) || doc.plants.length === 0) {

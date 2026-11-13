@@ -301,7 +301,7 @@ Claves relevantes (todas documentadas en `.env.example`):
 | `JWT_SECRET` | *(vacío, obligatorio)* | Firma de tokens (Fase 4). El backend completo no arranca sin esto. |
 | `SEED_ADMIN_EMAIL`/`PASSWORD`/`NAME`/`PLANT` | *(vacío)* | Solo los lee `npm run db:seed-admin -w @ptap/api` (no el runtime). |
 | `OPC_AUTO_ACCEPT_UNKNOWN_CERTIFICATE` | `false` | `true` solo para bootstrap/desarrollo; nunca en producción contra la planta (ver `docs/OPTIX_CLIENT_CERT_TRUST.md`). |
-| `CORS_ORIGINS` | *(vacío)* | Orígenes permitidos, separados por coma; vacío = CORS deshabilitado en `main.ts` (y el arranque lo avisa en el log). **Para la web de Expo pon `http://localhost:8081`**: corre en otro puerto que el backend, así que sin esto el *navegador* bloquea el login. `curl` no lo detecta — no aplica CORS. Si además expones la web por un túnel de Cloudflare (§9), agrega también esa URL HTTPS aquí (coma-separada) — el gateway Socket.IO hereda esta misma allowlist. |
+| `CORS_ORIGINS` | *(vacío)* | Orígenes permitidos, separados por coma; vacío = CORS deshabilitado en `main.ts` (y el arranque lo avisa en el log). **Para la web de Expo pon `http://localhost:8082`**: corre en otro puerto que el backend, así que sin esto el *navegador* bloquea el login. `curl` no lo detecta — no aplica CORS. Si además expones la web por un túnel de Cloudflare (§9), agrega también esa URL HTTPS aquí (coma-separada) — el gateway Socket.IO hereda esta misma allowlist. |
 | `EMAIL_TRANSPORT` | `console` | `console` (default; escribe el link de verificación en el log, sin envío real — cómodo para dev) o `smtp` (envío real vía nodemailer con las `SMTP_*` de abajo). Con `smtp` pero sin `SMTP_HOST`/`USER`/`PASS` completos, cae a `console` con aviso. |
 | `SMTP_HOST`/`SMTP_PORT`/`SMTP_USER`/`SMTP_PASS`/`SMTP_SECURE` | *(vacío)* | Credenciales SMTP reales. **Para probar el flujo de verificación sin un proveedor real ni arriesgar credenciales**, apunta esto a un servidor local como Mailpit (`SMTP_HOST=127.0.0.1`, `SMTP_PORT=1025`, `SMTP_USER`/`SMTP_PASS` cualquier valor) — Mailpit acepta cualquier credencial y muestra los correos capturados en `http://localhost:8025`, sin enviarlos a ninguna bandeja real. |
 | `APP_PUBLIC_URL` | `http://localhost:PORT` | Base del enlace de verificación de correo (`GET /api/auth/verify-email?token=...`). Debe ser una URL que la persona que registra la cuenta pueda abrir: la IP LAN si prueban desde otro dispositivo en tu red, o la URL del túnel de Cloudflare (§9) si prueban desde fuera. |
@@ -372,7 +372,7 @@ sirve para algo que varias personas usen de forma estable.
 ```bash
 # Terminal aparte por cada servicio que quieras exponer
 cloudflared tunnel --url http://localhost:4000   # backend/API
-cloudflared tunnel --url http://localhost:8081   # web (opcional, si no vas a usar el .apk)
+cloudflared tunnel --url http://localhost:8082   # web (opcional, si no vas a usar el .apk)
 ```
 
 Cada uno imprime una URL `https://algo-al-azar.trycloudflare.com`. Luego:
@@ -409,7 +409,7 @@ ingress:
   - hostname: api.tudominio.com
     service: http://localhost:4000
   - hostname: app.tudominio.com
-    service: http://localhost:8081
+    service: http://localhost:8082
   - service: http_status:404
 ```
 

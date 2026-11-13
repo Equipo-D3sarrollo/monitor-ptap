@@ -84,7 +84,7 @@ const IN_GUID = '184E4071-DC15-213A-3DE8-442A4E0A354B';
  * Se leen como hijos ESCALARES direccionables (descubiertos con scripts/browse-msg-sirena.ts) — mucho
  * más robusto que decodificar el ExtensionObject completo, que ya tumbó una sesión antes.
  */
-const WITNESS_NODES: Array<{ tag: WitnessTag; guid: string; kind: 'array0' | 'scalar' }> = [
+const WITNESS_NODES: { tag: WitnessTag; guid: string; kind: 'array0' | 'scalar' }[] = [
   { tag: 'OUT', guid: OUT_GUID, kind: 'array0' },
   { tag: 'IN', guid: IN_GUID, kind: 'array0' },
   { tag: 'MSG.DN', guid: '37D4AE55-3731-D313-BF74-E71D54D2A5F9', kind: 'scalar' },

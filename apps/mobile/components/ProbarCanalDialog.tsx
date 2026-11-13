@@ -11,7 +11,7 @@ import {
   Platform,
   ActivityIndicator,
 } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import Ionicons from './AppIcon';
 import { useReducedMotion } from '../hooks/useReducedMotion';
 import {
   SOSTENIDOS_MS,

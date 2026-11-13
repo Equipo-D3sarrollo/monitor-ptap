@@ -19,7 +19,10 @@
     "typecheck": "npm run typecheck --workspaces --if-present",
     "test": "npm run test:security:deps && npm run test --workspaces --if-present",
     "test:security:deps": "node --test tools/security/deepmerge.test.cjs",
-    "web": "npm run web -w @ptap/mobile"
+    "web": "npm run web -w @ptap/mobile",
+    "web:build": "npm run export:web -w @ptap/mobile",
+    "web:preview": "node tools/web/serve-production.cjs apps/mobile/dist-audit 8082",
+    "test:web-tools": "node --test tools/web/*.test.cjs"
   },
   "devDependencies": {
     "deepmerge": "file:vendor/deepmerge",
@@ -33,7 +36,11 @@
   },
   "overrides": {
     "deepmerge": "file:vendor/deepmerge",
-    "zod": "^4.6.7"
+    "zod": "^4.6.7",
+    "glob": "14.0.2",
+    "minimatch": "11.0.1",
+    "multer": "2.5.0",
+    "shell-quote": "1.11.0"
   },
   "allowScripts": {
     "argon2@0.45.1": true,

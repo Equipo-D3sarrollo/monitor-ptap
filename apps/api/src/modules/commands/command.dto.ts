@@ -1,5 +1,8 @@
 import { z } from 'zod';
-import type { CommandValue } from './command-log.repository';
+import type { CommandResult } from '@ptap/shared';
+import type { RequestEvidence } from '../../infrastructure/audit/request-evidence';
+
+export type { CommandOutcome, CommandResult } from '@ptap/shared';
 
 /** Cuerpo de POST /api/plants/:plantId/commands. API de DOMINIO, nunca de NodeIds. */
 export const commandRequestSchema = z
@@ -11,13 +14,6 @@ export const commandRequestSchema = z
   .strict();
 
 export type CommandRequest = z.infer<typeof commandRequestSchema>;
-
-/**
- * `sent` acknowledges a verified command echo without claiming physical movement. Its reason
- * distinguishes unverified state semantics from verified endpoint feedback still pending while
- * a sustained command remains set. The live telemetry pipeline reports the actual position.
- */
-export type CommandOutcome = 'confirmed' | 'sent' | 'failed' | 'rejected';
 
 /** Motivos de rechazo (comando NO ejecutado) y de fallo (ejecutado, sin confirmar). */
 export const REJECT = {
@@ -101,30 +97,6 @@ export const RESULTADO_DEL_SOSTENIDO = {
   FEEDBACK_CONFIRMED: 'FEEDBACK_CONFIRMED',
 } as const;
 
-export interface CommandResult {
-  status: CommandOutcome;
-  reason: string | null;
-  plantId: string;
-  target: string;
-  command: string;
-  previousValue: CommandValue;
-  writtenValue: CommandValue;
-  confirmedValue: CommandValue;
-  /**
-   * ECO del canal de COMANDO leído INMEDIATAMENTE después de escribir (el mismo elemento que se
-   * escribió). Responde "¿se escribió en ese instante?" de forma independiente del canal de estado.
-   * null = no se pudo leer el eco.
-   */
-  writeEcho: CommandValue;
-  /** true si el eco coincide con el valor escrito → la escritura SÍ llegó al canal. */
-  writeVerified: boolean | null;
-  /** sequence del snapshot usado para el interlock (trazabilidad). */
-  interlockSequence: number | null;
-  /** true si es una respuesta idempotente (comando ya ejecutado con la misma idempotencyKey). */
-  idempotent: boolean;
-  at: string;
-}
-
 /** Actor autenticado que emite el comando (de request.user + IP). */
 export interface CommandActor {
   userId: string | null;
@@ -139,6 +111,7 @@ export interface CommandActor {
   userEmail: string | null;
   role: string | null;
   ip: string | null;
+  request?: RequestEvidence;
 }
 
 /**

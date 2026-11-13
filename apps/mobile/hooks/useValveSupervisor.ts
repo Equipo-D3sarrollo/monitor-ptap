@@ -1,5 +1,5 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { sendValveCommand } from '../services/api';
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { getAuthGeneration, sendValveCommand } from '../services/api';
 import {
   detectManual,
   interpretCommand,
@@ -48,16 +48,36 @@ export interface SupervisedValve extends ValveView {
 export function useValveSupervisor(plantId: string, valves: ValveView[]) {
   const [busy, setBusy] = useState<string | null>(null);
   const [overrides, setOverrides] = useState<Record<string, ValveState>>({});
-
+  const [overridePlant, setOverridePlant] = useState(plantId);
   // Lecturas anteriores por válvula, para detectar transiciones.
   const prev = useRef<Record<string, { flow: ValveState | null; state: ValveState | null }>>({});
   const lastCommandAt = useRef<Record<string, number>>({});
+  const scope = useRef({ plantId, generation: 0, mounted: true, operation: 0 });
+  useLayoutEffect(() => {
+    const current = scope.current;
+    if (current.plantId !== plantId) {
+      current.plantId = plantId;
+      current.generation++;
+    }
+  }, [plantId]);
+  // Limpiar antes de confirmar el render evita mostrar el override de otra planta durante un frame.
+  if (overridePlant !== plantId) {
+    setOverridePlant(plantId);
+    setOverrides({});
+  }
+  useEffect(() => {
+    const current = scope.current;
+    current.mounted = true;
+    return () => {
+      current.mounted = false;
+      current.generation++;
+    };
+  }, []);
 
   // Al cambiar de planta se descarta todo: los ids de válvula se repiten entre plantas.
   useEffect(() => {
     prev.current = {};
     lastCommandAt.current = {};
-    setOverrides({});
   }, [plantId]);
 
   // Detección de operación manual + limpieza del override cuando el PLC ya coincide.
@@ -108,6 +128,14 @@ export function useValveSupervisor(plantId: string, valves: ValveView[]) {
    */
   const send = useCallback(
     async (valve: SupervisedValve, verb: 'open' | 'close'): Promise<CommandVerdict> => {
+      const generation = scope.current.generation;
+      const authGeneration = getAuthGeneration();
+      const operation = ++scope.current.operation;
+      const current = () =>
+        scope.current.mounted &&
+        scope.current.plantId === plantId &&
+        scope.current.generation === generation &&
+        getAuthGeneration() === authGeneration;
       setBusy(valve.id);
       lastCommandAt.current[valve.id] = Date.now();
       const yaEstaba = valve.effectiveState === (verb === 'open' ? 'open' : 'closed');
@@ -115,20 +143,29 @@ export function useValveSupervisor(plantId: string, valves: ValveView[]) {
         const res = await sendValveCommand(plantId, verb, valve.id);
         const verdict = interpretCommand(res, verb, valve.name);
         const evidence = presentacionDeValvula(valve);
-        const message = yaEstaba && evidence.kind !== 'fault' && evidence.kind !== 'unknown'
-          ? `La lectura previa indicaba: ${evidence.label.toUpperCase()}.\n\n${verdict.message}`
-          : verdict.message;
+        const message =
+          yaEstaba && evidence.kind !== 'fault' && evidence.kind !== 'unknown'
+            ? `La lectura previa indicaba: ${evidence.label.toUpperCase()}.\n\n${verdict.message}`
+            : verdict.message;
 
         // Una orden confirmada es la verdad más fuerte: invalida cualquier override manual.
-        if (verdict.ok) {
+        if (verdict.ok && current()) {
           setOverrides((o) => {
+            if (!current()) return o;
             const { [valve.id]: _drop, ...rest } = o;
             return rest;
           });
         }
         return { ...verdict, message };
       } finally {
-        setBusy(null);
+        // Busy is global: only the outstanding operation may release it, even after a plant change.
+        if (
+          scope.current.mounted &&
+          scope.current.operation === operation &&
+          getAuthGeneration() === authGeneration
+        ) {
+          setBusy(null);
+        }
       }
     },
     [plantId],

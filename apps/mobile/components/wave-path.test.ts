@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { wavePath, WAVE_MID, WAVE_PERIOD } from './wave-path';
 
 /** Puntos finales (x, y) de cada comando M/Q/T del trazado, sin los puntos de control. */
-function anchors(path: string): Array<[number, number]> {
+function anchors(path: string): [number, number][] {
   return path
     .split(' ')
     .reduce<string[][]>((acc, tok) => {

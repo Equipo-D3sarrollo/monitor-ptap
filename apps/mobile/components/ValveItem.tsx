@@ -1,7 +1,12 @@
 import { memo } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
-import { accionDisponible, anchoBarraApertura, textoApertura, presentacionDeValvula } from '../services/valves';
+import Ionicons from './AppIcon';
+import {
+  accionDisponible,
+  anchoBarraApertura,
+  textoApertura,
+  presentacionDeValvula,
+} from '../services/valves';
 import type { SupervisedValve } from '../hooks/useValveSupervisor';
 import Colors from '../constants/colors';
 import { sameValveItem } from './memo-compare';
@@ -36,7 +41,20 @@ interface Props {
  */
 function ValveItemBase({ valve, onToggle, frozen = false, busy = false }: Props) {
   const evidence = presentacionDeValvula(valve);
-  const color = evidence.kind === 'fault' ? Colors.danger : evidence.physicalState === 'open' ? Colors.success : evidence.physicalState === 'closed' ? Colors.danger : Colors.neutral;
+  const color =
+    evidence.kind === 'fault'
+      ? Colors.danger
+      : evidence.physicalState === 'open'
+        ? Colors.success
+        : evidence.physicalState === 'closed'
+          ? Colors.danger
+          : Colors.neutral;
+  const textColor =
+    color === Colors.danger
+      ? Colors.brand.dangerText
+      : color === Colors.neutral
+        ? Colors.brand.textSecondary
+        : color;
 
   const accion = accionDisponible(valve, frozen);
   // El mando exige LAS DOS cosas: que la válvula lo permita y que el rol tenga el permiso (sin
@@ -46,11 +64,7 @@ function ValveItemBase({ valve, onToggle, frozen = false, busy = false }: Props)
   return (
     <View style={[styles.row, frozen && styles.rowFrozen]}>
       <View style={[styles.iconWrap, { backgroundColor: color + '18' }]}>
-        <Ionicons
-          name="water-outline"
-          size={22}
-          color={color}
-        />
+        <Ionicons name="water-outline" size={22} color={color} />
       </View>
 
       <View style={styles.info}>
@@ -81,7 +95,12 @@ function ValveItemBase({ valve, onToggle, frozen = false, busy = false }: Props)
               }
             >
               {valve.positionPct !== null && (
-                <View style={[styles.barFill, { width: `${anchoBarraApertura(valve.positionPct)}%`, backgroundColor: color }]} />
+                <View
+                  style={[
+                    styles.barFill,
+                    { width: `${anchoBarraApertura(valve.positionPct)}%`, backgroundColor: color },
+                  ]}
+                />
               )}
             </View>
           </View>
@@ -90,12 +109,15 @@ function ValveItemBase({ valve, onToggle, frozen = false, busy = false }: Props)
 
       <View style={styles.right}>
         <View style={[styles.badge, { backgroundColor: color + '18' }]}>
-          <Text style={[styles.badgeText, { color }]}>{evidence.label}</Text>
+          <Text style={[styles.badgeText, { color: textColor }]}>{evidence.label}</Text>
         </View>
 
         {accion.kind === 'command' && onToggle && (
           <TouchableOpacity
-            style={[styles.toggleBtn, { backgroundColor: Colors.primary + '15', opacity: busy ? 0.5 : 1 }]}
+            style={[
+              styles.toggleBtn,
+              { backgroundColor: Colors.brand.action + '15', opacity: busy ? 0.5 : 1 },
+            ]}
             onPress={() => onToggle(valve, accion.verb)}
             activeOpacity={0.7}
             disabled={busy}
@@ -103,14 +125,16 @@ function ValveItemBase({ valve, onToggle, frozen = false, busy = false }: Props)
             accessibilityState={{ disabled: busy, busy }}
             accessibilityLabel={`${accion.verb === 'close' ? 'Cerrar' : 'Abrir'} ${valve.name}. Pedirá confirmación.`}
           >
-            {busy ? <ActivityIndicator size="small" color={Colors.primary} /> : (
+            {busy ? (
+              <ActivityIndicator size="small" color={Colors.brand.link} />
+            ) : (
               <Ionicons
                 name={accion.verb === 'close' ? 'close-circle-outline' : 'checkmark-circle-outline'}
                 size={16}
-                color={Colors.primary}
+                color={Colors.brand.link}
               />
             )}
-            <Text style={[styles.toggleText, { color: Colors.primary }]}>
+            <Text style={[styles.toggleText, { color: Colors.brand.link }]}>
               {busy ? 'Enviando…' : accion.verb === 'close' ? 'Cerrar' : 'Abrir'}
             </Text>
           </TouchableOpacity>
@@ -138,14 +162,14 @@ const styles = StyleSheet.create({
   row: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: Colors.bg,
+    backgroundColor: Colors.brand.card,
     borderRadius: 14,
     padding: 14,
     marginBottom: 8,
     borderWidth: 1,
-    borderColor: Colors.divider,
+    borderColor: Colors.brand.cardBorder,
   },
-  rowFrozen: { opacity: 0.55 },
+  rowFrozen: { borderStyle: 'dashed' },
   iconWrap: {
     width: 42,
     height: 42,
@@ -156,7 +180,7 @@ const styles = StyleSheet.create({
   },
   info: { flex: 1 },
   nameRow: { flexDirection: 'row', alignItems: 'center', gap: 6, flexWrap: 'wrap' },
-  name: { fontSize: 14, fontWeight: '700', color: Colors.textPrimary },
+  name: { fontSize: 14, fontWeight: '700', color: Colors.brand.text },
   tagWarn: {
     backgroundColor: Colors.warning + '22',
     borderColor: Colors.warning,
@@ -174,11 +198,16 @@ const styles = StyleSheet.create({
     paddingHorizontal: 6,
     paddingVertical: 1,
   },
-  tagNeutralText: { fontSize: 11, fontWeight: '700', color: Colors.textSecondary, letterSpacing: 0.3 },
+  tagNeutralText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: Colors.textSecondary,
+    letterSpacing: 0.3,
+  },
   apertura: { marginTop: 6, marginRight: 10, gap: 4 },
   aperturaTexto: { fontSize: 12, color: Colors.textSecondary, fontVariant: ['tabular-nums'] },
   // La misma barra que `FlowMeterCard`: pista en el color de fondo y relleno con ancho en %.
-  barOuter: { height: 8, borderRadius: 4, backgroundColor: Colors.surface, overflow: 'hidden' },
+  barOuter: { height: 8, borderRadius: 4, backgroundColor: Colors.brand.page, overflow: 'hidden' },
   barFill: { height: '100%', borderRadius: 4 },
   right: { alignItems: 'flex-end', gap: 6, maxWidth: '46%' },
   badge: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 12 },

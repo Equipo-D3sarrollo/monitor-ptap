@@ -12,7 +12,7 @@
  */
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { tanksFromSnapshot, isTankSignal } from './tanks';
+import { tanksFromSnapshot, isTankSignal, groupTanks } from './tanks';
 import { autonomyDuration, tankAutonomyText } from './tank-autonomy';
 import type { PlantSnapshotDto, SignalDto } from './api';
 
@@ -81,6 +81,37 @@ function snap(plantId: string, signals: Record<string, SignalDto>): PlantSnapsho
     signals,
   } as PlantSnapshotDto;
 }
+
+test('distribución: Soledad conserva su tanque propio y separa las lecturas externas sin alterarlas', () => {
+  const snapshot = snap('soledad', {
+    tank1Level: sig(1.8, { opMax: 2.8 }), tank1Volume: sig(48, { unit: 'm³' }),
+    sanAntonioTankLevel: sig(1.3, { confidence: 'inferred' }),
+    quijoteTankLevel: sig(1.7, { confidence: 'inferred' }),
+  });
+  const tanks = tanksFromSnapshot(snapshot);
+  const before = JSON.stringify(snapshot);
+  const groups = groupTanks(Object.freeze(tanks));
+  assert.deepEqual(groups.own.map((tank) => tank.name), ['Tanque 1']);
+  assert.deepEqual(groups.external.map((tank) => tank.name), ['Tanque San Antonio', 'Tanque El Quijote']);
+  assert.equal(groups.own[0], tanks[0]);
+  assert.equal(groups.external[0], tanks[1]);
+  assert.equal(groups.external[1], tanks[2]);
+  assert.deepEqual(groups.external.map((tank) => tank.levelM), [1.3, 1.7]);
+  assert.equal(JSON.stringify(snapshot), before);
+});
+
+test('distribución: otras plantas no heredan los tanques de Soledad ni inventan los pendientes', () => {
+  for (const plant of ['sirena', 'san-antonio', 'quijote', 'luisa', 'leonera', 'gloria']) {
+    const groups = groupTanks(tanksFromSnapshot(snap(plant, {
+      sanAntonioTankLevel: sig(1.3), quijoteTankLevel: sig(1.7),
+    })));
+    assert.deepEqual(groups, { own: [], external: [] });
+  }
+  const groups = groupTanks(tanksFromSnapshot(snap('campoalegre', { tank2Level: sig(1), tank1Volume: sig(20, { unit: 'm³' }) })));
+  assert.deepEqual(groups.own.map((tank) => tank.id), ['tank-1', 'tank-2']);
+  assert.equal(groups.own[0].levelM, null);
+  assert.deepEqual(groups.external, []);
+});
 
 // El caso EXACTO de la captura del cliente: Sirena tanque 1, nivel 1.52, máximo 2.80.
 test('tanques: % = nivel / máximo — 1.52 sobre 2.80 es 54 %, no 29 %', () => {

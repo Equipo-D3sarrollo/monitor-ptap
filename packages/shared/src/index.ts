@@ -45,8 +45,6 @@ export interface UserSummary {
   createdAt: string | null;
 }
 
-export type ConnectionStatus = 'connected' | 'disconnected' | 'mock';
-
 /**
  * De dónde viene un corte de datos, en el lenguaje del producto (no de OPC UA):
  *   ok            → todo fluye.
@@ -95,7 +93,71 @@ export const CONNECTION_CODES = {
   PLC_NO_DATA: 'PLC-02',
 } as const;
 
-export type ConnectionCode = (typeof CONNECTION_CODES)[keyof typeof CONNECTION_CODES];
+export interface RouteHistorySummary {
+  windowHours: number;
+  samples: number;
+  plcOk: number;
+  /** % de muestras de la ventana en las que el puerto del PLC aceptó conexión (1 decimal). */
+  uptimePct: number;
+  oldestAt: string | null;
+  newestAt: string | null;
+  /** Inicio de la racha de fallo vigente; null si la última muestra fue OK o no hay muestras. */
+  downSince: string | null;
+}
+
+export interface ReportMetric {
+  metric: string;
+  label: string;
+  unit: string | null;
+}
+
+export type ReportStatus = 'idle' | 'collecting' | 'ready';
+
+export interface ReportInfo extends ReportMetric {
+  status: ReportStatus;
+  /** Muestras tomadas / total mientras `collecting`; null en otro caso. */
+  progress: number | null;
+  total: number | null;
+  /** ISO de la última recolección completada (archivo listo), o null. */
+  generatedAt: string | null;
+  rows: number | null;
+  /** ISO de la próxima regeneración automática, o null. */
+  nextAutoAt: string | null;
+}
+
+/** `sent` confirma el eco de escritura, sin afirmar movimiento físico. */
+export type CommandOutcome = 'confirmed' | 'sent' | 'failed' | 'rejected';
+
+export type CommandValue = number | boolean | null;
+
+/** Resultado de POST /api/plants/:plantId/commands. */
+export interface CommandResult {
+  status: CommandOutcome;
+  reason: string | null;
+  plantId: string;
+  target: string;
+  command: string;
+  previousValue: CommandValue;
+  writtenValue: CommandValue;
+  confirmedValue: CommandValue;
+  /** Eco del canal de comando inmediatamente después de escribir; null si no se pudo leer. */
+  writeEcho: CommandValue;
+  /** true si el eco coincide con el valor escrito. */
+  writeVerified: boolean | null;
+  /** Sequence del snapshot usado para el interlock (trazabilidad). */
+  interlockSequence: number | null;
+  /** true si el comando ya se había ejecutado con la misma idempotencyKey. */
+  idempotent: boolean;
+  at: string;
+}
+
+/** Resultado normalizado por el cliente; `error` cubre fallos HTTP y de transporte. */
+export interface ValveCommandResult extends Pick<CommandResult,
+  'reason' | 'previousValue' | 'writtenValue' | 'confirmedValue' | 'writeEcho' | 'writeVerified'> {
+  http: number;
+  status: CommandOutcome | 'error';
+  idempotent?: boolean;
+}
 
 // ── Contrato del snapshot de planta (DEF-08: fuente ÚNICA backend↔móvil) ─────────────
 // Antes el móvil duplicaba estos tipos a mano en services/api.ts (con `bridgeStatus: string`,
@@ -588,43 +650,12 @@ export interface Sensor {
   icon: string;
 }
 
-export interface Valve {
-  id: string;
-  name: string;
-  description: string;
-  isOpen: boolean;
-}
-
 /**
  * Estado de una válvula derivado de su palabra de REALIMENTACIÓN por bits (integrador de La
  * Vorágine). Lo devuelve `estadoPorRealimentacion` en el backend; `undefined` cuando la lectura
  * no permite afirmar ningún estado. Debe leerse igual en el motor de mapeo y en el WriteService.
  */
 export type ValveFeedback = 'open' | 'closed' | 'moving' | 'fault';
-
-export interface Tank {
-  id: string;
-  name: string;
-  percentage: number;
-  levelM: number;
-  maxLevelM: number;
-  volumeM3: number;
-  maxVolumeM3: number;
-}
-
-export interface OpcSnapshot {
-  plantId: string;
-  timestamp: string;
-  connectionStatus: ConnectionStatus;
-  sensors: Sensor[];
-  tanks: Tank[];
-  valves?: Valve[];
-}
-
-export interface PlantDefinition {
-  id: string;
-  name: string;
-}
 
 export const ROLES: Role[] = ['civil', 'operador', 'jefe', 'admin'];
 

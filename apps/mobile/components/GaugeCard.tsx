@@ -1,6 +1,6 @@
 import { memo } from 'react';
 import { View, Text, StyleSheet, Animated } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import Ionicons from './AppIcon';
 import Colors from '../constants/colors';
 import { Fonts } from '../constants/fonts';
 import type { SignalDto, UnusableReason } from '../services/api';
@@ -91,14 +91,18 @@ function GaugeCardBase({
           <Text style={styles.unit}> {signal.unit ?? ''}</Text>
         </Text>
       ) : isBool ? (
-        <Text style={[styles.value, { color: (signal.value as boolean) ? B.green : B.textSecondary }]}>
+        <Text
+          style={[styles.value, { color: (signal.value as boolean) ? B.green : B.textSecondary }]}
+        >
           {(signal.value as boolean) ? 'Encendido' : 'Apagado'}
         </Text>
       ) : (
         <View style={styles.noData}>
           <Text style={styles.noDataValue}>sin dato</Text>
           {signal.reason && (
-            <Text style={styles.noDataReason}>{REASON_TEXT[signal.reason] ?? 'sin dato utilizable'}</Text>
+            <Text style={styles.noDataReason}>
+              {REASON_TEXT[signal.reason] ?? 'sin dato utilizable'}
+            </Text>
           )}
         </View>
       )}
@@ -150,8 +154,15 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
   },
   cardAnomaly: { borderColor: Colors.danger, borderWidth: 1.5 },
-  cardFrozen: { opacity: 0.6 },
-  flash: { position: 'absolute', top: 0, right: 0, bottom: 0, left: 0, backgroundColor: 'rgba(36,145,204,0.2)' },
+  cardFrozen: { borderStyle: 'dashed' },
+  flash: {
+    position: 'absolute',
+    top: 0,
+    right: 0,
+    bottom: 0,
+    left: 0,
+    backgroundColor: 'rgba(36,145,204,0.2)',
+  },
   top: { flexDirection: 'row', alignItems: 'flex-start' },
   iconWrap: {
     width: 34,

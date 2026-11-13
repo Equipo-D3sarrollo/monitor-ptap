@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
 import {
   Animated,
   Easing,
@@ -12,8 +12,8 @@ import {
   View,
   useWindowDimensions,
 } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
-import Svg, { Path } from 'react-native-svg';
+import Ionicons from './AppIcon';
+import Svg, { Path } from './WaterVector';
 import { useQuery } from '@tanstack/react-query';
 import { PLANTS, usePlant, type PlantOption } from '../context/PlantContext';
 import { useReduceMotion } from '../hooks/useReduceMotion';
@@ -72,6 +72,17 @@ export function PlantPickerPanel() {
   );
 }
 
+/** Marco compartido para igualar la lista lateral del tablero en las pantallas operativas. */
+export function PlantPickerLayout({ children }: { children: ReactNode }) {
+  const { width } = useWindowDimensions();
+  return (
+    <View style={styles.screenRow}>
+      {width >= PICKER_PANEL_MIN_WIDTH && <PlantPickerPanel />}
+      {children}
+    </View>
+  );
+}
+
 /**
  * Nombre de la planta. Para quien puede cambiar de planta en pantallas estrechas, es un botón con
  * chevrón que abre la hoja "Elegir planta"; para los demás (y con el panel lateral visible) es
@@ -110,11 +121,20 @@ export function PlantPickerTrigger({ name, textStyle }: { name: string; textStyl
   );
 }
 
-/** Hoja inferior "Elegir planta". Montada solo mientras está abierta. */
-function PlantSheet({ onClose }: { onClose: () => void }) {
+/** Reutiliza el catálogo y la selección del tablero, también desde la búsqueda de cabecera. */
+export function PlantSheet({
+  onClose,
+  onPicked = onClose,
+  searchOnly = false,
+}: {
+  onClose: () => void;
+  onPicked?: () => void;
+  searchOnly?: boolean;
+}) {
   const reduce = useReduceMotion();
-  const { height } = useWindowDimensions();
-  const progress = useRef(new Animated.Value(0)).current;
+  const { height, width } = useWindowDimensions();
+  const centered = searchOnly && width >= PICKER_PANEL_MIN_WIDTH;
+  const [progress] = useState(() => new Animated.Value(0));
   useWebEscape(true, onClose);
 
   useEffect(() => {
@@ -148,8 +168,10 @@ function PlantSheet({ onClose }: { onClose: () => void }) {
       <Animated.View
         style={[
           styles.sheet,
+          centered && styles.searchDialog,
           {
             height: sheetHeight,
+            ...(centered ? { left: (width - 520) / 2, top: (height - sheetHeight) / 2 } : {}),
             transform: [
               {
                 translateY: progress.interpolate({
@@ -162,12 +184,12 @@ function PlantSheet({ onClose }: { onClose: () => void }) {
         ]}
         accessibilityViewIsModal
         role="dialog"
-        aria-label="Elegir planta"
+        aria-label={searchOnly ? 'Buscar planta en el tablero' : 'Elegir planta'}
       >
-        <View style={styles.grabber} />
+        {!centered && <View style={styles.grabber} />}
         <View style={styles.sheetHead}>
           <Text style={styles.sheetTitle} accessibilityRole="header">
-            Elegir planta
+            {searchOnly ? 'Buscar planta' : 'Elegir planta'}
           </Text>
           <Pressable
             onPress={onClose}
@@ -178,14 +200,26 @@ function PlantSheet({ onClose }: { onClose: () => void }) {
             <Ionicons name="close" size={22} color={B.textSecondary} />
           </Pressable>
         </View>
-        <PickerBody layout="grid" onPicked={onClose} />
+        <PickerBody
+          layout={searchOnly ? 'list' : 'grid'}
+          onPicked={onPicked}
+          searchOnly={searchOnly}
+        />
       </Animated.View>
     </Modal>
   );
 }
 
 /** Buscador + filtros + plantas. `list` = filas del panel; `grid` = tarjetas de 2 columnas de la hoja. */
-function PickerBody({ layout, onPicked }: { layout: 'list' | 'grid'; onPicked?: () => void }) {
+function PickerBody({
+  layout,
+  onPicked,
+  searchOnly = false,
+}: {
+  layout: 'list' | 'grid';
+  onPicked?: () => void;
+  searchOnly?: boolean;
+}) {
   const { selectedPlant, setSelectedPlant } = usePlant();
   const { rows, isLoading, isError } = usePickerRows();
   const [query, setQuery] = useState('');
@@ -203,6 +237,7 @@ function PickerBody({ layout, onPicked }: { layout: 'list' | 'grid'; onPicked?: 
       <View style={[styles.search, focused && styles.searchFocus]}>
         <Ionicons name="search" size={18} color={B.placeholder} />
         <TextInput
+          autoFocus={searchOnly}
           value={query}
           onChangeText={setQuery}
           placeholder="Buscar planta"
@@ -216,24 +251,26 @@ function PickerBody({ layout, onPicked }: { layout: 'list' | 'grid'; onPicked?: 
         />
       </View>
 
-      <View style={styles.filters} role="group" aria-label="Filtrar por estado">
-        {PLANT_FILTERS.map((f) => {
-          const on = f.id === filter;
-          return (
-            <Pressable
-              key={f.id}
-              onPress={() => setFilter(f.id)}
-              hitSlop={{ top: 4, bottom: 4 }}
-              accessibilityRole="button"
-              accessibilityState={{ selected: on }}
-              aria-pressed={on}
-              style={[styles.chip, on && styles.chipOn]}
-            >
-              <Text style={[styles.chipText, on && styles.chipTextOn]}>{f.label}</Text>
-            </Pressable>
-          );
-        })}
-      </View>
+      {!searchOnly && (
+        <View style={styles.filters} role="group" aria-label="Filtrar por estado">
+          {PLANT_FILTERS.map((f) => {
+            const on = f.id === filter;
+            return (
+              <Pressable
+                key={f.id}
+                onPress={() => setFilter(f.id)}
+                hitSlop={{ top: 4, bottom: 4 }}
+                accessibilityRole="button"
+                accessibilityState={{ selected: on }}
+                aria-pressed={on}
+                style={[styles.chip, on && styles.chipOn]}
+              >
+                <Text style={[styles.chipText, on && styles.chipTextOn]}>{f.label}</Text>
+              </Pressable>
+            );
+          })}
+        </View>
+      )}
 
       {isError && (
         <Text style={styles.note} accessibilityLiveRegion="polite">
@@ -242,6 +279,7 @@ function PickerBody({ layout, onPicked }: { layout: 'list' | 'grid'; onPicked?: 
       )}
 
       <ScrollView
+        keyboardShouldPersistTaps="handled"
         style={styles.flex}
         contentContainerStyle={layout === 'grid' ? styles.grid : styles.list}
       >
@@ -353,9 +391,10 @@ function PlantItem({
 
 const styles = StyleSheet.create({
   flex: { flex: 1 },
+  screenRow: { flex: 1, flexDirection: 'row', backgroundColor: B.page },
 
   panel: {
-    width: 300,
+    width: 264,
     backgroundColor: B.panel,
     borderRightWidth: 1,
     borderRightColor: B.divider,
@@ -402,6 +441,14 @@ const styles = StyleSheet.create({
     backgroundColor: B.searchBorder,
     alignSelf: 'center',
   },
+  searchDialog: {
+    width: 520,
+    right: undefined,
+    bottom: undefined,
+    borderRadius: 22,
+    borderWidth: 1,
+    borderColor: B.cardBorder,
+  },
   sheetHead: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -442,15 +489,15 @@ const styles = StyleSheet.create({
 
   filters: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
   chip: {
-    height: 36,
-    paddingHorizontal: 12,
+    minHeight: 44,
+    paddingHorizontal: 8,
     borderRadius: 99,
     borderWidth: 1,
     borderColor: B.cardBorder,
     justifyContent: 'center',
   },
   chipOn: { backgroundColor: B.action, borderColor: B.action },
-  chipText: { fontFamily: Fonts.medium, fontSize: 13, color: B.textSecondary },
+  chipText: { fontFamily: Fonts.medium, fontSize: 12, color: B.textSecondary },
   chipTextOn: { color: B.white },
 
   note: { fontFamily: Fonts.regular, fontSize: 13, color: B.textSecondary, paddingVertical: 6 },
@@ -464,8 +511,8 @@ const styles = StyleSheet.create({
     minHeight: 56,
     paddingVertical: 8,
     paddingHorizontal: 12,
-    borderRadius: 12,
-    borderWidth: 1.5,
+    borderRadius: 10,
+    borderWidth: 1,
     borderColor: B.rowBorder,
     backgroundColor: B.row,
   },

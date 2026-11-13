@@ -13,7 +13,7 @@ import { buildSnapshot } from '../src/infrastructure/connectivity/pipeline/snaps
 import type { LoadedMapping } from '../src/infrastructure/connectivity/mapping/opc-mapping.loader';
 import type { RawBufferSample, RawPlantFrame } from '../src/infrastructure/connectivity/ports/connectivity-adapter.port';
 
-function buf(browseName: string, channel: string, values: Array<number | boolean>, sourceTimestamp = new Date().toISOString()): RawBufferSample {
+function buf(browseName: string, channel: string, values: (number | boolean)[], sourceTimestamp = new Date().toISOString()): RawBufferSample {
   return { browseName, channel, values, quality: 'Good', statusCode: 'Good', sourceTimestamp, serverTimestamp: sourceTimestamp };
 }
 function frame(plantId: string, buffers: RawBufferSample[]): RawPlantFrame {

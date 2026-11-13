@@ -453,7 +453,7 @@ test('sostenida: el modo absoluto validado en campo es admisible', () => {
 });
 
 test('sostenida: un parche no puede dejarla con un solo verbo, con un verbo a cero o con booleanos', () => {
-  const casos: Array<Record<string, number | boolean>> = [
+  const casos: Record<string, number | boolean>[] = [
     { open: 4096 },
     { open: 4096, close: 0 },
     { open: true, close: false },

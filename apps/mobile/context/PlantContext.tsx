@@ -1,4 +1,4 @@
-import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
+import React, { createContext, useCallback, useContext, useMemo, useState } from 'react';
 import { useAuth } from './AuthContext';
 
 /** Las 16 plantas canónicas (slug = identidad única del sistema; ver opc_mapping.json). */
@@ -58,20 +58,21 @@ const PlantContext = createContext<PlantContextType | null>(null);
 export function PlantProvider({ children }: { children: React.ReactNode }) {
   const { user, hasPermission } = useAuth();
   const canSwitchPlant = hasPermission('view_all_plants');
-  const [selectedPlant, setSelectedPlant] = useState<PlantOption>(() => plantOf(user?.plant));
-
-  // Al iniciar/cambiar de sesión, la planta vuelve a la de la cuenta. Para quien no puede
-  // cambiarla, este es el único origen posible del valor.
-  useEffect(() => {
-    setSelectedPlant(plantOf(user?.plant));
-  }, [user?.plant]);
+  const [selection, setSelection] = useState<{ owner: typeof user; plant: PlantOption } | null>(
+    null,
+  );
+  // Resolver antes de pintar evita consultar la planta anterior durante la restauración de sesión.
+  const selectedPlant = useMemo(
+    () => (canSwitchPlant && selection?.owner === user ? selection.plant : plantOf(user?.plant)),
+    [canSwitchPlant, selection, user],
+  );
 
   const selectPlant = useCallback(
     (plant: PlantOption) => {
       if (!canSwitchPlant) return; // el selector ni siquiera se muestra; esto es la red de seguridad
-      setSelectedPlant(plant);
+      setSelection({ owner: user, plant });
     },
-    [canSwitchPlant],
+    [canSwitchPlant, user],
   );
 
   // Memoizado por la misma razón que AuthContext: envuelve toda la app, y un objeto literal nuevo

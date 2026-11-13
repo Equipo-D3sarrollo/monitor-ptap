@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Animated, Easing, Platform } from 'react-native';
 import { shouldFlash } from '../services/card-look';
 import { useReduceMotion } from './useReduceMotion';
@@ -13,7 +13,7 @@ const NATIVE = Platform.OS !== 'web';
  */
 export function useStateFlash(state: string, frozen: boolean): Animated.Value {
   const reduce = useReduceMotion();
-  const flash = useRef(new Animated.Value(0)).current;
+  const [flash] = useState(() => new Animated.Value(0));
   const last = useRef<string | undefined>(undefined);
 
   useEffect(() => {

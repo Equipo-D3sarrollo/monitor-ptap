@@ -35,8 +35,7 @@ export function useUnseenNotifications(): number {
 /**
  * Historial completo para la bandeja.
  *
- * `markSeen` NO borra nada: escribe la marca de visto de este usuario. Se invoca al abrir la
- * pantalla, que es lo que el requisito define como "verlas".
+ * `markSeen` NO borra nada: escribe la marca de visto de este usuario por acción explícita.
  */
 export function useNotifications(): {
   notifications: AppNotification[];

@@ -1,5 +1,5 @@
-import { useEffect, useRef } from 'react';
-import { Animated, Easing, Platform, StyleSheet, View } from 'react-native';
+import { createElement, useEffect, useState } from 'react';
+import { Animated, Easing, Image, Platform, StyleSheet, View } from 'react-native';
 import Colors from '../constants/colors';
 import { useReduceMotion } from '../hooks/useReduceMotion';
 import { phaseRange } from './loop-phase';
@@ -12,6 +12,7 @@ const FLOAT_MS = 6000;
 const RING_MS = 4500;
 /** 3 anillos desfasados 1/3 de vuelta = uno nuevo cada 1,5 s. */
 const RINGS = [0, 1, 2];
+const WEB_MOTION = '@keyframes aquora-logo-float{0%,100%{transform:translateY(-8px)}50%{transform:translateY(8px)}}@keyframes aquora-logo-ring{from{transform:translate(-50%,-50%) scale(.55);opacity:.55}to{transform:translate(-50%,-50%) scale(1.9);opacity:0}}@media(prefers-reduced-motion:reduce){.aquora-logo-motion{animation:none!important}}';
 
 interface Props {
   /** Ancho del logo en px. */
@@ -24,24 +25,25 @@ interface Props {
  */
 export function LogoRipples({ width }: Props) {
   const reduce = useReduceMotion();
-  const float = useRef(new Animated.Value(0)).current;
+  const [float] = useState(() => new Animated.Value(0));
   // Un solo bucle para los 3 anillos; cada uno es ese bucle con otra fase (ver loop-phase.ts). Con
   // un retraso por anillo, el escalonado dependía de temporizadores separados y se desalineaba.
-  const ring = useRef(new Animated.Value(0)).current;
+  const [ring] = useState(() => new Animated.Value(0));
 
   useEffect(() => {
-    if (reduce !== false) return;
+    if (reduce !== false || Platform.OS === 'web') return;
     const half = (toValue: number) =>
       Animated.timing(float, {
         toValue,
         duration: FLOAT_MS / 2,
         easing: Easing.inOut(Easing.sin),
         useNativeDriver: NATIVE,
+        isInteraction: false,
       });
     const anims = [
       Animated.loop(Animated.sequence([half(1), half(0)])),
       Animated.loop(
-        Animated.timing(ring, { toValue: 1, duration: RING_MS, easing: Easing.linear, useNativeDriver: NATIVE }),
+        Animated.timing(ring, { toValue: 1, duration: RING_MS, easing: Easing.linear, useNativeDriver: NATIVE, isInteraction: false }),
       ),
     ];
     anims.forEach(a => a.start());
@@ -54,6 +56,19 @@ export function LogoRipples({ width }: Props) {
 
   const height = width * LOGO_RATIO;
   const ringSize = width * 0.95;
+
+  if (Platform.OS === 'web') return <View style={[styles.box, { width, height }]}>
+    {createElement('style', null, WEB_MOTION)}
+    {reduce === false && RINGS.map((i) => createElement('div', {
+      key: i, className: 'aquora-logo-motion', 'aria-hidden': true,
+      style: { position: 'absolute', left: '50%', top: '50%', width: ringSize, height: ringSize,
+        borderRadius: '50%', border: `2px solid ${Colors.login.brandBlue}`, pointerEvents: 'none',
+        animation: `aquora-logo-ring 4.5s ease-out ${-i * 1.5}s infinite` },
+    }))}
+    {createElement('div', { className: 'aquora-logo-motion',
+      style: { width, height, animation: reduce === false ? 'aquora-logo-float 6s ease-in-out infinite' : 'none' } },
+      <Image source={require('../assets/aquora-logo.png')} style={{ width, height }} resizeMode="contain" accessibilityLabel="Aquora, creado por Xpertic" />)}
+  </View>;
 
   return (
     <View style={[styles.box, { width, height }]}>

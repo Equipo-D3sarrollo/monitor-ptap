@@ -1,13 +1,11 @@
-import { View, Text, StyleSheet, Animated, Easing, Platform } from 'react-native';
+import { View, Text, StyleSheet, Animated, Easing } from 'react-native';
 import { memo, useEffect, useRef, useState } from 'react';
-import { Ionicons } from '@expo/vector-icons';
-import Svg, { Path } from 'react-native-svg';
+import Ionicons from './AppIcon';
+import { TankWave } from './TankWave';
 import { tankAutonomyText } from '../services/tank-autonomy';
 import type { TankView } from '../services/tanks';
 import { isAutonomyLow, tankFill, tankState } from '../services/card-look';
 import { useStateFlash } from '../hooks/useStateFlash';
-import { useReduceMotion } from '../hooks/useReduceMotion';
-import { WAVE_PERIOD, wavePath } from './wave-path';
 import Colors from '../constants/colors';
 import { Fonts } from '../constants/fonts';
 import { BotonSilencio } from './BotonSilencio';
@@ -24,12 +22,6 @@ const WATER = Colors.login.waveMid;
  *  coste: por debajo de este umbral se salta al valor final. */
 const MIN_DELTA_PCT = 0.5;
 
-const NATIVE = Platform.OS !== 'web';
-/** Ola de la superficie del agua: 4 periodos en el doble del ancho del tanque, una vuelta en 4 s. */
-const TANK_W = 64;
-const WAVE_H = 10;
-const WAVE_D = wavePath(4, 20);
-
 interface Props {
   tank: TankView;
   /** La planta está congelada (sin conexión, mostrando la última lectura). Atenúa la tarjeta,
@@ -39,40 +31,6 @@ interface Props {
   still?: boolean;
   /** Planta del tanque, para la campana de silencio. Sin ella, la campana no se pinta. */
   plantId?: string;
-}
-
-/**
- * Ola en la superficie del agua del tanque. Solo con la planta en vivo y sin "reducir movimiento";
- * si no, no se pinta y el agua queda plana. Un bucle de un solo `timing` (ver loop-phase.ts).
- */
-function TankWave({ still }: { still: boolean }) {
-  const reduce = useReduceMotion();
-  const drift = useRef(new Animated.Value(0)).current;
-  const moving = reduce === false && !still;
-
-  useEffect(() => {
-    if (!moving) return;
-    const anim = Animated.loop(
-      Animated.timing(drift, { toValue: 1, duration: 4000, easing: Easing.linear, useNativeDriver: NATIVE }),
-    );
-    anim.start();
-    return () => anim.stop();
-  }, [moving, drift]);
-
-  if (!moving) return null;
-  return (
-    <Animated.View
-      pointerEvents="none"
-      style={[
-        styles.wave,
-        { transform: [{ translateX: drift.interpolate({ inputRange: [0, 1], outputRange: [0, -TANK_W] }) }] },
-      ]}
-    >
-      <Svg width={TANK_W * 2} height={WAVE_H} viewBox={`0 0 ${4 * WAVE_PERIOD} 100`} preserveAspectRatio="none">
-        <Path d={WAVE_D} fill={WATER} />
-      </Svg>
-    </Animated.View>
-  );
 }
 
 /**
@@ -148,7 +106,8 @@ function TankGaugeCardBase({ tank, frozen = false, still = false, plantId }: Pro
     inputRange: [0, 100],
     outputRange: ['0%', '100%'],
   });
-  const fmtM = (m: number) => m.toLocaleString('es-CO', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  const fmtM = (m: number) =>
+    m.toLocaleString('es-CO', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   const tankLabel =
     fill.kind === 'unconfirmed'
       ? `${tank.name}: capacidad sin confirmar`
@@ -176,7 +135,9 @@ function TankGaugeCardBase({ tank, frozen = false, still = false, plantId }: Pro
           ) : (
             <Ionicons name="help" size={22} color={B.gray} style={styles.tankHelp} />
           )}
-          {tank.levelOpMax !== null && fill.kind !== 'unconfirmed' && <View style={styles.maxMark} />}
+          {tank.levelOpMax !== null && fill.kind !== 'unconfirmed' && (
+            <View style={styles.maxMark} />
+          )}
         </View>
 
         <View style={styles.body}>
@@ -184,12 +145,16 @@ function TankGaugeCardBase({ tank, frozen = false, still = false, plantId }: Pro
             <Text style={styles.name} numberOfLines={1}>
               {tank.name}
             </Text>
-            {plantId && sujeto ? <BotonSilencio plantId={plantId} subject={sujeto} etiqueta={tank.name} /> : null}
+            {plantId && sujeto ? (
+              <BotonSilencio plantId={plantId} subject={sujeto} etiqueta={tank.name} />
+            ) : null}
           </View>
 
           {fill.kind === 'unconfirmed' ? (
             <>
-              <Text style={styles.big}>{hasLevel ? `${fmtM(tank.levelM as number)} m` : 'Sin dato'}</Text>
+              <Text style={styles.big}>
+                {hasLevel ? `${fmtM(tank.levelM as number)} m` : 'Sin dato'}
+              </Text>
               <Text style={styles.muted}>Capacidad sin confirmar</Text>
             </>
           ) : (
@@ -204,7 +169,8 @@ function TankGaugeCardBase({ tank, frozen = false, still = false, plantId }: Pro
             <View style={styles.tag}>
               <Ionicons name="alert-circle" size={13} color={Colors.danger} />
               <Text style={[styles.tagText, { color: B.dangerText }]}>
-                Rebose: por encima del máximo ({tank.levelOpMax !== null ? `${fmtM(tank.levelOpMax)} m` : '—'}). Puede ser un
+                Rebose: por encima del máximo (
+                {tank.levelOpMax !== null ? `${fmtM(tank.levelOpMax)} m` : '—'}). Puede ser un
                 rebose, un error de lectura o un máximo incorrecto. Verifica en planta.
               </Text>
             </View>
@@ -241,10 +207,18 @@ function TankGaugeCardBase({ tank, frozen = false, still = false, plantId }: Pro
             }
           />
         )}
-        <InfoRow label="Volumen" value={tank.volumeM3 !== null ? `${tank.volumeM3.toFixed(1)} m³` : 'Sin dato'} />
+        <InfoRow
+          label="Volumen"
+          value={tank.volumeM3 !== null ? `${tank.volumeM3.toFixed(1)} m³` : 'Sin dato'}
+        />
         {autonomia && (
           // Amarillo solo cuando el backend también avisaría (isAutonomyLow); con icono y texto.
-          <InfoRow label={autonomia.label} value={autonomia.texto} hint={autonomia.pie} warn={autonomiaBaja} />
+          <InfoRow
+            label={autonomia.label}
+            value={autonomia.texto}
+            hint={autonomia.pie}
+            warn={autonomiaBaja}
+          />
         )}
       </View>
     </View>
@@ -254,7 +228,17 @@ function TankGaugeCardBase({ tank, frozen = false, still = false, plantId }: Pro
 /** Memo con comparación POR VALOR — ver `memo-compare.ts`. */
 export const TankGaugeCard = memo(TankGaugeCardBase, sameTankCard);
 
-function InfoRow({ label, value, hint, warn = false }: { label: string; value: string; hint?: string; warn?: boolean }) {
+function InfoRow({
+  label,
+  value,
+  hint,
+  warn = false,
+}: {
+  label: string;
+  value: string;
+  hint?: string;
+  warn?: boolean;
+}) {
   return (
     <View>
       <View style={styles.infoRow}>
@@ -286,8 +270,15 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
   },
   cardAnomaly: { borderColor: Colors.danger, borderWidth: 1.5 },
-  cardFrozen: { opacity: 0.6 },
-  flash: { position: 'absolute', top: 0, right: 0, bottom: 0, left: 0, backgroundColor: 'rgba(36,145,204,0.12)' },
+  cardFrozen: { borderStyle: 'dashed' },
+  flash: {
+    position: 'absolute',
+    top: 0,
+    right: 0,
+    bottom: 0,
+    left: 0,
+    backgroundColor: 'rgba(36,145,204,0.12)',
+  },
   row: { flexDirection: 'row', gap: 16, alignItems: 'center', marginBottom: 12 },
   tank: {
     width: 64,
@@ -304,8 +295,6 @@ const styles = StyleSheet.create({
   tankOverflow: { borderColor: Colors.danger },
   tankHelp: { alignSelf: 'center' },
   water: { width: '100%', backgroundColor: WATER },
-  // La franja de la ola asoma por encima del agua (el tanque tiene overflow: hidden).
-  wave: { position: 'absolute', left: 0, top: -WAVE_H + 2, width: TANK_W * 2, height: WAVE_H },
   infoLabelRow: { flexDirection: 'row', alignItems: 'center', gap: 4, flexShrink: 1 },
   maxMark: {
     position: 'absolute',
@@ -320,7 +309,13 @@ const styles = StyleSheet.create({
   body: { flex: 1, minWidth: 0, gap: 4 },
   nameRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   name: { flex: 1, fontFamily: Fonts.semibold, fontSize: 15, color: B.text },
-  big: { fontFamily: Fonts.semibold, fontSize: 30, lineHeight: 38, color: B.text, fontVariant: ['tabular-nums'] },
+  big: {
+    fontFamily: Fonts.semibold,
+    fontSize: 30,
+    lineHeight: 38,
+    color: B.text,
+    fontVariant: ['tabular-nums'],
+  },
   unit: { fontFamily: Fonts.regular, fontSize: 15, color: B.textSecondary },
   muted: { fontFamily: Fonts.medium, fontSize: 13, color: B.textSecondary },
   tag: { flexDirection: 'row', alignItems: 'flex-start', gap: 4 },
@@ -346,5 +341,11 @@ const styles = StyleSheet.create({
     minWidth: 96,
     textAlign: 'right',
   },
-  infoHint: { fontFamily: Fonts.regular, fontSize: 11, color: B.textSecondary, marginTop: -2, marginBottom: 2 },
+  infoHint: {
+    fontFamily: Fonts.regular,
+    fontSize: 11,
+    color: B.textSecondary,
+    marginTop: -2,
+    marginBottom: 2,
+  },
 });

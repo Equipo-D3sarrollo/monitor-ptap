@@ -11,14 +11,14 @@
 
 // DEF-08: BridgeStatus/OpcQuality viven en @ptap/shared (contrato compartido con el móvil).
 // Se re-exportan aquí para que la capa de conectividad siga importando de su puerto.
-export type { BridgeStatus, OpcQuality } from '@ptap/shared';
 import type { BridgeStatus, OpcQuality } from '@ptap/shared';
+export type { BridgeStatus, OpcQuality } from '@ptap/shared';
 
 /** Una muestra de un buffer (nodo array completo). Un MonitoredItem por buffer (regla 6). */
 export interface RawBufferSample {
   browseName: string;
   channel: string; // realIn | realOut | intIn | intOut | bitIn | bitOut | msgRead | msgWrite
-  values: Array<number | boolean>;
+  values: (number | boolean)[];
   quality: OpcQuality;
   statusCode: string;
   sourceTimestamp: string | null; // del PLC; nunca Date.now() para datos (regla 7)
@@ -81,7 +81,7 @@ export interface AdapterDiagnostics {
   buffersActive: number;
   buffersFaulted: number;
   perPlant: PerPlantStatus[];
-  recentTransitions: Array<{ at: string; from: BridgeStatus; to: BridgeStatus; reason: string }>;
+  recentTransitions: { at: string; from: BridgeStatus; to: BridgeStatus; reason: string }[];
 }
 
 export interface ServerInfo {
@@ -137,6 +137,9 @@ export interface ConnectivityAdapter {
   start(): Promise<void>;
   /** Detiene y libera recursos. Idempotente. */
   stop(): Promise<void>;
+
+  /** Lectura administrativa explícita sobre la sesión activa, nunca por Subscription. */
+  readBufferFreshness?(plantId: string, browseName: string): Promise<{ sourceTimestamp: string | null; statusCode: string; good: boolean }>;
 
   getBridgeStatus(): BridgeStatus;
 
