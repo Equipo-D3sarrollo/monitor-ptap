@@ -9,7 +9,6 @@ import {
   ScrollView,
   ActivityIndicator,
   StyleSheet,
-  Image,
   Animated,
   Easing,
   useWindowDimensions,
@@ -20,6 +19,7 @@ import Ionicons from '../../components/AppIcon';
 import { router } from 'expo-router';
 import { AppUpdateBanner } from '../../components/AppUpdateBanner';
 import { WaterBackground } from '../../components/WaterBackground';
+import { LogoRipples } from '../../components/LogoRipples';
 import { useReducedMotion } from '../../hooks/useReducedMotion';
 import { useAuth } from '../../context/AuthContext';
 import { checkServerHealth } from '../../services/api';
@@ -98,6 +98,7 @@ export default function LoginScreen() {
       toast.error(
         'Error de acceso',
         err instanceof Error ? err.message : 'No se pudo iniciar sesión.',
+        4000,
       );
     } finally {
       submitting.current = false;
@@ -286,13 +287,8 @@ export default function LoginScreen() {
             {/* El logo y la frase se centran en la parte seca, por encima del agua. */}
             <View style={styles.wideWater}>
               <WaterBackground level={WIDE_WATER_LEVEL} />
-              <Image
-                source={require('../../assets/aquora-logo.png')}
-                style={styles.logoWide}
-                resizeMode="contain"
-                accessibilityLabel="Aquora, creado por Xpertic"
-              />
-              <Text style={styles.tagline}>El agua de 12 plantas, en una sola pantalla.</Text>
+              <LogoRipples width={200} />
+              <Text style={styles.tagline}>Monitoreo de plantas de agua, en una sola pantalla.</Text>
               <Text style={styles.taglineSub}>
                 Caudal, presión, niveles y calidad del agua en tiempo real.
               </Text>
@@ -312,12 +308,7 @@ export default function LoginScreen() {
           >
             <View style={styles.narrowWater}>
               <WaterBackground level={0.2} />
-              <Image
-                source={require('../../assets/aquora-logo.png')}
-                style={styles.logoNarrow}
-                resizeMode="contain"
-                accessibilityLabel="Aquora, creado por Xpertic"
-              />
+              <LogoRipples width={108} />
             </View>
             <View style={styles.narrowForm}>{form}</View>
           </ScrollView>
@@ -388,8 +379,6 @@ const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: L.pageBg },
   flex: { flex: 1 },
   loading: { alignItems: 'center', justifyContent: 'center' },
-  logoWide: { width: 200, height: 168 },
-  logoNarrow: { width: 108, height: 91 },
 
   // Escritorio/tablet: panel de agua a la izquierda, formulario centrado a la derecha.
   wideRow: { flex: 1, flexDirection: 'row', padding: 24, gap: 24 },

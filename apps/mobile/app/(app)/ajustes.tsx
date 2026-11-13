@@ -200,6 +200,21 @@ export default function AjustesScreen() {
             <Text style={styles.sectionTitle}>Estado de conexión con el PLC</Text>
             <ConnectionDiagnostics />
 
+            <TouchableOpacity
+              style={[styles.card, styles.linkCard]}
+              onPress={() => router.push('/(app)/revision')}
+              activeOpacity={0.8}
+              accessibilityRole="button"
+              accessibilityLabel="Abrir revisión de estado por planta"
+            >
+              <Ionicons name="clipboard-outline" size={20} color={Colors.primary} />
+              <View style={styles.flex}>
+                <Text style={styles.linkTitle}>Revisión por planta</Text>
+                <Text style={styles.linkDesc}>Red, puente, buffers, señales y anomalías · exportable</Text>
+              </View>
+              <Ionicons name="chevron-forward" size={18} color={Colors.textSecondary} />
+            </TouchableOpacity>
+
             {/* Sección propia, y no un botón dentro del diagnóstico: esto no responde "¿está
                 conectado?" sino "¿de dónde sale este número?". Son dos preguntas distintas. */}
             <Text style={styles.sectionTitle}>Modo desarrollador</Text>

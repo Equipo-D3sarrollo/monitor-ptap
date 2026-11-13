@@ -9,7 +9,7 @@ import { launch } from 'chrome-launcher';
 import puppeteer from 'puppeteer-core';
 
 // Run in the isolated audit environment documented in the Lighthouse report.
-const base = process.env.LH_BASE_URL || 'http://localhost:8081';
+const base = process.env.LH_BASE_URL || 'http://localhost:8082';
 const phase = process.env.LH_PHASE || 'baseline';
 const repeats = Number(process.env.LH_REPEATS || 1);
 assert.ok(Number.isInteger(repeats) && repeats >= 1, 'LH_REPEATS must be a positive integer');

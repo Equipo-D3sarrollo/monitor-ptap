@@ -80,9 +80,9 @@ interface PlantaCruda {
   displayName: string;
   displayNameProvisional?: boolean;
   topologyVerified?: boolean;
-  opcBuffers?: Record<string, Array<{ browseName?: string }>>;
+  opcBuffers?: Record<string, { browseName?: string }[]>;
   connection?: Record<string, unknown>;
-  signals?: Array<{ domainKey?: string; writable?: boolean }>;
+  signals?: { domainKey?: string; writable?: boolean }[];
 }
 
 function produccion(): { notes: string[]; plants: PlantaCruda[]; generatedFrom: { namespaces: string[] } } {
@@ -243,7 +243,7 @@ function conectividad(opcua: OpcUaConfig): ConnectivityConfig {
 /** Los cuatro detectores de avisos con repositorios en memoria, y sus `logger.error` espiados. */
 function detectores(pipeline: PlantPipelineService, cache: PlantCache) {
   const avisos: NewNotification[] = [];
-  const auditoria: Array<{ detail?: Record<string, unknown> }> = [];
+  const auditoria: { detail?: Record<string, unknown> }[] = [];
   const repo = {
     create: async (n: NewNotification) => {
       avisos.push(n);

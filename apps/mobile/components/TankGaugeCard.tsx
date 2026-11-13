@@ -1,13 +1,11 @@
-import { View, Text, StyleSheet, Animated, Easing, Platform } from 'react-native';
+import { View, Text, StyleSheet, Animated, Easing } from 'react-native';
 import { memo, useEffect, useRef, useState } from 'react';
 import Ionicons from './AppIcon';
-import Svg, { Path } from './WaterVector';
+import { TankWave } from './TankWave';
 import { tankAutonomyText } from '../services/tank-autonomy';
 import type { TankView } from '../services/tanks';
 import { isAutonomyLow, tankFill, tankState } from '../services/card-look';
 import { useStateFlash } from '../hooks/useStateFlash';
-import { useReduceMotion } from '../hooks/useReduceMotion';
-import { WAVE_PERIOD, wavePath } from './wave-path';
 import Colors from '../constants/colors';
 import { Fonts } from '../constants/fonts';
 import { BotonSilencio } from './BotonSilencio';
@@ -24,12 +22,6 @@ const WATER = Colors.login.waveMid;
  *  coste: por debajo de este umbral se salta al valor final. */
 const MIN_DELTA_PCT = 0.5;
 
-const NATIVE = Platform.OS !== 'web';
-/** Ola de la superficie del agua: 4 periodos en el doble del ancho del tanque, una vuelta en 4 s. */
-const TANK_W = 64;
-const WAVE_H = 10;
-const WAVE_D = wavePath(4, 20);
-
 interface Props {
   tank: TankView;
   /** La planta está congelada (sin conexión, mostrando la última lectura). Atenúa la tarjeta,
@@ -39,54 +31,6 @@ interface Props {
   still?: boolean;
   /** Planta del tanque, para la campana de silencio. Sin ella, la campana no se pinta. */
   plantId?: string;
-}
-
-/**
- * Ola en la superficie del agua del tanque. Solo con la planta en vivo y sin "reducir movimiento";
- * si no, no se pinta y el agua queda plana. Un bucle de un solo `timing` (ver loop-phase.ts).
- */
-function TankWave({ still }: { still: boolean }) {
-  const reduce = useReduceMotion();
-  const [drift] = useState(() => new Animated.Value(0));
-  const moving = reduce === false && !still;
-
-  useEffect(() => {
-    if (!moving) return;
-    const anim = Animated.loop(
-      Animated.timing(drift, {
-        toValue: 1,
-        duration: 4000,
-        easing: Easing.linear,
-        useNativeDriver: NATIVE,
-      }),
-    );
-    anim.start();
-    return () => anim.stop();
-  }, [moving, drift]);
-
-  if (!moving) return null;
-  return (
-    <Animated.View
-      pointerEvents="none"
-      style={[
-        styles.wave,
-        {
-          transform: [
-            { translateX: drift.interpolate({ inputRange: [0, 1], outputRange: [0, -TANK_W] }) },
-          ],
-        },
-      ]}
-    >
-      <Svg
-        width={TANK_W * 2}
-        height={WAVE_H}
-        viewBox={`0 0 ${4 * WAVE_PERIOD} 100`}
-        preserveAspectRatio="none"
-      >
-        <Path d={WAVE_D} fill={WATER} />
-      </Svg>
-    </Animated.View>
-  );
 }
 
 /**
@@ -351,8 +295,6 @@ const styles = StyleSheet.create({
   tankOverflow: { borderColor: Colors.danger },
   tankHelp: { alignSelf: 'center' },
   water: { width: '100%', backgroundColor: WATER },
-  // La franja de la ola asoma por encima del agua (el tanque tiene overflow: hidden).
-  wave: { position: 'absolute', left: 0, top: -WAVE_H + 2, width: TANK_W * 2, height: WAVE_H },
   infoLabelRow: { flexDirection: 'row', alignItems: 'center', gap: 4, flexShrink: 1 },
   maxMark: {
     position: 'absolute',

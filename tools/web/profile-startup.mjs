@@ -4,7 +4,7 @@ import puppeteer from 'puppeteer-core';
 import os from 'node:os';
 
 // Diagnostic CPU profile; this does not produce or replace a Lighthouse score.
-const base = process.env.LH_BASE_URL || 'http://localhost:8081';
+const base = process.env.LH_BASE_URL || 'http://localhost:8082';
 assert.ok(process.env.LH_EMAIL && process.env.LH_PASSWORD, 'Authorized test credentials required');
 const browser = await puppeteer.launch({
   executablePath: '/usr/bin/chromium',

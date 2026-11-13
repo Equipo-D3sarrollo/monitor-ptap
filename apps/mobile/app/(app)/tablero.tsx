@@ -33,7 +33,7 @@ import { DashboardSkeleton } from '../../components/Skeleton';
 import { OfflineNotice } from '../../components/OfflineNotice';
 import Colors from '../../constants/colors';
 import { Fonts } from '../../constants/fonts';
-import { tanksFromSnapshot } from '../../services/tanks';
+import { groupTanks, tanksFromSnapshot } from '../../services/tanks';
 import { cardKindFor } from '../../services/signal-kind';
 import {
   dashboardSignals,
@@ -94,6 +94,7 @@ export default function TableroScreen() {
   const singleColumn = width < 600 && !prefs.compact;
 
   const tanks = useMemo(() => tanksFromSnapshot(snapshot), [snapshot]);
+  const tankGroups = useMemo(() => groupTanks(tanks), [tanks]);
 
   // Memoizado: antes se recalculaba en CADA render (dos predicados por clave), pese a que `tanks`
   // justo encima sí estaba memoizado.
@@ -293,19 +294,40 @@ export default function TableroScreen() {
               />
             )}
 
-            {/* Los tanques van primero y NUNCA se pliegan: son la lectura principal de la planta. */}
+            {/* Los tanques propios no se mezclan con lecturas externas retransmitidas. */}
             {tanks.length > 0 && (
-              <View style={styles.grid}>
-                {tanks.map((tank) => (
-                  <View key={tank.id} style={tanqueAnchoCompleto ? styles.cellFull : styles.cell}>
-                    <TankGaugeCard
-                      tank={tank}
-                      frozen={frozen}
-                      still={!status?.online}
-                      plantId={selectedPlant.id}
-                    />
+              <View>
+                <Text accessibilityRole="header" style={styles.tankSectionTitle}>
+                  Tanques propios de {selectedPlant.name} ({tankGroups.own.length})
+                </Text>
+                {tankGroups.own.length === 0 && <Text style={styles.tankSectionNote}>
+                  No hay lecturas de tanques propios mapeadas para esta planta.
+                </Text>}
+                <View style={styles.grid}>
+                  {tankGroups.own.map((tank) => (
+                    <View key={tank.id} style={tanqueAnchoCompleto ? styles.cellFull : styles.cell}>
+                      <TankGaugeCard tank={tank} frozen={frozen} still={!status?.online} plantId={selectedPlant.id} />
+                    </View>
+                  ))}
+                </View>
+                {tankGroups.external.length > 0 && (
+                  <View style={styles.externalTankSection}>
+                    <Text accessibilityRole="header" style={styles.tankSectionTitle}>
+                      Lecturas de tanques externos ({tankGroups.external.length})
+                    </Text>
+                    <Text style={styles.tankSectionNote}>
+                      Recibidas a través de {selectedPlant.name}. No se contabilizan como tanques propios de esta planta. Su asociación está pendiente de confirmar.
+                    </Text>
+                    <View style={styles.grid}>
+                      {tankGroups.external.map((tank) => (
+                        <View key={tank.id} style={tanqueAnchoCompleto ? styles.cellFull : styles.cell}>
+                          <Text style={styles.externalTankLabel}>Lectura externa · vía {selectedPlant.name}</Text>
+                          <TankGaugeCard tank={tank} frozen={frozen} still={!status?.online} plantId={selectedPlant.id} />
+                        </View>
+                      ))}
+                    </View>
                   </View>
-                ))}
+                )}
               </View>
             )}
 
@@ -421,6 +443,10 @@ const styles = StyleSheet.create({
     fontVariant: ['tabular-nums'],
   },
   grid: { flexDirection: 'row', flexWrap: 'wrap', marginBottom: 8 },
+  tankSectionTitle: { fontFamily: Fonts.semibold, fontSize: 16, lineHeight: 24, color: Colors.brand.text, marginHorizontal: 8, marginBottom: 8 },
+  tankSectionNote: { fontFamily: Fonts.regular, fontSize: 13, lineHeight: 20, color: Colors.brand.textSecondary, marginHorizontal: 8, marginBottom: 12 },
+  externalTankSection: { borderTopWidth: 1, borderTopColor: Colors.brand.divider, paddingTop: 16, marginTop: 8 },
+  externalTankLabel: { fontFamily: Fonts.medium, fontSize: 12, lineHeight: 18, color: Colors.brand.textSecondary, marginHorizontal: 8, marginBottom: 4 },
   cell: { width: '50%' },
   /** Fila entera: para los tanques en pantallas estrechas, donde el texto largo no cabe a la mitad. */
   cellFull: { width: '100%' },

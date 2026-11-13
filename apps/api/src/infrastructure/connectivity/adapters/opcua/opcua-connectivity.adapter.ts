@@ -504,7 +504,7 @@ export class OpcUaConnectivityAdapter implements ConnectivityAdapter {
     };
   }
 
-  private toValueArray(raw: unknown): Array<number | boolean> {
+  private toValueArray(raw: unknown): (number | boolean)[] {
     if (raw === null || raw === undefined) return [];
     // Un `null`/`undefined` POR ELEMENTO (canal con calidad mala representada como null en un
     // array mixto) NO puede volverse 0: `Number(null) === 0` sería una lectura falsa e

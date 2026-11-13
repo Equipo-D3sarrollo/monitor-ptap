@@ -5,7 +5,7 @@ import puppeteer from 'puppeteer-core';
 
 // A11y-only fixture: derive frozen readings in this browser, never alter the API or send commands.
 const require = createRequire(import.meta.url);
-const base = 'http://localhost:8081';
+const base = 'http://localhost:8082';
 assert.ok(process.env.LH_EMAIL && process.env.LH_PASSWORD, 'Authorized local test account required');
 const output = '/audit/frozen-ui';
 fs.mkdirSync(output, { recursive: true });

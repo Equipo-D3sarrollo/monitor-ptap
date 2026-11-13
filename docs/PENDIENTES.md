@@ -14,7 +14,37 @@
 
 ---
 
-## Estado vigente y próxima continuación — 2026-11-02
+## Estado local verificado — 2026-11-12
+
+Esta sección describe la copia local y Docker, no el estado actual de una VM ni una publicación.
+Las secciones posteriores conservan planificación y evidencia histórica; no deben interpretarse
+como una lista de cambios que haya que repetir o marcar como completados sin pruebas.
+
+- [x] Integración local de la revisión por planta, filtros, exportación aislada de mapping a Git
+  y tipos compartidos; las suites del backend verifican su funcionamiento sin acceso al repositorio remoto ni PLC.
+- [x] Login, Tablero, Válvulas y Reportes adaptados a escritorio/móvil web; selector compartido
+  de plantas, animaciones y separación de tanques propios/lecturas externas.
+- [x] Registro de maniobras con identidad autenticada, rol, IP, resultado y trazabilidad;
+  endurecimiento del origen de IP, correlación de petición y límite específico de mandos.
+  Véase [SEGURIDAD_MANDOS.md](SEGURIDAD_MANDOS.md).
+- [x] Auditoría de dependencias sin vulnerabilidades conocidas en la ejecución local de esta revisión.
+  Esto no garantiza ausencia de vulnerabilidades desconocidas ni sustituye el mantenimiento.
+
+### Dependencias externas de este cierre técnico
+
+- **Integrador:** confirmar pertenencia, tags/índices, unidades, capacidad y cadencias aún inferidos;
+  especialmente los tanques identificados provisionalmente como San Antonio y El Quijote.
+  Véase [DATA_CATALOG.md](DATA_CATALOG.md), «Asociación sin confirmar».
+- **VM autorizada:** configurar secretos, certificados, red, permisos de BD/checkpoint y proxy;
+  verificar lectura real contra HMI antes de autorizar maniobras. La simulación no certifica el PLC.
+  Las comprobaciones de APK instalada, notificaciones reales y datos de campo requieren el entorno
+  y dispositivos correspondientes: una exportación o prueba web no las sustituye.
+
+Los planes futuros de producto y riesgos aceptados documentados (por ejemplo, la sesión web en
+[SEGURIDAD_FRONTEND.md](SEGURIDAD_FRONTEND.md)) siguen siendo decisiones explícitas, no defectos
+que esta revisión permita declarar inexistentes. No se anuncian releases ni despliegues desde este estado local.
+
+## Registro anterior de continuación — 2026-11-02
 
 Este documento sigue siendo el tracker único. Conservar el trabajo pendiente entre
 sesiones; no iniciar implementaciones, publicaciones ni vigilancia automática por

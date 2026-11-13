@@ -1,4 +1,4 @@
-import { Body, Controller, Delete, Get, Inject, Param, Patch, Req, UseGuards } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Inject, Param, Patch, Post, Req, UseGuards } from '@nestjs/common';
 import { RequirePermission } from '../auth/decorators/require-permission.decorator';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { PermissionGuard } from '../auth/guards/permission.guard';
@@ -7,6 +7,7 @@ import { ZodValidationPipe } from '../../infrastructure/validation/zod-validatio
 import { plantIdParamSchema } from '../../infrastructure/validation/plant-id.schema';
 import { domainKeyParamSchema, mappingPatchSchema, type MappingPatchBody } from './mapping-patch.schema';
 import { MappingOverrideService } from './mapping-override.service';
+import { MappingGitService } from './mapping-git.service';
 
 /**
  * Editar el mapeo desde la app. **Todo exige `system_config`** (solo admin), igual que el resto de
@@ -17,7 +18,16 @@ import { MappingOverrideService } from './mapping-override.service';
 @Controller('opc/mapping')
 @UseGuards(JwtAuthGuard, PermissionGuard)
 export class MappingController {
-  constructor(@Inject(MappingOverrideService) private readonly overrides: MappingOverrideService) {}
+  constructor(
+    @Inject(MappingOverrideService) private readonly overrides: MappingOverrideService,
+    @Inject(MappingGitService) private readonly git: MappingGitService,
+  ) {}
+
+  @Post('git')
+  @RequirePermission('system_config')
+  publicar() {
+    return this.git.publicar();
+  }
 
   /** Las correcciones en vigor, de todas las plantas. */
   @Get()

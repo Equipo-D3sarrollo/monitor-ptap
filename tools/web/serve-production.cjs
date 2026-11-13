@@ -88,7 +88,7 @@ function createServer(directory) {
 module.exports = { createServer };
 if (require.main === module) {
   const root = process.argv[2] || path.resolve(__dirname, '../../apps/mobile/dist-audit');
-  const port = Number(process.argv[3] || 8081);
+  const port = Number(process.argv[3] || 8082);
   createServer(root).listen(port, process.env.HOST || '127.0.0.1', () =>
     console.log(`Production export listening on ${port}`),
   );

@@ -1,4 +1,4 @@
-import { memo, useEffect, useMemo, useState } from 'react';
+import { memo, useMemo, useState } from 'react';
 import {
   View,
   Text,
@@ -36,10 +36,9 @@ import { Fonts } from '../../constants/fonts';
  * Tres reglas de producto que la separan de la pantalla de alertas que había antes:
  *
  *  1. **Nada se borra.** No hay botón de descartar. El usuario solo las marca como vistas, y eso
- *     ocurre solo por entrar aquí. El historial es evidencia: si un sensor lleva 15 días caído,
+ *     ocurre con el botón de marcar vistos. El historial es evidencia: si un sensor lleva 15 días caído,
  *     ese rastro tiene que poder enseñarse.
- *  2. **La campana se apaga al verlas, no al resolverlas.** Al montar esta pantalla se marcan
- *     vistas; el aviso sigue en la lista, sin resalte.
+ *  2. **La campana se apaga al marcarlas vistas, no al resolverlas.** El aviso sigue en la lista.
  *  3. **Tocar un aviso lleva a la planta afectada**, seleccionándola primero.
  */
 function severityOf(n: AppNotification): { color: string; icon: keyof typeof Ionicons.glyphMap } {
@@ -127,6 +126,8 @@ export default function AlertasScreen() {
   const { setSelectedPlant } = usePlant();
   const [familia, setFamilia] = useState<FamiliaAviso | null>(null);
   const [busqueda, setBusqueda] = useState('');
+  const [soloNoVistos, setSoloNoVistos] = useState(false);
+  const [antiguosPrimero, setAntiguosPrimero] = useState(false);
   /**
    * Qué se está mirando. Las novedades NO son una familia de avisos —no tienen planta, ni
    * gravedad, ni «visto» por usuario— así que no caben en `familia` sin mentir sobre lo que son.
@@ -136,8 +137,8 @@ export default function AlertasScreen() {
   const [versionNueva, setVersionNueva] = useState<string | null>(null);
 
   const visibles = useMemo(
-    () => filtrarAvisos(notifications, familia, busqueda),
-    [notifications, familia, busqueda],
+    () => filtrarAvisos(notifications, familia, busqueda, soloNoVistos, antiguosPrimero),
+    [notifications, familia, busqueda, soloNoVistos, antiguosPrimero],
   );
 
   // Cuántos hay de cada familia, para que las pestañas digan si vale la pena entrar. Un filtro que
@@ -150,13 +151,6 @@ export default function AlertasScreen() {
     }
     return c;
   }, [notifications]);
-
-  // Entrar aquí ES verlas. Se marca TODO, no solo lo que el filtro deja ver: el filtro sirve para
-  // buscar, no para leer a medias.
-  useEffect(() => {
-    markSeen();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
 
   function verAvisos(f: FamiliaAviso | null) {
     setVista('avisos');
@@ -263,6 +257,20 @@ export default function AlertasScreen() {
           </ScrollView>
         )}
 
+        {vista === 'avisos' && notifications.length > 0 && (
+          <View style={styles.filtros}>
+            <TouchableOpacity style={[styles.limpiar, soloNoVistos && styles.pestaniaActiva]} onPress={() => setSoloNoVistos((value) => !value)} accessibilityRole="checkbox" accessibilityState={{ checked: soloNoVistos }}>
+              <Text style={styles.limpiarTexto}>Solo sin ver</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.limpiar} onPress={() => setAntiguosPrimero((value) => !value)} accessibilityRole="button" accessibilityLabel={`Orden por fecha: ${antiguosPrimero ? 'más antiguos primero' : 'más recientes primero'}. Cambiar orden`}>
+              <Text style={styles.limpiarTexto}>{antiguosPrimero ? 'Más antiguos primero' : 'Más recientes primero'}</Text>
+            </TouchableOpacity>
+            {unseen > 0 && <TouchableOpacity style={styles.limpiar} onPress={markSeen} accessibilityRole="button">
+              <Text style={styles.limpiarTexto}>Marcar todos como vistos</Text>
+            </TouchableOpacity>}
+          </View>
+        )}
+
         {vista === 'novedades' ? (
           <NovedadesLista
             novedades={novedadesQ.novedades}
@@ -302,6 +310,7 @@ export default function AlertasScreen() {
               onPress={() => {
                 setFamilia(null);
                 setBusqueda('');
+                setSoloNoVistos(false);
               }}
               accessibilityRole="button"
               accessibilityLabel="Quitar el filtro y ver todos los avisos"
@@ -315,8 +324,7 @@ export default function AlertasScreen() {
               <NotificationRow key={n.id} notification={n} onPress={abrir} />
             ))}
             <Text style={styles.pie}>
-              Los avisos no se pueden borrar: quedan como historial. Al entrar aquí se marcan como
-              vistos y la campana deja de avisar.
+              Los avisos quedan como historial. Usa “Marcar todos como vistos” para apagar la campana.
             </Text>
           </>
         )}
@@ -326,6 +334,7 @@ export default function AlertasScreen() {
 }
 
 const styles = StyleSheet.create({
+  filtros: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 12 },
   safe: { flex: 1, backgroundColor: Colors.surface },
   content: { padding: 16 },
   head: { marginBottom: 14 },

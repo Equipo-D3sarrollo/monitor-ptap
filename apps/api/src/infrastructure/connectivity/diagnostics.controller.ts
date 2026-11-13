@@ -3,6 +3,7 @@ import { ZodValidationPipe } from '../validation/zod-validation.pipe';
 import { plantIdParamSchema } from '../validation/plant-id.schema';
 import { Body, Controller, Get, Inject, Param, Post, Query, Req, UseGuards } from '@nestjs/common';
 import type { Request } from 'express';
+import type { RouteHistorySummary } from '@ptap/shared';
 import { RequirePermission } from '../../modules/auth/decorators/require-permission.decorator';
 import { JwtAuthGuard } from '../../modules/auth/guards/jwt-auth.guard';
 import { PermissionGuard } from '../../modules/auth/guards/permission.guard';
@@ -10,20 +11,10 @@ import { AuditLogService, type AuditEventRow } from '../audit/audit-log.service'
 import type { RouteCheckReport } from './route-check.service';
 import { ROUTE_HISTORY_WINDOW_HOURS, ROUTE_PROBE_EVENT, RouteProbeSampler } from './route-probe.sampler';
 
+export type { RouteHistorySummary } from '@ptap/shared';
+
 /** Tipo de evento con el que ConnectionEventsSubscriber graba las transiciones del puente. */
 const BRIDGE_EVENT = 'opc.bridge_status_change';
-
-export interface RouteHistorySummary {
-  windowHours: number;
-  samples: number;
-  plcOk: number;
-  /** % de muestras de la ventana en las que el puerto del PLC aceptó conexión (1 decimal). */
-  uptimePct: number;
-  oldestAt: string | null;
-  newestAt: string | null;
-  /** Inicio de la racha de fallo VIGENTE (null si la muestra más reciente fue OK o no hay muestras). */
-  downSince: string | null;
-}
 
 export interface RouteHistoryResponse {
   summary: RouteHistorySummary;

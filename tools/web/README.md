@@ -11,7 +11,7 @@ docker exec -w /workspace aquora-node26-dev npm run web:build
 docker exec -d -w /workspace -e HOST=0.0.0.0 aquora-node26-dev npm run web:preview
 ```
 
-El segundo comando requiere que el puerto 8081 esté libre dentro del contenedor. No iniciar Metro y la previsualización a la vez. El puerto del contenedor debe publicarse **solo en 127.0.0.1**. Abrir `http://localhost:8081/login`. Tras editar código, repetir la compilación; esta previsualización no tiene recarga de desarrollo.
+El segundo comando requiere que el puerto 8082 esté libre dentro del contenedor. No iniciar Metro y la previsualización a la vez. El puerto del contenedor debe publicarse **solo en 127.0.0.1**. Abrir `http://localhost:8082/login`. Tras editar código, repetir la compilación; esta previsualización no tiene recarga de desarrollo.
 
 `export:web` genera `apps/mobile/dist-audit`, añade las fuentes WOFF2, su declaración CSS y versiones Brotli/gzip. El servidor entrega los recursos con hash como inmutables y el HTML sin caché. Registra los fragmentos de la ruta después del runtime de Metro y antes del punto de entrada, como admite el cargador de Expo. Las rutas protegidas siguen comprobando la sesión en la aplicación y en la API.
 

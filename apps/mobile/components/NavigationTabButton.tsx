@@ -4,7 +4,7 @@ import { PlatformPressable } from 'expo-router/react-navigation';
 import { useReducedMotion } from '../hooks/useReducedMotion';
 
 export function NavigationTabButton(props: ComponentProps<typeof PlatformPressable>) {
-  const selected = props['aria-selected'] === true;
+  const selected = props['aria-selected'] === true || props.accessibilityState?.selected === true;
   const previous = useRef(selected);
   const [scale] = useState(() => new Animated.Value(1));
   const reduced = useReducedMotion();

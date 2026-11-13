@@ -1,4 +1,4 @@
-import { ClientSession, MessageSecurityMode, OPCUAClient, SecurityPolicy, UserTokenType } from 'node-opcua';
+import { MessageSecurityMode, OPCUAClient, SecurityPolicy, UserTokenType } from 'node-opcua';
 
 interface ReadArgs {
   endpoint: string;

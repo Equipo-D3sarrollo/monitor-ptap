@@ -3,7 +3,7 @@
   "build": { "dockerfile": "Dockerfile" },
   "workspaceMount": "source=${localWorkspaceFolder},target=/workspace,type=bind",
   "workspaceFolder": "/workspace",
-  "forwardPorts": [4000, 8081],
+  "forwardPorts": [4000, 8082],
   "mounts": [
     "source=aquora-root-node-modules,target=/workspace/node_modules,type=volume",
     "source=aquora-api-node-modules,target=/workspace/apps/api/node_modules,type=volume",

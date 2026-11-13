@@ -1,7 +1,7 @@
 import Constants from 'expo-constants';
-import type { AuthUser, PlantSnapshotDto, PlantBasicStatusDto, PlantListItem } from '@ptap/shared';
+import type { AuthUser, PlantSnapshotDto, PlantBasicStatusDto, PlantListItem, ValveCommandResult, RouteHistorySummary } from '@ptap/shared';
 
-export type { AuthUser };
+export type { AuthUser, ValveCommandResult, RouteHistorySummary };
 
 /**
  * Cliente REST REAL del backend Monitor PTAP. CERO mocks: los datos salen del pipeline
@@ -140,23 +140,6 @@ export async function deleteJson<T>(path: string): Promise<T> {
 // ── Comandos de válvula (canal oficial, Fase 5) ───────────────────────────────────────────────
 
 /** Resultado de POST /api/plants/:plantId/commands, tal como lo devuelve el WriteService. */
-export interface ValveCommandResult {
-  http: number;
-  /**
-   * `sent` (HTTP 202): la orden se escribió y el eco la verificó en el canal, pero el canal de
-   * ESTADO de ese sitio no tiene semántica verificada en campo. No se afirma que el equipo se
-   * movió, ni se lo acusa de no haberlo hecho.
-   */
-  status: 'confirmed' | 'sent' | 'failed' | 'rejected' | 'error';
-  reason: string | null;
-  previousValue: number | boolean | null;
-  writtenValue: number | boolean | null;
-  confirmedValue: number | boolean | null;
-  /** Eco del canal de comando: prueba que el bit SÍ se escribió en ese instante. */
-  writeEcho: number | boolean | null;
-  writeVerified: boolean | null;
-  idempotent?: boolean;
-}
 
 /**
  * Envía un comando de válvula. A diferencia del resto del cliente, NO lanza en 4xx/5xx: un
@@ -297,17 +280,6 @@ export async function runRouteCheck(): Promise<RouteCheckReport> {
 
 // ── Registro continuo 24 h (GET /api/diagnostics/route-history, solo admin) ─────
 
-export interface RouteHistorySummary {
-  windowHours: number;
-  samples: number;
-  plcOk: number;
-  /** % de muestras en las que el puerto del PLC aceptó conexión. */
-  uptimePct: number;
-  oldestAt: string | null;
-  newestAt: string | null;
-  /** Inicio del corte VIGENTE (null si la última muestra fue OK). */
-  downSince: string | null;
-}
 
 /** Una muestra del sampler (detalle compacto persistido en audit_log). */
 export interface RouteHistorySample {
@@ -333,6 +305,30 @@ export interface RouteHistoryResponse {
  *  manuales del botón. Requiere `system_config`. */
 export async function fetchRouteHistory(): Promise<RouteHistoryResponse> {
   return getJson<RouteHistoryResponse>('/api/diagnostics/route-history');
+}
+
+export interface PlantReport {
+  plantId: string;
+  displayName: string;
+  at: string;
+  network: { scope: 'global'; latest: RouteHistorySample | null; history: RouteHistorySample[] };
+  bridge: {
+    scope: 'global'; status: import('@ptap/shared').BridgeStatus; at: string | null;
+    diagnostics: { reconnectCount: number };
+    history: ConnectionEvent[];
+  };
+  plant: { plantId: string; lastFrameAt: string | null; buffersTotal: number; buffersFaulted: number } | null;
+  buffers: { plantId: string; browseName: string; channel: string; resolved: boolean; faulted: boolean; reason: string | null; sourceTimestamp: string | null }[];
+  liveness: import('@ptap/shared').LivenessDto | null;
+  signals: (import('@ptap/shared').SignalDto & { domainKey: string })[];
+  anomalies: { at: string; type: string; plantId: string; domainKey: string; detail: string }[];
+  freshness: { browseName: string; channel: string; sourceTimestamp: string | null; statusCode: string; ageMs: number | null; veredicto: 'fresco' | 'congelado' | 'indeterminado' | 'comando' }[] | null;
+  deepProbe: boolean;
+}
+
+/** Consulta de cache: nunca activa la lectura directa del PLC. */
+export async function fetchPlantReport(plantId: string): Promise<PlantReport> {
+  return getJson<PlantReport>(`/api/diagnostics/plant/${encodeURIComponent(plantId)}`);
 }
 
 /**

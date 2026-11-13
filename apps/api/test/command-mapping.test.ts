@@ -118,11 +118,11 @@ test('mapping de PRODUCCIÓN: la válvula 1 está en las plantas CON canal de co
   // Desde el 2026-10-16 La Vorágine, Cascajal y Campoalegre tienen una SEGUNDA válvula accionable: el
   // integrador entregó su codificación. Son las únicas: cualquier otra exige lo mismo.
   const prod = loadJson(join(__dirname, '..', 'config', 'opc_mapping.json')) as {
-    plants: Array<{
+    plants: {
       plantId: string;
-      opcBuffers?: Record<string, Array<{ browseName?: string }>>;
-      signals?: Array<{ domainKey?: string; writable?: boolean }>;
-    }>;
+      opcBuffers?: Record<string, { browseName?: string }[]>;
+      signals?: { domainKey?: string; writable?: boolean }[];
+    }[];
   };
 
   const conCanal = prod.plants.filter((p) => p.opcBuffers?.intOut?.[0] && p.opcBuffers?.intIn?.[0]).map((p) => p.plantId);
@@ -155,9 +155,9 @@ test('mapping de PRODUCCIÓN: La Vorágine tiene DOS válvulas y las DOS se acci
   // mando con RESPALDO (el `_riesgo` dice de dónde sale y cuándo) y que su índice siga siendo un ancla
   // declarada como tal — el 1 no es por dónde se manda.
   const prod = loadJson(join(__dirname, '..', 'config', 'opc_mapping.json')) as {
-    plants: Array<{
+    plants: {
       plantId: string;
-      signals?: Array<{
+      signals?: {
         domainKey?: string;
         label?: string;
         index?: number;
@@ -166,8 +166,8 @@ test('mapping de PRODUCCIÓN: La Vorágine tiene DOS válvulas y las DOS se acci
         write?: ProdWrite & { target?: { sourceBuffer?: string; index?: number } };
         flowDomainKey?: string;
         _nota?: string;
-      }>;
-    }>;
+      }[];
+    }[];
   };
 
   const conValve2 = prod.plants.filter((p) => (p.signals ?? []).some((s) => s.domainKey === 'valve2')).map((p) => p.plantId);
@@ -232,7 +232,7 @@ test('mapping de PRODUCCIÓN: La Vorágine tiene DOS válvulas y las DOS se acci
 // falso. Este test impide que vuelva a colarse un estado sin verificar.
 test('mapping de PRODUCCIÓN: solo las plantas con estado VERIFICADO exponen valve1State', () => {
   const prod = loadJson(join(__dirname, '..', 'config', 'opc_mapping.json')) as {
-    plants: Array<{ plantId: string; signals?: Array<{ domainKey?: string }> }>;
+    plants: { plantId: string; signals?: { domainKey?: string }[] }[];
   };
   const conEstado = prod.plants
     .filter((p) => (p.signals ?? []).some((s) => s.domainKey === 'valve1State'))
@@ -304,7 +304,7 @@ const ENTREGAS_INTEGRADOR: Record<string, { open: number; close: number }> = {
 interface ProdWrite {
   target?: { sourceBuffer?: string; index?: number };
   commands?: Record<string, number>;
-  sequences?: Record<string, Array<{ index: number; value: number }>>;
+  sequences?: Record<string, { index: number; value: number }[]>;
   latched?: boolean;
   sustained?: boolean;
   _riesgo?: string;
@@ -314,9 +314,9 @@ interface ProdWrite {
   rollbackValue?: number;
 }
 
-function valvulasDeProduccion(): Array<{ plantId: string; domainKey: string; w: ProdWrite | undefined }> {
+function valvulasDeProduccion(): { plantId: string; domainKey: string; w: ProdWrite | undefined }[] {
   const prod = loadJson(join(__dirname, '..', 'config', 'opc_mapping.json')) as {
-    plants: Array<{ plantId: string; signals?: Array<{ domainKey?: string; writable?: boolean; write?: ProdWrite }> }>;
+    plants: { plantId: string; signals?: { domainKey?: string; writable?: boolean; write?: ProdWrite }[] }[];
   };
   return prod.plants.flatMap((p) =>
     (p.signals ?? []).filter((s) => s.writable).map((s) => ({ plantId: p.plantId, domainKey: String(s.domainKey), w: s.write })),
@@ -381,10 +381,10 @@ test('mapping de PRODUCCIÓN: solo las válvulas de la entrega del integrador so
 
 test('mapping de PRODUCCIÓN: Cabuyo — solo la válvula de ENTRADA, en bitmask (bits ajenos en la palabra), read-back SIN verificar y palabra de estado de confianza (integrador 2026-11-10)', () => {
   const prod = loadJson(join(__dirname, '..', 'config', 'opc_mapping.json')) as {
-    plants: Array<{
+    plants: {
       plantId: string;
-      signals?: Array<{ domainKey?: string; index?: number; buffer?: string; writable?: boolean; flowDomainKey?: string; stateTrusted?: boolean; write?: ProdWrite & { readBack?: { index?: number; mask?: number; faultMask?: number; expectedByCommand?: Record<string, number> } } }>;
-    }>;
+      signals?: { domainKey?: string; index?: number; buffer?: string; writable?: boolean; flowDomainKey?: string; stateTrusted?: boolean; write?: ProdWrite & { readBack?: { index?: number; mask?: number; faultMask?: number; expectedByCommand?: Record<string, number> } } }[];
+    }[];
   };
   const senales = prod.plants.find((p) => p.plantId === 'cabuyo')?.signals ?? [];
   const por = (k: string) => senales.find((s) => s.domainKey === k);
@@ -450,7 +450,7 @@ function sostenidaCon(cambios: Record<string, unknown>): Record<string, unknown>
 
 /** Escribe un mapping en un archivo temporal (fuera del repo) para pasarlo por el loader real. */
 function mappingTemporal(signals: Record<string, unknown>[]): string {
-  const doc = mappingWithSignal(signals[0]) as { plants: Array<{ signals: unknown[] }> };
+  const doc = mappingWithSignal(signals[0]) as { plants: { signals: unknown[] }[] };
   doc.plants[0].signals = signals;
   const ruta = join(mkdtempSync(join(tmpdir(), 'mapping-sostenida-')), 'opc_mapping.json');
   writeFileSync(ruta, JSON.stringify(doc), 'utf8');
@@ -474,7 +474,7 @@ test('sostenida: sin `sustained`, rollbackValue sigue siendo OBLIGATORIO', () =>
 });
 
 test('sostenida: el validador y el loader RECHAZAN sustained + pulse y sustained + rollbackValue, con mensaje claro', () => {
-  const casos: Array<[string, Record<string, unknown>, RegExp]> = [
+  const casos: [string, Record<string, unknown>, RegExp][] = [
     ['con pulse', { pulse: { holdMs: 45000 } }, /pulse/],
     ['con pulse.until', { pulse: { holdMs: 45000, until: { channel: 'intIn', index: 1, equals: 1 } } }, /pulse/],
     ['con rollbackValue', { rollbackValue: 0 }, /rollbackValue/],
@@ -497,7 +497,7 @@ test('sostenida: el validador y el loader RECHAZAN sustained + pulse y sustained
 });
 
 test('sostenida: el validador y el loader RECHAZAN modo inválido, un solo verbo, verbos con bits compartidos, cero y booleanos', () => {
-  const casos: Array<[string, Record<string, unknown>, RegExp]> = [
+  const casos: [string, Record<string, unknown>, RegExp][] = [
     ['modo desconocido', { mode: 'invalido' as any }, /mode/],
     ['sin modo (absoluto por omisión)', { mode: undefined }, /bitmask/],
     ['un solo verbo', { commands: { open: 4096 } }, /dos verbos/],
@@ -532,7 +532,7 @@ test('sostenida: dos válvulas de la MISMA palabra no pueden compartir bits (val
 
 /** El documento (no la ruta) con varias señales, para `validateMapping`. */
 function mappingTemporalDoc(signals: Record<string, unknown>[]): unknown {
-  const doc = mappingWithSignal(signals[0]) as { plants: Array<{ signals: unknown[] }> };
+  const doc = mappingWithSignal(signals[0]) as { plants: { signals: unknown[] }[] };
   doc.plants[0].signals = signals;
   return doc;
 }
@@ -636,7 +636,7 @@ test('loader: las reglas eléctricas de una orden compuesta', () => {
   const ok = motivoSecuenciaInvalida('open', [{ index: 1, value: 0 }, { index: 0, value: 1 }], spec);
   assert.equal(ok, null, `la secuencia buena debe pasar, y dijo: ${ok}`);
 
-  const casos: Array<[string, Array<{ index: number; value: number }>, RegExp]> = [
+  const casos: [string, { index: number; value: number }[], RegExp][] = [
     ['energiza dos direcciones', [{ index: 1, value: 1 }, { index: 0, value: 1 }], /energizadas a la vez/],
     ['desenergiza al final', [{ index: 0, value: 1 }, { index: 1, value: 0 }], /desenergiza DESPU/],
     ['no toca el canal primario', [{ index: 1, value: 0 }], /canal primario/],
@@ -710,8 +710,8 @@ test('mapping: confirmed Voragine feedback uses intIn[1] independent disjoint ma
 
 test('loader fails closed for invalid feedback masks and overlapping state bits', () => {
   const source = loadJson(join(__dirname, '..', 'config', 'opc_mapping.json')) as {
-    plants: Array<{ signals: Array<{ domainKey: string; write?: { readBack: { mask?: number; faultMask?: number } };
-      stateEncoding?: { bits?: { open: number; close: number; fault: number } } }> }>;
+    plants: { signals: { domainKey: string; write?: { readBack: { mask?: number; faultMask?: number } };
+      stateEncoding?: { bits?: { open: number; close: number; fault: number } } }[] }[];
   };
   for (const kind of ['readBack', 'state'] as const) {
     const mapping = structuredClone(source);

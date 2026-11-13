@@ -263,7 +263,7 @@ test('sin frames: el barrido publica cambios completos de autonomía y su retira
   const pipeline = new PlantPipelineService(adapter, config, cache, store);
   const controller = new CacheReadController(cache, pipeline);
   const plantId = 'voragine';
-  const emitted: Array<{ sequence: number; autonomy?: TankAutonomyDto[] }> = [];
+  const emitted: { sequence: number; autonomy?: TankAutonomyDto[] }[] = [];
   const subscription = pipeline.snapshot$.subscribe((snapshot) => {
     if (snapshot.plantId === plantId) emitted.push(snapshot);
   });

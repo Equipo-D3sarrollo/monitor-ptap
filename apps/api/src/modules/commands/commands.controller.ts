@@ -8,6 +8,7 @@ import { PermissionGuard } from '../auth/guards/permission.guard';
 import { PlantScopeGuard } from '../auth/guards/plant-scope.guard';
 import { commandRequestSchema, httpStatusForCommand, type CommandActor, type CommandRequest } from './command.dto';
 import { WriteService } from './write.service';
+import { requestEvidence } from '../../infrastructure/audit/request-evidence';
 
 /**
  * Canal de comandos (Fase 5). API de DOMINIO (plantId + command + target), nunca de NodeIds.
@@ -37,6 +38,7 @@ export class CommandsController {
       userEmail: request.user?.email ?? null,
       role: request.user?.role ?? null,
       ip: request.ip ?? request.socket?.remoteAddress ?? null,
+      request: requestEvidence(request, res),
     };
     const result = await this.writeService.execute(plantId, body, actor);
     res.status(httpStatusForCommand(result)).json(result);

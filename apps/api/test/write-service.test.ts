@@ -47,7 +47,7 @@ const WRITE: WriteSpec = {
 interface FakeAdapter extends ConnectivityAdapter {
   /** El ÍNDICE importa tanto como el valor: en una orden compuesta, escribir el sentido en la
    *  posición equivocada es indistinguible de no escribirlo si solo se mira el valor. */
-  writes: Array<{ index: number; value: number | boolean }>;
+  writes: { index: number; value: number | boolean }[];
 }
 
 function fakeAdapter(opts: { secure: boolean; bridge: BridgeStatus; confirms?: boolean; writeThrows?: boolean; preset?: number; echoFails?: boolean }): FakeAdapter {
@@ -59,7 +59,7 @@ function fakeAdapter(opts: { secure: boolean; bridge: BridgeStatus; confirms?: b
   const key = (t: { plantId: string; channel: string; sourceBuffer: string; index: number }) =>
     `${t.plantId}/${t.channel}/${t.sourceBuffer}[${t.index}]`;
   const adapter = {
-    writes: [] as Array<{ index: number; value: number | boolean }>,
+    writes: [] as { index: number; value: number | boolean }[],
     getWriteSecurity: () => ({
       secure: opts.secure,
       securityMode: opts.secure ? 'SignAndEncrypt' : 'None',
@@ -376,7 +376,7 @@ const WRITE_EXCLUSION: WriteSpec = {
 };
 
 /** ¿Alguna escritura dejó los dos sentidos puestos a la vez? */
-function dosSentidos(writes: Array<{ value: number | boolean }>, abrir: number, cerrar: number): boolean {
+function dosSentidos(writes: { value: number | boolean }[], abrir: number, cerrar: number): boolean {
   return writes.some((w) => (Number(w.value) & abrir) !== 0 && (Number(w.value) & cerrar) !== 0);
 }
 
@@ -593,7 +593,7 @@ function adapterConRealimentacion(opts: { lecturasHastaLlegar: number | null }):
   const key = (t: { plantId: string; channel: string; sourceBuffer: string; index: number }) =>
     `${t.plantId}/${t.channel}/${t.sourceBuffer}[${t.index}]`;
   const adapter = {
-    writes: [] as Array<{ index: number; value: number | boolean }>,
+    writes: [] as { index: number; value: number | boolean }[],
     getWriteSecurity: () => ({ secure: true, securityMode: 'SignAndEncrypt', identity: 'username' }),
     getBridgeStatus: () => 'Connected' as BridgeStatus,
     async writeBufferElement(t: { plantId: string; channel: string; sourceBuffer: string; index: number }, v: number | boolean) {
@@ -649,7 +649,7 @@ test('write-service: la señal se sostiene hasta que la realimentación vale 1, 
 // como "bit0 encendido" se cumpliría desde el primer instante y la señal se cortaría antes de que
 // la válvula se moviera. Por eso se compara el VALOR ENTERO.
 test('write-service: 1025 NO satisface la realimentación aunque tenga el bit0 puesto', async () => {
-  const { service, adapter } = buildSostenido(null); // nunca llega a 1
+  const { service } = buildSostenido(null); // nunca llega a 1
   const t0 = Date.now();
   const r = await service.execute('voragine', { command: 'open', target: 'valve1' }, OPERADOR);
 
@@ -735,7 +735,7 @@ test('write-service: audit log SIEMPRE, incluso en rechazos', async () => {
 /** Una palabra (o varias) de un PLC de mentira, con latencia opcional y modos de fallo. */
 interface AdaptadorPalabra extends ConnectivityAdapter {
   /** Cada escritura que LLEGÓ, con lo que había antes en ese elemento. */
-  escrituras: Array<{ el: string; value: number | boolean; previo: number | boolean }>;
+  escrituras: { el: string; value: number | boolean; previo: number | boolean }[];
   /** Escrituras intentadas, hayan llegado o no. */
   intentos: number;
   valor(el: string): number | boolean;
@@ -822,7 +822,7 @@ function par(palabra: number | boolean, valvula: 'valve1' | 'valve2'): string {
 
 function construirSostenida(adapter: AdaptadorPalabra, specs: Record<string, WriteSpec> = { valve1: SALIDA, valve2: ENTRADA }) {
   const audit = fakeAudit();
-  const avisos: Array<Record<string, unknown>> = [];
+  const avisos: Record<string, unknown>[] = [];
   const service = new WriteService(
     adapter,
     fakeConfig(true),
@@ -974,7 +974,7 @@ test('sostenida: ENTRADA y SALIDA a la vez sobre la misma palabra no se pisan', 
 test('sostenida: un spec sostenido contradictorio se rechaza en el WriteService SIN escribir', async () => {
   // El loader no arranca con estos specs; esta guarda es la segunda línea, igual que la de las
   // órdenes compuestas.
-  const casos: Array<[string, WriteSpec, RegExp]> = [
+  const casos: [string, WriteSpec, RegExp][] = [
     ['con pulso', { ...SALIDA, pulse: { holdMs: 5 } }, /pulse/],
     ['con rollbackValue', { ...SALIDA, rollbackValue: 0 }, /rollbackValue/],
     ['modo desconocido', { ...SALIDA, mode: 'invalido' as any }, /mode/],
@@ -1035,7 +1035,7 @@ test('sostenida: el mapping REAL de La Vorágine escribe palabras exactas y la r
 
   const adapter = adaptadorPalabra({ inicial: { [PALABRA]: 0 }, estado: 0 });
   const { service } = construirSostenida(adapter, specs);
-  const pasos: Array<[string, string, number]> = [
+  const pasos: [string, string, number][] = [
     ['valve2', 'open', 4], // entrada abre
     ['valve1', 'open', 4096], // salida abre: sobreescritura directa
     ['valve1', 'close', 8192], // salida cierra: sobreescritura directa
@@ -1219,7 +1219,7 @@ test('confirmed feedback: outlet confirms masked open1025 with a stable source t
   }
 });
 test('confirmed feedback: bad/uncertain quality, invalid word and read failure deny all writes', async () => {
-  const cases: Array<[number | boolean | null, string]> = [
+  const cases: [number | boolean | null, string][] = [
     [1024, 'Bad'], [1024, 'Uncertain'], [1024.5, 'Good'], [null, 'Good'],
     [true, 'Good'], [65536, 'Good'], [-32769, 'Good'], [NaN, 'Good'],
   ];

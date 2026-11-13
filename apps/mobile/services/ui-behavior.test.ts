@@ -3,6 +3,161 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { createContext, runInContext } from 'node:vm';
 import ts from 'typescript';
+import { toast, getToasts, resetToasts, dismissToast } from './toast-store';
+import { navigationItems } from './navigation-menu';
+import { hasPermission, type Role } from '@ptap/shared';
+
+test('navigation menu preserves role permissions and has no duplicate destinations', () => {
+  for (const role of ['admin', 'jefe', 'operador', 'civil'] as const satisfies readonly Role[]) {
+    const items = navigationItems((permission) => hasPermission(role, permission));
+    const paths: string[] = items.map((item) => item.path);
+    assert.equal(new Set(paths).size, paths.length);
+    assert.equal(paths.includes('/(app)/usuarios'), hasPermission(role, 'manage_users'));
+    assert.equal(paths.includes('/(app)/reportes'), hasPermission(role, 'export_data'));
+    assert.equal(paths.includes('/(app)/tablero'), hasPermission(role, 'view_dashboard'));
+    assert.equal(paths.includes('/(app)/electrovalvulas'), hasPermission(role, 'view_dashboard'));
+    assert.equal(paths.includes('/(app)/alertas'), hasPermission(role, 'view_dashboard'));
+    assert.equal(paths.includes('/(app)/estado'), !hasPermission(role, 'view_dashboard'));
+    assert.equal(paths.includes('/(app)/ajustes'), false);
+  }
+});
+
+test('header search opens only the plant selector, returns to the dashboard and respects plant scope', () => {
+  let open = false;
+  let canSwitchPlant = true;
+  let dashboard = true;
+  const pushed: string[] = [];
+  const element = (type: unknown, props: any) => ({ type, props });
+  const module = load('../components/NavigationSearch.tsx', {
+    react: { useState: () => [open, (value: boolean) => { open = value; }] },
+    'react/jsx-runtime': { jsx: element, jsxs: element },
+    'react-native': { Pressable: 'Pressable', Text: 'Text', StyleSheet: { create: (v: unknown) => v }, useWindowDimensions: () => ({ width: 1366 }) },
+    'expo-router': { router: { push: (path: string) => pushed.push(path) } },
+    './AppIcon': { default: 'Icon', __esModule: true },
+    './PlantPicker': { PlantSheet: 'PlantSheet' },
+    '../context/AuthContext': { useAuth: () => ({ hasPermission: () => dashboard }) },
+    '../context/PlantContext': { usePlant: () => ({ canSwitchPlant }) },
+    '../constants/colors': { brand: {} },
+    '../constants/fonts': { Fonts: {} },
+  });
+  const trigger = module.NavigationSearch().props.children[0];
+  assert.equal(trigger.props.accessibilityLabel, 'Buscar planta en el tablero');
+  trigger.props.onPress();
+  const sheet = module.NavigationSearch().props.children[1];
+  assert.equal(sheet.type, 'PlantSheet');
+  assert.equal(sheet.props.searchOnly, true);
+  sheet.props.onClose();
+  assert.equal(open, false);
+  assert.deepEqual(pushed, []);
+  trigger.props.onPress();
+  sheet.props.onPicked();
+  assert.equal(open, false);
+  assert.deepEqual(pushed, ['/(app)/tablero']);
+  canSwitchPlant = false;
+  assert.equal(module.NavigationSearch(), null);
+  canSwitchPlant = true;
+  dashboard = false;
+  assert.equal(module.NavigationSearch(), null);
+});
+
+test('login errors disappear after four seconds without a click; other errors retain their reading time', (t) => {
+  t.mock.timers.enable({ apis: ['setTimeout'] });
+  resetToasts();
+  t.after(resetToasts);
+  toast.error('Error de acceso', 'Credenciales inválidas', 4000);
+  toast.error('Otro error', 'Mensaje con más información');
+  t.mock.timers.tick(3999);
+  assert.equal(getToasts().length, 2);
+  t.mock.timers.tick(1);
+  assert.deepEqual(getToasts().map((item) => item.title), ['Otro error']);
+  dismissToast(getToasts()[0].id);
+  t.mock.timers.tick(6000);
+  assert.equal(getToasts().length, 0);
+});
+
+test('water runs on the native driver, cleans its loop and remains static for reduced motion', () => {
+  let effect: () => void | (() => void) = () => {};
+  let reduced = false;
+  let runs = 0;
+  let stops = 0;
+  let driver: unknown;
+  const drift = { interpolate: () => 0, setValue: () => {} };
+  const module = load('../components/WaterBackground.tsx', {
+    react: {
+      memo: (component: unknown) => component,
+      createElement: () => null,
+      useEffect: (callback: typeof effect) => { effect = callback; },
+      useState: (initial: unknown) => [typeof initial === 'number' ? 320 : drift, () => {}],
+    },
+    'react/jsx-runtime': { jsx: () => null, jsxs: () => null },
+    'react-native': {
+      View: 'View', Platform: { OS: 'android' }, StyleSheet: { create: (value: unknown) => value },
+      Easing: { linear: () => {} },
+      Animated: { Value: function () {}, View: 'Animated.View',
+        timing: (_value: unknown, options: { useNativeDriver: boolean }) => { driver = options.useNativeDriver; return {}; },
+        loop: () => ({ start: () => runs++, stop: () => stops++ }) },
+    },
+    './WaterVector': { default: 'Svg', Path: 'Path', __esModule: true },
+    './wave-path': { wavePath: () => '' },
+    '../constants/colors': { login: { waveBack: 'back', waveMid: 'mid', waveFront: 'front' } },
+    '../hooks/useReducedMotion': { useReducedMotion: () => reduced },
+  });
+  module.WaterBackground({ level: 0.26 });
+  const cleanup = effect();
+  assert.equal(runs, 1);
+  assert.equal(driver, true);
+  if (typeof cleanup === 'function') cleanup();
+  assert.equal(stops, 1);
+  reduced = true;
+  module.WaterBackground({ level: 0.26 });
+  effect();
+  assert.equal(runs, 1);
+});
+
+test('tank waves keep compositor motion on reading rerenders and stop for frozen or reduced motion', () => {
+  let effect: () => void | (() => void) = () => {};
+  let reduced = false;
+  let runs = 0;
+  let stops = 0;
+  const platform = { OS: 'web' };
+  const drift = { interpolate: () => 0, setValue: () => {} };
+  const element = (type: unknown, props: any) => ({ type, props });
+  const module = load('../components/TankWave.tsx', {
+    react: {
+      memo: (component: unknown) => component,
+      createElement: element,
+      useEffect: (callback: typeof effect) => { effect = callback; },
+      useMemo: (factory: () => unknown) => factory(),
+      useState: () => [drift, () => {}],
+    },
+    'react/jsx-runtime': { jsx: element, jsxs: element },
+    'react-native': { Platform: platform, StyleSheet: { create: (value: unknown) => value },
+      Easing: { linear: () => {} }, Animated: { Value: function () {}, View: 'Animated.View',
+        timing: (_value: unknown, options: { useNativeDriver: boolean }) => { assert.equal(options.useNativeDriver, true); return {}; },
+        loop: () => ({ start: () => runs++, stop: () => stops++ }) } },
+    './WaterVector': { default: 'Svg', Path: 'Path', __esModule: true },
+    './wave-path': { wavePath: () => '' },
+    '../constants/colors': { login: { waveMid: 'water' } },
+    '../hooks/useReducedMotion': { useReducedMotion: () => reduced },
+  });
+  const first = module.TankWave({ still: false });
+  effect();
+  const second = module.TankWave({ still: false });
+  effect();
+  assert.equal(first.props.children[1].props.style.animation, 'aquora-tank-drift 4s linear infinite');
+  assert.equal(second.props.children[1].props.style.animation, first.props.children[1].props.style.animation);
+  assert.equal(runs, 0, 'web does not run per-frame JS loops');
+  assert.equal(module.TankWave({ still: true }), null);
+  reduced = true;
+  assert.equal(module.TankWave({ still: false }), null);
+  reduced = false;
+  platform.OS = 'android';
+  module.TankWave({ still: false });
+  const cleanup = effect();
+  assert.equal(runs, 1);
+  if (typeof cleanup === 'function') cleanup();
+  assert.equal(stops, 1);
+});
 
 function deferred<T>() {
   let resolve!: (value: T) => void;
@@ -839,7 +994,9 @@ function valveScreenRace() {
     '../../services/dashboard-prefs': { useDashboardPrefs: () => ({ compact: false }) },
     '../../services/api': { getAuthGeneration: () => generation },
     '../../services/plant-status': { EN_INTEGRACION: {} },
-    '../../constants/colors': { primary: '#2491CC' },
+    '../../constants/colors': { primary: '#2491CC', brand: {} },
+    '../../constants/fonts': { Fonts: {} },
+    '../../components/PlantPicker': { PlantPickerLayout: 'PlantPickerLayout', PlantPickerTrigger: 'PlantPickerTrigger' },
   };
   for (const name of [
     'ValveItem',

@@ -63,19 +63,19 @@ export function dismissToast(id: string): void {
   emit();
 }
 
-function push(kind: ToastKind, title: string, message?: string): void {
+function push(kind: ToastKind, title: string, message?: string, durationMs = DURATION[kind]): void {
   const id = `toast-${++seq}`;
   toasts = [...toasts, { id, kind, title, message }].slice(-MAX_VISIBLE);
   timers.set(
     id,
-    setTimeout(() => dismissToast(id), DURATION[kind]),
+    setTimeout(() => dismissToast(id), durationMs),
   );
   emit();
 }
 
 export const toast = {
   success: (title: string, message?: string) => push('success', title, message),
-  error: (title: string, message?: string) => push('error', title, message),
+  error: (title: string, message?: string, durationMs?: number) => push('error', title, message, durationMs),
   info: (title: string, message?: string) => push('info', title, message),
 };
 

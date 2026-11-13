@@ -21,7 +21,7 @@
     "test:security:deps": "node --test tools/security/deepmerge.test.cjs",
     "web": "npm run web -w @ptap/mobile",
     "web:build": "npm run export:web -w @ptap/mobile",
-    "web:preview": "node tools/web/serve-production.cjs apps/mobile/dist-audit 8081",
+    "web:preview": "node tools/web/serve-production.cjs apps/mobile/dist-audit 8082",
     "test:web-tools": "node --test tools/web/*.test.cjs"
   },
   "devDependencies": {

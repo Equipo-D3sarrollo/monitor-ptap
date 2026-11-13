@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import puppeteer from 'puppeteer-core';
 
-const base = process.env.LH_BASE_URL || 'http://localhost:8081';
+const base = process.env.LH_BASE_URL || 'http://localhost:8082';
 const output = process.env.LH_OUTPUT || '/audit/reports';
 assert.ok(process.env.LH_EMAIL && process.env.LH_PASSWORD, 'Use the authorized local test account');
 fs.mkdirSync(output, { recursive: true });

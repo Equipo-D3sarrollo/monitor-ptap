@@ -14,6 +14,6 @@ Se conservan hasta 15 minutos de lecturas y se requieren al menos tres muestras 
 
 La tarjeta distingue el tiempo al mínimo del tiempo al vacío y muestra el método utilizado. Sin evidencia suficiente indica «Sin estimación». Los avisos y la tarjeta reciben el mismo resultado. La publicación se actualiza también cuando cambia solo la autonomía.
 
-El cálculo recorre todas las plantas configuradas y mantiene historias independientes por planta y clave de tanque. Incluye los tanques de San Antonio y El Quijote retransmitidos bajo Soledad, conservando su identidad; no reasigna señales ni modifica el PLC. Las plantas todavía sin señales de tanque no reciben valores inventados.
+El cálculo recorre todas las plantas configuradas y mantiene historias independientes por planta y clave de tanque. Incluye las lecturas de Soledad etiquetadas provisionalmente como San Antonio y El Quijote, conservando sus claves de origen. Esa identificación y su posible retransmisión siguen sin confirmar en la ficha del integrador; una estimación de autonomía no demuestra a qué planta pertenece un tanque. Véase [DATA_CATALOG.md](DATA_CATALOG.md), apartado «Asociación sin confirmar». No se reasignan señales ni se modifica el PLC. Las plantas todavía sin señales de tanque no reciben valores inventados.
 
 La estimación es condicional: supone que continúa el régimen observado. No predice aperturas de válvulas, cambios futuros de demanda ni pérdidas de presión no medidas. La ventana se conserva en memoria; no se añade almacenamiento de telemetría ni dependencias.

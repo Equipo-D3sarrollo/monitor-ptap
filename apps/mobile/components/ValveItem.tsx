@@ -53,7 +53,7 @@ function ValveItemBase({ valve, onToggle, frozen = false, busy = false }: Props)
     color === Colors.danger
       ? Colors.brand.dangerText
       : color === Colors.neutral
-        ? Colors.textSecondary
+        ? Colors.brand.textSecondary
         : color;
 
   const accion = accionDisponible(valve, frozen);
@@ -116,7 +116,7 @@ function ValveItemBase({ valve, onToggle, frozen = false, busy = false }: Props)
           <TouchableOpacity
             style={[
               styles.toggleBtn,
-              { backgroundColor: Colors.primary + '15', opacity: busy ? 0.5 : 1 },
+              { backgroundColor: Colors.brand.action + '15', opacity: busy ? 0.5 : 1 },
             ]}
             onPress={() => onToggle(valve, accion.verb)}
             activeOpacity={0.7}
@@ -126,15 +126,15 @@ function ValveItemBase({ valve, onToggle, frozen = false, busy = false }: Props)
             accessibilityLabel={`${accion.verb === 'close' ? 'Cerrar' : 'Abrir'} ${valve.name}. Pedirá confirmación.`}
           >
             {busy ? (
-              <ActivityIndicator size="small" color={Colors.primary} />
+              <ActivityIndicator size="small" color={Colors.brand.link} />
             ) : (
               <Ionicons
                 name={accion.verb === 'close' ? 'close-circle-outline' : 'checkmark-circle-outline'}
                 size={16}
-                color={Colors.primary}
+                color={Colors.brand.link}
               />
             )}
-            <Text style={[styles.toggleText, { color: Colors.primary }]}>
+            <Text style={[styles.toggleText, { color: Colors.brand.link }]}>
               {busy ? 'Enviando…' : accion.verb === 'close' ? 'Cerrar' : 'Abrir'}
             </Text>
           </TouchableOpacity>
@@ -162,12 +162,12 @@ const styles = StyleSheet.create({
   row: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: Colors.bg,
+    backgroundColor: Colors.brand.card,
     borderRadius: 14,
     padding: 14,
     marginBottom: 8,
     borderWidth: 1,
-    borderColor: Colors.divider,
+    borderColor: Colors.brand.cardBorder,
   },
   rowFrozen: { borderStyle: 'dashed' },
   iconWrap: {
@@ -180,7 +180,7 @@ const styles = StyleSheet.create({
   },
   info: { flex: 1 },
   nameRow: { flexDirection: 'row', alignItems: 'center', gap: 6, flexWrap: 'wrap' },
-  name: { fontSize: 14, fontWeight: '700', color: Colors.textPrimary },
+  name: { fontSize: 14, fontWeight: '700', color: Colors.brand.text },
   tagWarn: {
     backgroundColor: Colors.warning + '22',
     borderColor: Colors.warning,
@@ -207,7 +207,7 @@ const styles = StyleSheet.create({
   apertura: { marginTop: 6, marginRight: 10, gap: 4 },
   aperturaTexto: { fontSize: 12, color: Colors.textSecondary, fontVariant: ['tabular-nums'] },
   // La misma barra que `FlowMeterCard`: pista en el color de fondo y relleno con ancho en %.
-  barOuter: { height: 8, borderRadius: 4, backgroundColor: Colors.surface, overflow: 'hidden' },
+  barOuter: { height: 8, borderRadius: 4, backgroundColor: Colors.brand.page, overflow: 'hidden' },
   barFill: { height: '100%', borderRadius: 4 },
   right: { alignItems: 'flex-end', gap: 6, maxWidth: '46%' },
   badge: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 12 },

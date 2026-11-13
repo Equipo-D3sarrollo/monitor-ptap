@@ -45,8 +45,8 @@ interface ExternalTankDef {
 /**
  * Tanques de OTRAS plantas retransmitidos en el buffer de la planta portadora (Soledad
  * concentra los sitios mínimos; pendiente de rectificar con el operador — ver notas de
- * opc_mapping.json). Se muestran en el tablero de la portadora con nombre
- * explícito y NO participan del estado de agua de esa planta (external: true).
+ * opc_mapping.json). Se muestran SEPARADOS de los propios en el tablero de la portadora y
+ * NO participan del estado de agua de esa planta (external: true).
  */
 const EXTERNAL_TANKS: Record<string, ExternalTankDef[]> = {
   soledad: [
@@ -64,6 +64,14 @@ const EXTERNAL_TANKS: Record<string, ExternalTankDef[]> = {
     },
   ],
 };
+
+/** Agrupa la presentación sin reasignar plantas, recalcular lecturas ni mutar las tarjetas. */
+export function groupTanks(tanks: readonly TankView[]): { own: TankView[]; external: TankView[] } {
+  const own: TankView[] = [];
+  const external: TankView[] = [];
+  for (const tank of tanks) (tank.external ? external : own).push(tank);
+  return { own, external };
+}
 
 /**
  * true si el domainKey lo consume el tablero (tanque propio tank<N>Level/Volume

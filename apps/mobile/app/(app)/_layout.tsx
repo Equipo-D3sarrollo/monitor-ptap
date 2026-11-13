@@ -1,14 +1,17 @@
-import { createElement, useMemo, useState, type ReactNode } from 'react';
-import { Tabs, Redirect, router, useIsFocused } from 'expo-router';
+import { createElement, useEffect, useMemo, useState, type ReactNode } from 'react';
+import { Tabs, Redirect, router, useIsFocused, usePathname } from 'expo-router';
 import { NavigationTabButton } from '../../components/NavigationTabButton';
 import {
   View,
   Text,
   TouchableOpacity,
   Modal,
+  ScrollView,
   Pressable,
   StyleSheet,
   ActivityIndicator,
+  Animated,
+  Easing,
   useWindowDimensions,
   Platform,
 } from 'react-native';
@@ -22,6 +25,8 @@ import { NavigationSearch, ProfileButton } from '../../components/NavigationSear
 import { NotificationOptIn } from '../../components/NotificationOptIn';
 import { usePendingUsers } from '../../hooks/usePendingUsers';
 import { useReducedMotion } from '../../hooks/useReducedMotion';
+import { useWebEscape } from '../../hooks/useWebEscape';
+import { navigationItems } from '../../services/navigation-menu';
 import { ROLE_LABELS, ROLE_COLORS, type AuthUser } from '@ptap/shared';
 
 const B = Colors.brand;
@@ -135,7 +140,13 @@ function MenuButton({ onPress }: { onPress: () => void }) {
   const { count } = usePendingUsers();
   return (
     <TouchableOpacity
-      style={{ marginLeft: 16 }}
+      style={{
+        marginLeft: 12,
+        width: 44,
+        height: 44,
+        alignItems: 'center',
+        justifyContent: 'center',
+      }}
       hitSlop={8}
       onPress={onPress}
       accessibilityRole="button"
@@ -158,10 +169,12 @@ function MenuModal({
   visible,
   onClose,
   user,
+  mode,
 }: {
   visible: boolean;
   onClose: () => void;
   user: AuthUser | null;
+  mode: 'navigation' | 'account';
 }) {
   const { logout, hasPermission } = useAuth();
   const { count: pendingCount } = usePendingUsers();
@@ -172,20 +185,8 @@ function MenuModal({
     router.replace('/(auth)/login');
   }
 
-  function goToUsers() {
-    onClose();
-    router.push('/(app)/usuarios');
-  }
-
-  function goToSettings() {
-    onClose();
-    router.push('/(app)/ajustes');
-  }
-
-  function goToAlerts() {
-    onClose();
-    router.push('/(app)/alertas');
-  }
+  const pathname = usePathname();
+  useWebEscape(visible, onClose);
 
   const roleColor = user ? ROLE_COLORS[user.role] : Colors.primary;
 
@@ -210,63 +211,96 @@ function MenuModal({
           // Aísla el menú del resto del árbol para los lectores de pantalla mientras está abierto.
           accessibilityViewIsModal
           role="dialog"
-          accessibilityLabel="Menú de usuario"
+          accessibilityLabel={mode === 'navigation' ? 'Menú principal' : 'Menú de usuario'}
         >
-          <View style={styles.drawerHeader}>
-            <View style={styles.drawerAvatar}>
-              <Ionicons name="person" size={28} color="#fff" />
+          <ScrollView keyboardShouldPersistTaps="handled">
+            <View style={styles.drawerHeader}>
+              <Pressable
+                onPress={onClose}
+                style={styles.drawerClose}
+                accessibilityRole="button"
+                accessibilityLabel="Cerrar menú"
+              >
+                <Ionicons name="close" size={22} color="#fff" />
+              </Pressable>
+              <View style={styles.drawerAvatar}>
+                <Ionicons name="person" size={28} color="#fff" />
+              </View>
+              <Text style={styles.drawerTitle}>{user?.name ?? 'Usuario'}</Text>
+              <View style={[styles.roleBadge, { backgroundColor: roleColor + '30' }]}>
+                <Text style={[styles.roleText, { color: '#fff' }]}>
+                  {user ? ROLE_LABELS[user.role] : '—'}
+                </Text>
+              </View>
+              <Text style={styles.drawerSubtitle}>{user?.plant ?? 'Sistema de Monitoreo'}</Text>
             </View>
-            <Text style={styles.drawerTitle}>{user?.name ?? 'Usuario'}</Text>
-            <View style={[styles.roleBadge, { backgroundColor: roleColor + '30' }]}>
-              <Text style={[styles.roleText, { color: '#fff' }]}>
-                {user ? ROLE_LABELS[user.role] : '—'}
-              </Text>
-            </View>
-            <Text style={styles.drawerSubtitle}>{user?.plant ?? 'Sistema de Monitoreo'}</Text>
-          </View>
 
-          {/* Solo Admin: la matriz oficial reserva la gestión de usuarios al Administrador.
-              Ocultarlo es comodidad de UI — el backend igual responde 403 a los demás. */}
-          {hasPermission('manage_users') && (
-            <TouchableOpacity style={styles.drawerItem} onPress={goToUsers}>
-              <Ionicons name="people-outline" size={20} color={Colors.textPrimary} />
-              <Text style={styles.drawerItemText}>Usuarios</Text>
-              {pendingCount > 0 && (
-                <View style={styles.pendingPill}>
-                  <Text style={styles.pendingPillText}>
-                    {pendingCount > 9 ? '9+' : pendingCount} pendiente
-                    {pendingCount === 1 ? '' : 's'}
+            <Text style={styles.drawerSection}>{mode === 'navigation' ? 'Navegación' : 'Cuenta'}</Text>
+            {mode === 'navigation' && navigationItems(hasPermission).map((item) => {
+              const selected = pathname === item.path.replace('/(app)', '');
+              return (
+                <Pressable
+                  key={item.path}
+                  accessibilityRole="button"
+                  accessibilityLabel={item.name}
+                  accessibilityState={{ selected }}
+                  aria-pressed={selected}
+                  onPress={() => {
+                    onClose();
+                    router.push(item.path);
+                  }}
+                  style={({ pressed }) => [
+                    styles.drawerItem,
+                    selected && styles.drawerItemSelected,
+                    pressed && { opacity: 0.75 },
+                  ]}
+                >
+                  <Ionicons
+                    name={item.icon}
+                    size={20}
+                    color={selected ? B.link : B.textSecondary}
+                  />
+                  <Text style={[styles.drawerItemText, selected && { color: B.link }]}>
+                    {item.name}
                   </Text>
-                </View>
-              )}
-            </TouchableOpacity>
-          )}
-
-          <TouchableOpacity style={styles.drawerItem} onPress={goToSettings}>
-            <Ionicons name="settings-outline" size={20} color={Colors.textPrimary} />
-            <Text style={styles.drawerItemText}>Ajustes</Text>
-          </TouchableOpacity>
-
-          {/* Alertas REALES (derivadas del snapshot): solo tienen sentido para roles que ven el
-              tablero. El Civil (solo estado básico) no recibe señales, así que no se le ofrece. */}
-          {hasPermission('view_dashboard') && (
-            <TouchableOpacity style={styles.drawerItem} onPress={goToAlerts}>
-              <Ionicons name="notifications-outline" size={20} color={Colors.textPrimary} />
-              <Text style={styles.drawerItemText}>Alertas</Text>
-            </TouchableOpacity>
-          )}
-
-          <View style={styles.drawerDivider} />
-
-          <TouchableOpacity
-            style={styles.drawerLogout}
-            onPress={handleLogout}
-            accessibilityRole="button"
-            accessibilityLabel="Cerrar sesión"
-          >
-            <Ionicons name="log-out-outline" size={20} color={Colors.danger} />
-            <Text style={styles.drawerLogoutText}>Cerrar sesión</Text>
-          </TouchableOpacity>
+                  {item.path === '/(app)/usuarios' && pendingCount > 0 && (
+                    <View style={styles.pendingPill}>
+                      <Text style={styles.pendingPillText}>
+                        {pendingCount > 9 ? '9+' : pendingCount} pendiente
+                        {pendingCount === 1 ? '' : 's'}
+                      </Text>
+                    </View>
+                  )}
+                </Pressable>
+              );
+            })}
+            {mode === 'account' && (
+              <>
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel="Ajustes de usuario"
+                  onPress={() => {
+                    onClose();
+                    router.push('/(app)/ajustes');
+                  }}
+                  style={({ pressed }) => [styles.drawerItem, pressed && { opacity: 0.75 }]}
+                >
+                  <Ionicons name="settings-outline" size={20} color={B.textSecondary} />
+                  <Text style={styles.drawerItemText}>Ajustes de usuario</Text>
+                </Pressable>
+                <View style={styles.drawerDivider} />
+                <TouchableOpacity
+                  style={styles.drawerLogout}
+                  onPress={handleLogout}
+                  accessibilityRole="button"
+                  accessibilityLabel="Cerrar sesión"
+                >
+                  <Ionicons name="log-out-outline" size={20} color={Colors.danger} />
+                  <Text style={styles.drawerLogoutText}>Cerrar sesión</Text>
+                </TouchableOpacity>
+              </>
+            )}
+          </ScrollView>
         </Pressable>
       </Pressable>
     </Modal>
@@ -274,15 +308,32 @@ function MenuModal({
 }
 
 export default function AppLayout() {
-  const [menuVisible, setMenuVisible] = useState(false);
+  const [menuMode, setMenuMode] = useState<'navigation' | 'account' | null>(null);
   const [navigationCollapsed, setNavigationCollapsed] = useState(false);
+  const reducedMotion = useReducedMotion();
+  const [arrowProgress] = useState(() => new Animated.Value(1));
+  useEffect(() => {
+    const target = navigationCollapsed ? 0 : 1;
+    if (reducedMotion) {
+      arrowProgress.setValue(target);
+      return;
+    }
+    const animation = Animated.timing(arrowProgress, {
+      toValue: target,
+      duration: 200,
+      easing: Easing.out(Easing.cubic),
+      useNativeDriver: Platform.OS !== 'web',
+    });
+    animation.start();
+    return () => animation.stop();
+  }, [navigationCollapsed, reducedMotion, arrowProgress]);
   const { user, token, isLoading } = useAuth();
   // Poppins para los componentes del tablero; si falla la carga se sigue con la fuente del sistema.
   const [fontsLoaded, fontError] = usePoppins();
   const isCivil = user?.role === 'civil';
   const sidebar = useWindowDimensions().width >= SIDEBAR_MIN_WIDTH;
 
-  // Las opciones solo cambian al adaptar o contraer la navegación. `setMenuVisible` es estable,
+  // Las opciones solo cambian al adaptar o contraer la navegación. `setMenuMode` es estable,
   // y los conteos viven ahora dentro de `<AlertBell/>` y `<MenuButton/>`, no aquí. La planta vive
   // dentro de `<HeaderTitle/>` por la misma razón. Las pantallas con título propio (Alertas,
   // Usuarios…) lo sobrescriben con `headerTitle: 'texto'` y heredan el estilo.
@@ -296,7 +347,7 @@ export default function AppLayout() {
       headerTitleStyle: { fontFamily: Fonts.semibold, fontSize: 17, color: B.text },
       headerLeft: () => (
         <HeaderFocusGroup>
-          <MenuButton onPress={() => setMenuVisible(true)} />
+          <MenuButton onPress={() => setMenuMode('navigation')} />
         </HeaderFocusGroup>
       ),
       headerRight: () => (
@@ -304,7 +355,7 @@ export default function AppLayout() {
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, paddingRight: 12 }}>
             <NavigationSearch />
             <AlertBell />
-            <ProfileButton onPress={() => setMenuVisible(true)} />
+            <ProfileButton onPress={() => setMenuMode('account')} />
           </View>
         </HeaderFocusGroup>
       ),
@@ -341,7 +392,7 @@ export default function AppLayout() {
       {/* Montado solo mientras está abierto: un `<Modal visible={false}>` monta igual su subárbol,
           y con él un segundo observador de `usePendingUsers` que re-renderizaba el cajón cerrado
           cada 60 s. El badge del botón de menú sigue vivo por su cuenta. */}
-      {menuVisible && <MenuModal visible onClose={() => setMenuVisible(false)} user={user} />}
+      {menuMode && <MenuModal visible onClose={() => setMenuMode(null)} user={user} mode={menuMode} />}
       <Tabs
         screenLayout={renderMainScene}
         screenOptions={{
@@ -485,6 +536,14 @@ export default function AppLayout() {
         {/* Fuera del tab bar: se entra desde Ajustes, y el backend solo la sirve con
             `system_config`. La pantalla vuelve a comprobarlo por su cuenta. */}
         <Tabs.Screen
+          name="revision"
+          options={{
+            href: null,
+            ...HEADER_OPTS,
+            headerTitle: 'Revisión por planta',
+          }}
+        />
+        <Tabs.Screen
           name="desarrollador"
           options={{
             tabBarButton: () => null,
@@ -506,12 +565,20 @@ export default function AppLayout() {
             pressed && styles.navigationTogglePressed,
           ]}
         >
-          <Ionicons
-            name="chevron-forward"
-            style={!navigationCollapsed ? styles.navigationArrowBack : undefined}
-            size={20}
-            color={B.link}
-          />
+          <Animated.View
+            style={{
+              transform: [
+                {
+                  rotate: arrowProgress.interpolate({
+                    inputRange: [0, 1],
+                    outputRange: ['0deg', '180deg'],
+                  }),
+                },
+              ],
+            }}
+          >
+            <Ionicons name="chevron-forward" size={20} color={B.link} />
+          </Animated.View>
         </Pressable>
       )}
     </View>
@@ -535,7 +602,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   navigationTogglePressed: { backgroundColor: B.selected },
-  navigationArrowBack: { transform: [{ rotate: '180deg' }] },
   titleRow: { flexDirection: 'row', alignItems: 'center', gap: 6, maxWidth: '100%' },
   titleBrand: { fontFamily: Fonts.semibold, fontSize: 17, color: B.text },
   titlePlant: { fontFamily: Fonts.regular, fontSize: 15, color: B.textSecondary, flexShrink: 1 },
@@ -575,12 +641,13 @@ const styles = StyleSheet.create({
   },
   drawer: {
     width: 280,
-    backgroundColor: Colors.bg,
-    paddingBottom: 32,
+    maxWidth: '100%',
+    backgroundColor: B.panel,
+    paddingBottom: 16,
   },
   drawerHeader: {
-    backgroundColor: Colors.primary,
-    paddingTop: 52,
+    backgroundColor: B.selected,
+    paddingTop: 24,
     paddingBottom: 24,
     paddingHorizontal: 20,
     alignItems: 'flex-start',
@@ -597,7 +664,25 @@ const styles = StyleSheet.create({
   drawerTitle: {
     color: '#fff',
     fontSize: 17,
-    fontWeight: '700',
+    fontFamily: Fonts.semibold,
+    paddingRight: 20,
+  },
+  drawerClose: {
+    position: 'absolute',
+    top: 12,
+    right: 12,
+    width: 44,
+    height: 44,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  drawerSection: {
+    fontFamily: Fonts.medium,
+    color: B.textSecondary,
+    fontSize: 12,
+    paddingHorizontal: 20,
+    paddingTop: 20,
+    paddingBottom: 8,
   },
   roleBadge: {
     marginTop: 6,
@@ -621,11 +706,16 @@ const styles = StyleSheet.create({
     gap: 14,
     paddingHorizontal: 20,
     paddingVertical: 16,
+    minHeight: 52,
+    marginHorizontal: 8,
+    borderRadius: 10,
   },
+  drawerItemSelected: { backgroundColor: B.selected },
   drawerItemText: {
     fontSize: 15,
-    color: Colors.textPrimary,
-    fontWeight: '500',
+    color: B.text,
+    fontFamily: Fonts.medium,
+    flexShrink: 1,
   },
   drawerDivider: {
     height: 1,

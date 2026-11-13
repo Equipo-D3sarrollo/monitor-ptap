@@ -39,11 +39,11 @@
     "start": "expo start",
     "android": "expo run:android",
     "ios": "expo run:ios",
-    "web": "expo start --web",
+    "web": "expo start --web --port 8082",
     "web:fast": "expo start --web --clear",
     "export:web": "expo export --platform web --output-dir dist-audit && node ../../tools/web/prepare-production.cjs dist-audit",
     "lint": "expo lint",
-    "test": "node --import tsx --test services/signal-kind.test.ts services/valves.test.ts services/signal-groups.test.ts services/tanks.test.ts services/app-release.test.ts services/novedades.test.ts services/mapping-edit.test.ts services/mapping-mando.test.ts services/notification-pointer.test.ts services/notification-isolation.test.ts services/push-rules.test.ts services/push-registration.test.ts services/web-push-registration.test.ts services/push-build-config.test.ts services/plant-status.test.ts services/last-snapshot-store.test.ts services/ui-behavior.test.ts components/wave-path.test.ts components/loop-phase.test.ts services/login-validation.test.ts services/plant-picker.test.ts services/card-look.test.ts services/dashboard-view.test.ts services/faq.test.ts",
+    "test": "node --import tsx --test services/signal-kind.test.ts services/valves.test.ts services/signal-groups.test.ts services/tanks.test.ts services/app-release.test.ts services/novedades.test.ts services/mapping-edit.test.ts services/mapping-mando.test.ts services/notification-pointer.test.ts services/notification-isolation.test.ts services/push-rules.test.ts services/push-registration.test.ts services/web-push-registration.test.ts services/push-build-config.test.ts services/plant-status.test.ts services/last-snapshot-store.test.ts services/ui-behavior.test.ts components/wave-path.test.ts components/loop-phase.test.ts services/login-validation.test.ts services/plant-picker.test.ts services/card-look.test.ts services/dashboard-view.test.ts services/faq.test.ts services/diagnostics-report.test.ts",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "prebuild:android": "expo prebuild -p android",
     "build:android": "expo prebuild -p android && cd android && gradlew.bat assembleRelease"
