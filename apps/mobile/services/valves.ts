@@ -90,6 +90,13 @@ export interface ValveView {
    * Vacío = el mapping no declara ninguno (una proporcional sin `valve<N>`, o un error de mapping).
    */
   commands: string[];
+  /**
+   * CONSIGNA (Fase 4): límites del valor que acepta `{ command: "setpoint", value }`. Solo en una
+   * proporcional cuyo mapping declara `valve<N>` con consigna; null en el resto.
+   */
+  setpoint: { min: number; max: number; unit: string | null } | null;
+  /** Última consigna escrita (valor de `valve<N>`), solo si hay consigna. No es la apertura. */
+  setpointPct: number | null;
   /** Valor crudo de la palabra de estado (diagnóstico). */
   rawState: number | null;
   /** Falla explícita reportada por el PLC; bloquea cualquier maniobra. */
@@ -272,6 +279,8 @@ export function valvesFromSnapshot(snapshot: PlantSnapshotDto | undefined): Valv
       // false, y así una válvula de las de siempre se comporta igual que antes de que existiera.
       commandable: cmd !== undefined && cmd.commandable !== false,
       commands: cmd?.commands ?? [],
+      setpoint: cmd?.setpoint ?? null,
+      setpointPct: cmd?.setpoint ? numeric(cmd) : null,
       rawState,
       fault,
       physicalFeedback,
@@ -323,6 +332,8 @@ export function anchoBarraApertura(pct: number | null): number {
  */
 export type ValveAction =
   | { kind: 'command'; verb: 'open' | 'close' }
+  /** Proporcional con consigna declarada (Fase 4): se ajusta la apertura, no se abre ni se cierra. */
+  | { kind: 'setpoint'; min: number; max: number; unit: string | null }
   | {
       kind: 'blocked';
       reason: 'frozen' | 'fault' | 'setpoint-pending' | 'no-channel' | 'unknown-state' | 'verb-missing';
@@ -335,6 +346,9 @@ export function accionDisponible(valve: ValveView, frozen: boolean, explicitVerb
   }
   if (valve.fault) {
     return { kind: 'blocked', reason: 'fault', explain: 'El PLC reporta una falla de esta válvula. Apertura y cierre bloqueados; revise el equipo en sitio.' };
+  }
+  if (valve.kind === 'proportional' && valve.setpoint && valve.commandable && valve.commands.includes('setpoint')) {
+    return { kind: 'setpoint', ...valve.setpoint };
   }
   if (valve.kind === 'proportional') {
     return {
@@ -371,6 +385,23 @@ export function isValveSignal(domainKey: string): boolean {
   return /^valve\d+(State|Position)?$/.test(domainKey);
 }
 
+/**
+ * Valida lo que el operador escribió como consigna. Acepta coma decimal («40,5»). Redondea a entero,
+ * igual que el backend, para que el diálogo muestre exactamente el número que se va a escribir.
+ * El backend vuelve a validar: esto solo evita mandar algo que sabemos que va a rechazar.
+ */
+export function validarConsigna(
+  texto: string,
+  limites: { min: number; max: number },
+): { ok: true; value: number } | { ok: false; error: string } {
+  const limpio = texto.trim().replace(',', '.');
+  if (limpio === '') return { ok: false, error: 'Escriba un valor.' };
+  const n = Number(limpio);
+  if (!Number.isFinite(n)) return { ok: false, error: 'No es un número.' };
+  if (n < limites.min || n > limites.max) return { ok: false, error: `Debe estar entre ${limites.min} y ${limites.max}.` };
+  return { ok: true, value: Math.round(n) };
+}
+
 // ── Interpretación del resultado de un comando ────────────────────────────────────────────────
 
 export interface CommandVerdict {
@@ -400,9 +431,62 @@ export interface CommandVerdict {
  * NO es "no funcionó": es "la orden salió y el equipo no acusó el cambio" — típicamente una falla
  * física que impide accionar.
  */
-export function interpretCommand(r: ValveCommandResult, verb: 'open' | 'close', valveName: string): CommandVerdict {
-  const accion = verb === 'open' ? 'abrir' : 'cerrar';
+export function interpretCommand(
+  r: ValveCommandResult,
+  verb: 'open' | 'close' | 'setpoint',
+  valveName: string,
+  /** Solo con `setpoint`: el valor pedido y su unidad, para decirlo en el resultado. */
+  consigna?: { value: number; unit: string | null },
+): CommandVerdict {
+  // Espacio NO separable antes de la unidad: «40 %» no se parte en dos líneas.
+  const conUnidad = (n: number) =>
+    `${n.toLocaleString('es-CO', { maximumFractionDigits: 1 })}${consigna?.unit ? ` ${consigna.unit}` : ''}`;
+  const cuanto = consigna ? conUnidad(typeof r.writtenValue === 'number' ? r.writtenValue : consigna.value) : '';
+  const accion = verb === 'open' ? 'abrir' : verb === 'close' ? 'cerrar' : `ajustar la apertura a ${cuanto}`;
   const nuevoEstado = verb === 'open' ? 'ABIERTA' : 'CERRADA';
+
+  if (verb === 'setpoint') {
+    if (r.status === 'confirmed') {
+      return {
+        ok: true,
+        signalSent: true,
+        tone: 'success',
+        title: 'Apertura alcanzada',
+        message: `${valveName}: la apertura medida llegó a la consigna de ${cuanto}.`,
+        technical: typeof r.confirmedValue === 'number' ? `apertura leída: ${conUnidad(r.confirmedValue)}` : null,
+      };
+    }
+    if (r.status === 'sent' && r.reason === 'SENT_POSITION_PENDING') {
+      return {
+        ok: true,
+        signalSent: true,
+        tone: 'warning',
+        title: 'Consigna enviada; la apertura aún no llega',
+        message: `${valveName}: la consigna de ${cuanto} quedó escrita en el PLC, pero la apertura medida no llegó dentro del tiempo previsto. La válvula puede seguir moviéndose: consulte la apertura y compruebe el equipo en sitio si no cambia.`,
+        technical: `valor escrito: ${r.writtenValue}${typeof r.confirmedValue === 'number' ? `, última apertura: ${conUnidad(r.confirmedValue)}` : ''}`,
+      };
+    }
+    if (r.reason?.startsWith('SETPOINT_WORD_IN_USE')) {
+      return {
+        ok: false,
+        signalSent: false,
+        tone: 'danger',
+        title: 'Consigna no enviada',
+        message: `${valveName}: la palabra de consigna contiene un valor fuera de rango; puede que otro equipo la esté usando. No se escribió nada. Verificar con el integrador.`,
+        technical: `valor encontrado: ${r.previousValue}`,
+      };
+    }
+    if (r.reason === 'VALUE_OUT_OF_RANGE' || r.reason === 'VALUE_REQUIRED') {
+      return {
+        ok: false,
+        signalSent: false,
+        tone: 'danger',
+        title: 'Consigna no válida',
+        message: `${valveName}: el servidor rechazó el valor y no envió nada a la planta.`,
+        technical: r.reason,
+      };
+    }
+  }
 
   if (r.reason?.includes('VALVE_FAULT')) {
     const sent = r.status === 'failed' && r.reason === 'VALVE_FAULT';

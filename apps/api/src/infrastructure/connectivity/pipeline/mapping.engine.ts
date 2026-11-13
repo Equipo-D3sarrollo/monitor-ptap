@@ -21,6 +21,8 @@ export interface ExtractedSignal {
   commandable: boolean;
   /** Verbos que declara el mapping de esa válvula. Vacío si no es writable. Ver `SignalDto.commands`. */
   commands: string[];
+  /** Solo en una válvula con consigna: sus límites. Ver `SignalDto.setpoint`. */
+  setpoint?: { min: number; max: number; unit: string | null };
   mappingStatus: 'mapped' | 'unmapped';
   confidence: 'confirmed' | 'inferred' | 'estimated';
   value: number | boolean | null; // crudo; puede ser no-finito (lo evalúa QualityService)
@@ -104,6 +106,9 @@ export class MappingEngine {
       // Los verbos salen del mapping, nunca de una lista en el código (regla 2). Sin write spec
       // queda vacío, y el builder solo lo publica en las señales de válvula.
       commands: Object.keys(sig.write?.commands ?? {}),
+      ...(sig.write?.setpoint
+        ? { setpoint: { min: sig.write.setpoint.min, max: sig.write.setpoint.max, unit: sig.write.setpoint.unit } }
+        : {}),
       mappingStatus: sig.mappingStatus,
       confidence: sig.confidence,
     };

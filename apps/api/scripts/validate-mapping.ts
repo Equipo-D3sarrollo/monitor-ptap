@@ -16,6 +16,7 @@ import Ajv2020 from 'ajv/dist/2020';
 import {
   bitsCompartidosEntreValvulas,
   motivoBitsEstadoInvalido,
+  motivoConsignaInvalida,
   motivoMascarasReadBackInvalido,
   motivoRealimentacionInvalida,
   motivoSostenidaInvalida,
@@ -153,6 +154,12 @@ export function semanticErrors(mapping: unknown): string[] {
           // sostenida permitida para válvulas activas bajo regla absoluta
           const motivo = motivoSostenidaInvalida(w);
           if (motivo) errors.push(`${label}: write.sustained en "${String(s.domainKey)}": ${motivo}`);
+        }
+
+        // CONSIGNA (Fase 4): la misma función con la que el loader se niega a arrancar.
+        if (w.setpoint !== undefined) {
+          const motivo = motivoConsignaInvalida(w);
+          if (motivo) errors.push(`${label}: write.setpoint en "${String(s.domainKey)}": ${motivo}`);
         }
 
         // Pulso con REALIMENTACIÓN POR BITS (integrador 2026-10-23): la misma función del loader, y el
