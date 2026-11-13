@@ -1,11 +1,12 @@
 # Consigna de la válvula de salida proporcional (Fase 4)
 
-## Estado: implementada y APAGADA en producción
+## Estado: AUTORIZADA y ENCENDIDA
 
-El código está en producción (rama `yosh`) desde el 2026-11-11, pero la consigna está **apagada** en el
-mapping. Se probó **solo en simulador**, nunca contra el PLC real.
+**Autorizada por Operación el 2026-11-13.** En la rama `yosh`, `cabuyo/valve1` tiene `writable: true`.
+Hasta esa fecha se probó **solo en simulador**, nunca contra el PLC real: la primera orden real debe
+hacerse con Operación presente (riesgos abiertos en `docs/RIESGOS_CABUYO.md`).
 
-Mientras siga apagada (`cabuyo/valve1` con `writable: false`):
+Si hubiera que apagarla (`cabuyo/valve1` con `writable: false`):
 - **Backend:** el WriteService no resuelve la válvula. Cualquier `{ command: "setpoint" }` se rechaza
   con `404 TARGET_NOT_WRITABLE`, sin escribir nada en el PLC, y el intento queda auditado.
 - **App:** muestra la apertura y el aviso «Consigna pendiente de autorización de Operación». No muestra
@@ -15,22 +16,17 @@ Mientras siga apagada (`cabuyo/valve1` con `writable: false`):
 
 ### Quién la autoriza
 
-**Operación**, por escrito: el responsable de operación de la planta Cabuyo. Antes de encenderla deben
-estar resueltos los pendientes del integrador de esta página, y conviene hacer la prueba en campo con
-Aquora.
+**Operación**, por escrito: el responsable de operación de la planta Cabuyo. Autorizada el 2026-11-13.
 
-### Cómo se enciende
+### Cómo se apaga (o se vuelve a encender)
 
-Con la autorización escrita en la mano:
-1. En `apps/api/config/opc_mapping.json`, en `cabuyo/valve1`, cambiar `"writable": false` a `"writable": true`.
-2. En esa misma señal, cambiar la `_nota` para que diga quién autorizó y cuándo.
-3. Correr `npm run validate:mapping -w @ptap/api` y `npm test -w @ptap/api`.
+1. En `apps/api/config/opc_mapping.json`, en `cabuyo/valve1`, cambiar `"writable": true` a `"writable": false`.
+2. En esa misma señal, cambiar la `_nota` para que diga quién lo decidió y cuándo.
+3. Ajustar los tests que fijan el estado (`consigna-valvula.test.ts`, `command-mapping.test.ts`,
+   `plantas-en-integracion.test.ts`) y correr `npm run validate:mapping -w @ptap/api` y `npm test -w @ptap/api`.
 4. Desplegar como siempre y **reiniciar el backend**, porque el mapping se carga al arrancar.
 
-Para apagarla otra vez, el mismo cambio al revés.
-
-En desarrollo no hace falta tocar el mapping de producción: el escenario de simulación la trae
-encendida (ver «Simulador»).
+Para encenderla otra vez, el mismo cambio al revés.
 
 Los archivos que componen la consigna están en la lista del final.
 
@@ -143,17 +139,17 @@ Las proporcionales sin consigna declarada (La Luisa, La Leonera y Gloria) siguen
 El PLC simulado lleva `REAL_IN_CABUYO[16]` hacia la consigna escrita a 2 %/s, sin ruido, y satura a
 [0, 100].
 
-Con el escenario `produccion` la consigna está apagada, igual que en producción. Para probarla
-**encendida** en local se usa el escenario `produccion-consigna`:
+Con el escenario `produccion` la consigna está encendida, igual que en producción:
 
 ```
-PORT=4002 npm run dev:sim -w @ptap/api -- produccion-consigna
+PORT=4002 npm run dev:sim -w @ptap/api -- produccion
 ```
 
-Ese escenario declara `"consignasEncendidas": ["cabuyo/valve1"]`. Al arrancar, `dev:sim` arma una copia
-temporal del mapping de producción con solo ese `writable` en `true`. **`config/opc_mapping.json` no
-se toca.** Además, `encenderConsignas` solo acepta señales que ya son una consigna apagada: no puede
-inventar un mando.
+El escenario `produccion-consigna`, que la encendía solo en la simulación mientras estuvo apagada, se
+retiró el 2026-11-13. El mecanismo sigue disponible para futuras consignas apagadas: un escenario
+puede declarar `"consignasEncendidas": ["planta/valveN"]` y `dev:sim` arma una copia temporal del
+mapping con solo ese `writable` en `true`, sin tocar `config/opc_mapping.json`. `encenderConsignas`
+solo acepta señales que ya son una consigna apagada: no puede inventar un mando.
 
 Después se ajusta la consigna desde la app y se comprueba en `GET /api/opc/sim/writes`.
 
@@ -176,7 +172,7 @@ Después se ajusta la consigna desde la app y se comprueba en `GET /api/opc/sim/
   - `apps/api/src/infrastructure/connectivity/adapters/simulator/simulated-plc.ts`
   - `apps/api/src/infrastructure/connectivity/adapters/simulator/sim-scenario.ts` (`consignasEncendidas`, `encenderConsignas`)
   - `apps/api/scripts/dev-sim.ts`
-  - `apps/api/fixtures/sim-scenarios/produccion-consigna.json` (nuevo)
+  - `apps/api/fixtures/sim-scenarios/produccion-consigna.json` (retirado el 2026-11-13, al encenderla)
 - **Tests:**
   - `apps/api/test/consigna-valvula.test.ts` (nuevo)
   - `apps/api/test/command-mapping.test.ts`

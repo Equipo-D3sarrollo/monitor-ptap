@@ -124,7 +124,7 @@ Las cuatro tablas son iguales. La Leonera agrega la del tanque (sección 4).
 | ¿Codificación verificada en campo? | **sí, según el integrador** (2026-11-10): `stateTrusted: true` en `valve2State`. El read-back del mando sigue en `stateVerified: false` hasta probarlo en campo con Aquora |
 
 **Válvula de salida proporcional (`valve1`)** — apertura mapeada; la consigna (Fase 4) está implementada y
-**apagada** hasta la autorización de Operación (ver `docs/CONSIGNA_VALVULA_PROPORCIONAL.md`).
+**encendida**: autorizada por Operación el 2026-11-13 (ver `docs/CONSIGNA_VALVULA_PROPORCIONAL.md`).
 
 | Dato | Valor |
 |---|---|
@@ -374,9 +374,9 @@ mientras no tenga ninguno.
 
 ### Fase 4 — consigna de la válvula de salida (Cabuyo, 2026-11-10)
 
-**Estado: implementada y APAGADA en producción** (`cabuyo/valve1` con `writable: false`) hasta la
-autorización escrita de Operación. Probada solo en simulador; en local se enciende con el escenario
-`produccion-consigna`. Riesgos abiertos: `docs/RIESGOS_CABUYO.md`.
+**Estado: AUTORIZADA y ENCENDIDA** (`cabuyo/valve1` con `writable: true`): autorizada por Operación el
+2026-11-13. Probada solo en simulador hasta esa fecha; la primera orden real, con Operación presente.
+Riesgos abiertos: `docs/RIESGOS_CABUYO.md`.
 
 - **Contrato:** `POST /api/plants/cabuyo/commands` con `{ "command": "setpoint", "target": "valve1", "value": 40 }`.
   Aquora rechaza fuera de 0–100 (`400 VALUE_OUT_OF_RANGE`, sin escribir) y redondea a entero.

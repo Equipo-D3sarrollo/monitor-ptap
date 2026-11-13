@@ -187,8 +187,8 @@ export const escenarioSchema = z
     valves: z.record(z.string(), z.object(valvulaShape).strict()).optional(),
     initialValues: initialValuesSchema.optional(),
     /**
-     * CONSIGNAS que este escenario ENCIENDE (`planta/valveN`), solo en la simulación. En el mapping de
-     * producción están apagadas (`writable: false`) hasta la autorización de Operación; `dev:sim` arma
+     * CONSIGNAS que este escenario ENCIENDE (`planta/valveN`), solo en la simulación: las que el mapping
+     * declara apagadas (`writable: false`) a la espera de la autorización de Operación. `dev:sim` arma
      * una copia temporal del mapping con `writable: true` en estas, y nada más cambia. Ver
      * `encenderConsignas` y docs/CONSIGNA_VALVULA_PROPORCIONAL.md.
      */

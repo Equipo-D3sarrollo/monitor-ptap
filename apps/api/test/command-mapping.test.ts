@@ -104,7 +104,7 @@ test('mapping: write.target.sourceBuffer inexistente es rechazado (validación s
   assert.ok(result.errors.some((e) => /NO_EXISTE/.test(e)));
 });
 
-test('mapping de PRODUCCIÓN: la válvula 1 está en las plantas CON canal de comando (Cabuyo: solo la de entrada; su consigna está APAGADA), y la segunda solo donde el integrador la entregó', () => {
+test('mapping de PRODUCCIÓN: la válvula 1 está en las plantas CON canal de comando (Cabuyo: entrada on/off y CONSIGNA de la salida), y la segunda solo donde el integrador la entregó', () => {
   // Invariante (2026-07-30): la ruta de la válvula se replicó a todas las plantas por instrucción
   // del operador («mín. 1 válvula, se escribe por el canal 0, abrir = 4096 en todas»), tras
   // verificarla en campo en Sirena (docs/archivo/PRUEBA_VALVULA_SIRENA.md: pulso capturado por testigo
@@ -134,10 +134,10 @@ test('mapping de PRODUCCIÓN: la válvula 1 está en las plantas CON canal de co
     writables,
     conCanal.flatMap((id) =>
       SOLO_ENTRADA.includes(id)
-        ? [`${id}/valve2`]
+        ? [`${id}/valve2`, ...CONSIGNAS.filter((c) => c.startsWith(`${id}/`))]
         : CON_DOS_VALVULAS.includes(id) ? [`${id}/valve1`, `${id}/valve2`] : [`${id}/valve1`],
     ),
-    'una valve1 por planta con canal de comando (donde la salida es proporcional, su consigna está apagada), la valve2 donde el integrador la entregó, y nada más',
+    'una valve1 por planta con canal de comando (donde la salida es proporcional, solo como CONSIGNA), la valve2 donde el integrador la entregó, y nada más',
   );
   assert.equal(conCanal.length, 11, 'hoy son 11 plantas con canal (Cabuyo desde el 2026-11-10; san-antonio y quijote no tienen intOut/intIn)');
   for (const sinCanal of ['san-antonio', 'quijote']) {
@@ -293,9 +293,9 @@ const SOLO_ENTRADA = ['cabuyo'];
 /**
  * Válvulas de salida proporcionales con CONSIGNA (Fase 4, ficha del integrador 2026-11-09/10). No son
  * on/off: no tienen verbos abrir/cerrar, ni sostenida, ni canal 0. Las reglas de las on/off no les aplican.
- * En producción están APAGADAS (writable: false) hasta la autorización escrita de Operación.
+ * La de Cabuyo, AUTORIZADA por Operación el 2026-11-13: encendida en producción (writable: true).
  */
-const CONSIGNAS_APAGADAS = ['cabuyo/valve1'];
+const CONSIGNAS = ['cabuyo/valve1'];
 /** Plantas que comparten su palabra de mando con bits ajenos: escriben en `bitmask`, nunca en absoluto. */
 const EN_BITMASK = ['cabuyo'];
 /** Plantas con realimentación entregada en INT_IN[1] (las demás confirman por eco en intOut). */
@@ -398,11 +398,11 @@ test('mapping de PRODUCCIÓN: Cabuyo — la ENTRADA on/off en bitmask (bits ajen
   const por = (k: string) => senales.find((s) => s.domainKey === k);
 
   // La salida es proporcional: su mando es la CONSIGNA 0-100 % (Fase 4) en INT_OUT_CABUYO[1], con la
-  // apertura como read-back. Nada de abrir/cerrar. APAGADA hasta la autorización de Operación.
+  // apertura como read-back. Nada de abrir/cerrar. Encendida: autorizada por Operación el 2026-11-13.
   const salida = por('valve1') as (ReturnType<typeof por> & { _nota?: string }) | undefined;
-  assert.ok(CONSIGNAS_APAGADAS.includes('cabuyo/valve1'));
-  assert.equal(salida?.writable, false, 'consigna apagada en producción');
-  assert.match(String(salida?._nota), /APAGADA: pendiente de autorización escrita de Operación/);
+  assert.ok(CONSIGNAS.includes('cabuyo/valve1'));
+  assert.equal(salida?.writable, true, 'consigna autorizada por Operación');
+  assert.match(String(salida?._nota), /AUTORIZADA por Operación el 2026-11-13/);
   assert.deepEqual(salida?.write?.target, { channel: 'intOut', sourceBuffer: 'INT_OUT_CABUYO', index: 1 });
   assert.deepEqual(salida?.write?.commands, { setpoint: true });
   assert.equal(salida?.write?.mode, 'absolute');
@@ -412,7 +412,7 @@ test('mapping de PRODUCCIÓN: Cabuyo — la ENTRADA on/off en bitmask (bits ajen
   assert.equal(salida?.write?.readBack?.channel, 'realIn');
   assert.equal(salida?.write?.readBack?.index, 16, 'read-back = valve1Position');
   assert.equal(salida?.write?.readBack?.stateVerified, false);
-  assert.ok(/PENDIENTES DEL INTEGRADOR/.test(String(salida?.write?._riesgo)) && /APAGADA \(writable: false\) hasta la autorización escrita de Operación/.test(String(salida?.write?._riesgo)));
+  assert.ok(/PENDIENTES DEL INTEGRADOR/.test(String(salida?.write?._riesgo)) && /AUTORIZADA por Operación el 2026-11-13/.test(String(salida?.write?._riesgo)));
   assert.equal(por('valve1Position')?.writable, false);
   assert.equal(por('valve1Position')?.flowDomainKey, 'outletFlow1');
 
