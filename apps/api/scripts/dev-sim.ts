@@ -19,11 +19,14 @@
  *  4. Comprueba que MySQL responde (la app completa lo necesita para login, auditoría y command_log).
  *  5. Arranca main.ts.
  */
+import { writeFileSync } from 'node:fs';
 import { connect } from 'node:net';
+import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { loadMapping, resolverRutaDelMapping } from '../src/infrastructure/connectivity/mapping/opc-mapping.loader';
 import {
   configDePlanta,
+  encenderConsignas,
   esMappingSoloSimulacion,
   leerEscenario,
   opcionesDesdeEscenario,
@@ -94,6 +97,20 @@ async function main(): Promise<void> {
 
   // .env DESPUÉS de fijar lo anterior: dotenv no pisa variables ya definidas.
   await import('../src/config/load-env');
+
+  // Consignas que el escenario enciende SOLO aquí: copia temporal del mapping, el de producción no se toca.
+  const encender = leido.escenario.consignasEncendidas;
+  if (encender) {
+    try {
+      const copia = encenderConsignas(loadJson(resolverRutaDelMapping()), encender);
+      const ruta = join(tmpdir(), `ptap-dev-sim-mapping-${process.pid}.json`);
+      writeFileSync(ruta, JSON.stringify(copia, null, 2));
+      process.env.OPC_MAPPING_PATH = ruta;
+      console.log(`  consignas ENCENDIDAS en esta simulación: ${encender.join(', ')} (mapping temporal ${ruta})`);
+    } catch (err) {
+      salir(err instanceof Error ? err.message : String(err));
+    }
+  }
 
   // 3) El mismo gate que CI.
   const rutaMapping = resolverRutaDelMapping();

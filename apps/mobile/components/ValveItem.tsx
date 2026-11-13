@@ -87,7 +87,8 @@ function ValveItemBase({ valve, onToggle, onSetpoint, frozen = false, busy = fal
                 <View style={[styles.barFill, { width: `${anchoBarraApertura(valve.positionPct)}%`, backgroundColor: color }]} />
               )}
             </View>
-            {valve.setpoint && (
+            {/* La consigna vigente solo se pinta si se puede mandar: apagada no significa nada. */}
+            {valve.setpoint && valve.commandable && (
               <Text style={styles.aperturaTexto}>
                 {valve.setpointPct === null
                   ? 'Consigna sin dato'
