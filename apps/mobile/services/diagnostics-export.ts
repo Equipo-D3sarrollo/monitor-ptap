@@ -6,7 +6,9 @@ import {
   type RouteCheckReport,
   type RouteHistoryResponse,
   type RouteProbe,
+  type PlantReport,
 } from './api';
+import { plantReportSections } from './plant-report';
 
 const CLASS_NOTE: Record<ReturnType<typeof classifyBridge>, string> = {
   ok: 'ok (sesión con el PLC establecida)',
@@ -163,6 +165,31 @@ export async function exportDiagnosticsReport(
 ): Promise<boolean> {
   const content = buildDiagnosticsReport(events, routeCheck, history);
   const filename = `diagnostico-conexion-${new Date().toISOString().slice(0, 19).replace(/[:T]/g, '-')}.txt`;
+
+  return exportText(content, filename);
+}
+
+export function buildPlantDiagnosticsReport(report: PlantReport): string {
+  return [
+    'INFORME DE ESTADO POR PLANTA — Monitor PTAP',
+    `Planta: ${report.displayName} (${report.plantId})`,
+    `Generado: ${report.at}`,
+    'Red y puente: evidencia global compartida por las plantas.',
+    'Las horas del PLC indican la fecha del dato; no prueban cuándo cambió el valor.',
+    ...plantReportSections(report).flatMap((section) => [
+      '', section.title.toUpperCase(),
+      ...(section.items.length ? section.items.map((item) =>
+        `[${item.state}] ${item.label}\n  Hora: ${item.at ?? 'sin hora disponible'}\n  ${item.detail}`,
+      ) : ['(sin registros)']),
+    ]),
+  ].join('\n');
+}
+
+export async function exportPlantDiagnosticsReport(report: PlantReport): Promise<boolean> {
+  return exportText(buildPlantDiagnosticsReport(report), `diagnostico-${report.plantId}-${report.at.slice(0, 19).replace(/[:T]/g, '-')}.txt`);
+}
+
+async function exportText(content: string, filename: string): Promise<boolean> {
 
   if (Platform.OS === 'web') {
     // Descarga estándar del navegador: Blob + enlace temporal.

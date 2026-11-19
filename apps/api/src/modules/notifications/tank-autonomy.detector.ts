@@ -1,4 +1,4 @@
-import { Injectable, Logger, type OnModuleDestroy, type OnModuleInit } from '@nestjs/common';
+import { Inject, Injectable, Logger, type OnModuleDestroy, type OnModuleInit } from '@nestjs/common';
 import type { SignalDto, TankAutonomyDto } from '@ptap/shared';
 import { PlantCache } from '../../infrastructure/connectivity/pipeline/plant-cache';
 import { PlantPipelineService } from '../../infrastructure/connectivity/pipeline/plant-pipeline.service';
@@ -34,11 +34,11 @@ export class TankAutonomyDetector implements OnModuleInit, OnModuleDestroy {
   private readonly historiales = new Map<string, MuestraTanque[]>();
 
   constructor(
-    private readonly pipeline: PlantPipelineService,
-    private readonly cache: PlantCache,
-    private readonly repo: NotificationRepository,
-    _flujo: FlowHourlyRepository,
-    private readonly store: TankAutonomyStore,
+    @Inject(PlantPipelineService) private readonly pipeline: PlantPipelineService,
+    @Inject(PlantCache) private readonly cache: PlantCache,
+    @Inject(NotificationRepository) private readonly repo: NotificationRepository,
+    @Inject(FlowHourlyRepository) _flujo: FlowHourlyRepository,
+    @Inject(TankAutonomyStore) private readonly store: TankAutonomyStore,
   ) {}
 
   onModuleInit(): void {

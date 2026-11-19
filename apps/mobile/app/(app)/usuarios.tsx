@@ -10,7 +10,7 @@ import {
   RefreshControl,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Ionicons } from '@expo/vector-icons';
+import Ionicons from '../../components/AppIcon';
 import { ROLES, ROLE_LABELS, type Role, type UserSummary } from '@ptap/shared';
 import { fetchUsers, setUserActive, updateUserRole } from '../../services/users';
 import { useAuth } from '../../context/AuthContext';

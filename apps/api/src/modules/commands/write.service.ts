@@ -873,6 +873,7 @@ export class WriteService {
       statusCode: httpStatusForCommand(result),
       detail: {
         command: result.command,
+        request: actor.request ?? null,
         target: result.target,
         status: result.status,
         reason: result.reason,

@@ -1,4 +1,4 @@
-import { Injectable, Logger, type OnModuleDestroy, type OnModuleInit } from '@nestjs/common';
+import { Inject, Injectable, Logger, type OnModuleDestroy, type OnModuleInit } from '@nestjs/common';
 import { diaLocal } from '../../infrastructure/connectivity/pipeline/dia-operativo';
 import { NotificationRepository } from '../notifications/notification.repository';
 import { CommandSignatureService } from './command-signature.service';
@@ -25,8 +25,8 @@ export class SignatureIntegrityDetector implements OnModuleInit, OnModuleDestroy
   private readonly sweepMs = Number(process.env.SIGNATURE_SWEEP_MS ?? 6 * 60 * 60_000);
 
   constructor(
-    private readonly firmas: CommandSignatureService,
-    private readonly avisos: NotificationRepository,
+    @Inject(CommandSignatureService) private readonly firmas: CommandSignatureService,
+    @Inject(NotificationRepository) private readonly avisos: NotificationRepository,
   ) {}
 
   onModuleInit(): void {

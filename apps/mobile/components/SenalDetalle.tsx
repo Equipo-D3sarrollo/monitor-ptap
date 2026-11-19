@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, Platform, ActivityIndicator } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import Ionicons from './AppIcon';
 import type { SenalEditable } from '../services/mapping-edit';
 import { comandosComoTexto } from '../services/mapping-mando-form';
 import { formatWhen } from '../services/notifications';

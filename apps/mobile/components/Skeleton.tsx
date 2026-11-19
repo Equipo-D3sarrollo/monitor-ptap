@@ -1,5 +1,5 @@
 import { memo, useEffect, useState } from 'react';
-import { View, Animated, Easing, StyleSheet, type ViewStyle } from 'react-native';
+import { View, Animated, Easing, Platform, StyleSheet, type ViewStyle } from 'react-native';
 import Colors from '../constants/colors';
 import { useReducedMotion } from '../hooks/useReducedMotion';
 
@@ -20,8 +20,8 @@ function usePulse(): Animated.Value {
     }
     const loop = Animated.loop(
       Animated.sequence([
-        Animated.timing(pulse, { toValue: 1, duration: 750, easing: Easing.inOut(Easing.ease), useNativeDriver: true }),
-        Animated.timing(pulse, { toValue: 0.4, duration: 750, easing: Easing.inOut(Easing.ease), useNativeDriver: true }),
+        Animated.timing(pulse, { toValue: 1, duration: 750, easing: Easing.inOut(Easing.ease), useNativeDriver: Platform.OS !== 'web', isInteraction: false }),
+        Animated.timing(pulse, { toValue: 0.4, duration: 750, easing: Easing.inOut(Easing.ease), useNativeDriver: Platform.OS !== 'web', isInteraction: false }),
       ]),
     );
     loop.start();

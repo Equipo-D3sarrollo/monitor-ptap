@@ -3,6 +3,7 @@
 # dependencies
 node_modules/
 .npm-cache/
+/tmp/
 
 # Expo
 .expo/
@@ -66,6 +67,9 @@ apps/mobile/android/
 # Subagent-driven-development scratch state
 .superpowers/
 apps/mobile/eas.json
+
+# Auditoria local del proyecto: puede mencionar IPs y datos del servidor. No se versiona.
+/contexto.md
 
 # Configuración de Firebase de la APK (push FCM). La APK la necesita dentro y se copia a mano antes de
 # compilar; no va al repositorio. La CLAVE DE SERVICIO del backend tampoco: esa vive solo en la VM

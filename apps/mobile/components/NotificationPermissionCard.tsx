@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, Linking, Platform, ActivityIndicator } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import Ionicons from './AppIcon';
 import Colors from '../constants/colors';
 import { useDeviceNotifications } from '../hooks/useDeviceNotifications';
 import { textoDePrueba, type EstadoPush } from '../services/push-rules';

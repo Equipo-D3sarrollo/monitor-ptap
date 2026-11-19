@@ -41,7 +41,7 @@ function build(opts: {
   const verifiedIds: string[] = [];
   const issued: string[] = [];
   const invalidated: string[] = [];
-  const sent: Array<{ to: string; link: string }> = [];
+  const sent: { to: string; link: string }[] = [];
   const audit: AuditEntry[] = [];
 
   const users = {

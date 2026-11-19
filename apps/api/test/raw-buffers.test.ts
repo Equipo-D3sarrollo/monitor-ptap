@@ -19,7 +19,7 @@ import {
 import type { LoadedMapping } from '../src/infrastructure/connectivity/mapping/opc-mapping.loader';
 import type { RawBufferSample } from '../src/infrastructure/connectivity/ports/connectivity-adapter.port';
 
-function muestra(browseName: string, channel: string, values: Array<number | boolean>): RawBufferSample {
+function muestra(browseName: string, channel: string, values: (number | boolean)[]): RawBufferSample {
   return {
     browseName,
     channel,

@@ -183,7 +183,7 @@ Rechazos (`REJECT`) y fallos (`FAIL`) del `WriteService`. Todos quedan auditados
 |---|---|---|---|---|
 | **SRV-01** | API no responde | El backend está caído o no arrancó | El cliente lo ve como **NET-03** | [health.controller.ts](../apps/api/src/modules/health/health.controller.ts) |
 | **SRV-02** | Base de datos no disponible | MySQL caído o credencial mala | `GET /api/health/db` → 503 | [health.controller.ts](../apps/api/src/modules/health/health.controller.ts) |
-| **SRV-03** | Puerto en uso | Quedó otro proceso en `:4000`/`:8081` (`EADDRINUSE`) | Log de arranque | [main.ts](../apps/api/src/main.ts) |
+| **SRV-03** | Puerto en uso | Quedó otro proceso en `:4000`/`:8082` (`EADDRINUSE`) | Log de arranque | [main.ts](../apps/api/src/main.ts) |
 | **SRV-04** | ✅ **RESUELTO (2026-07-21)**: el gateway autentica el handshake con el JWT del login; sin token válido corta la conexión. Desactivable con `SOCKET_AUTH_REQUIRED=false` (solo el demo de telemetría) | — | [connectivity.gateway.ts](../apps/api/src/infrastructure/connectivity/connectivity.gateway.ts) · test `gateway-auth.test.ts` |
 | **SRV-05** | Token de métricas inválido | `/metrics` protegido por Bearer y el token no coincide (o falta) | 401 en el scrape | [metrics-auth.guard.ts](../apps/api/src/infrastructure/metrics/metrics-auth.guard.ts) |
 | **SRV-06** | Fallo de BD durante un comando | La BD no responde al reservar/finalizar en `command_log` (Fase 5) | Error del comando | [command-log.repository.ts](../apps/api/src/modules/commands/command-log.repository.ts) |
@@ -289,7 +289,7 @@ Errores de puesta en marcha; no pasan por la UI, se ven en el arranque. Detalle 
 | Código | Título | Síntoma | Solución | Ruta |
 |---|---|---|---|---|
 | **CFG-01** | Falta `.env` / `DB_PASSWORD` | "Falta la variable de entorno DB_PASSWORD" | Crear `.env` (§SETUP) | [config/load-env](../apps/api/src/config) · [database.config.ts](../apps/api/src/infrastructure/database/database.config.ts) |
-| **CFG-02** | CORS vacío | Login falla **solo en el navegador** (curl funciona) | `CORS_ORIGINS=http://localhost:8081` | [main.ts](../apps/api/src/main.ts) |
+| **CFG-02** | CORS vacío | Login falla **solo en el navegador** (curl funciona) | `CORS_ORIGINS=http://localhost:8082` | [main.ts](../apps/api/src/main.ts) |
 | **CFG-03** | Pepper inválido | El login truena tras sembrar usuarios | `PASSWORD_PEPPER_V1_BASE64` = 64 bytes | [password-hashing.service.ts](../apps/api/src/modules/auth/password-hashing.service.ts) |
 | **CFG-04** | PLC inalcanzable | Puente en `Connecting` indefinido (**PLC-01**) | Revisar red/VPN/IP al PLC | [.env.example](../.env.example) · [docs/INCIDENTE_CONEXION_PLC.md](INCIDENTE_CONEXION_PLC.md) |
 | **CFG-05** | Certificado del servidor no confiado | El puente no conecta seguro; el cert del PLC queda en `pki/rejected` | Moverlo a `pki/trusted` tras verificarlo | [docs/OPTIX_CLIENT_CERT_TRUST.md](OPTIX_CLIENT_CERT_TRUST.md) |

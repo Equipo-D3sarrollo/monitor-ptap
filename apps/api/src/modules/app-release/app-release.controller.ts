@@ -1,4 +1,4 @@
-import { Controller, Get } from '@nestjs/common';
+import { Controller, Get, Inject } from '@nestjs/common';
 import { Public } from '../auth/decorators/public.decorator';
 import { AppReleaseService, type AppRelease } from './app-release.service';
 import { NovedadesService } from './novedades.service';
@@ -15,8 +15,8 @@ import type { Novedad } from './novedades.parser';
 @Controller('app')
 export class AppReleaseController {
   constructor(
-    private readonly releases: AppReleaseService,
-    private readonly novedadesSvc: NovedadesService,
+    @Inject(AppReleaseService) private readonly releases: AppReleaseService,
+    @Inject(NovedadesService) private readonly novedadesSvc: NovedadesService,
   ) {}
 
   @Public()

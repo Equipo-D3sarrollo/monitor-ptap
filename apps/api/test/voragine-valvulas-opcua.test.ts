@@ -45,7 +45,7 @@ const CLAVE = 'clave-solo-para-la-suite-local';
 const RUTA_MAPPING = join(__dirname, '..', 'config', 'opc_mapping.json');
 
 /** Lo que el servidor recibió en cada escritura sobre INT_OUT_VORAGINE, ANTES de convertir nada. */
-const peticiones: Array<{ dataType: string; indexRange: string; valores: number[]; status: string }> = [];
+const peticiones: { dataType: string; indexRange: string; valores: number[]; status: string }[] = [];
 let server: OPCUAServer;
 let mando: UAVariable;
 const entornoPrevio = new Map<string, string | undefined>();
@@ -262,7 +262,7 @@ test('herramienta: con el bit15 puesto la palabra llega negativa y se escribe ne
 
 test('herramienta: si el mapping y la herramienta no coinciden, no escribe ni en simulacro', async () => {
   const raw = JSON.parse(readFileSync(RUTA_MAPPING, 'utf8')) as {
-    plants: Array<{ plantId: string; signals: Array<{ domainKey: string; write?: { commands?: unknown } }> }>;
+    plants: { plantId: string; signals: { domainKey: string; write?: { commands?: unknown } }[] }[];
   };
   raw.plants.find((p) => p.plantId === 'voragine')!.signals.find((s) => s.domainKey === 'valve1')!.write!.commands = { open: 4, close: 8192 };
   const dir = mkdtempSync(join(tmpdir(), 'mapping-discrepante-'));

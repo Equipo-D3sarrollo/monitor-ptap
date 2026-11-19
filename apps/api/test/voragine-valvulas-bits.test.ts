@@ -37,7 +37,7 @@ import {
   type Verbo,
 } from '../scripts/voragine-valvulas-bits';
 
-const VALVULAS_Y_VERBOS: Array<[Valvula, Verbo]> = [
+const VALVULAS_Y_VERBOS: [Valvula, Verbo][] = [
   ['entrada', 'abrir'],
   ['entrada', 'cerrar'],
   ['salida', 'abrir'],
@@ -65,7 +65,7 @@ test('mapping REAL: los bits, el buffer y la señal sostenida coinciden con los 
 
 test('mapping: si no coincide con la herramienta, se dice qué y por qué', () => {
   const raw = loadJson(join(__dirname, '..', 'config', 'opc_mapping.json')) as {
-    plants: Array<{ plantId: string; signals: Array<{ domainKey: string; write?: Record<string, unknown> }> }>;
+    plants: { plantId: string; signals: { domainKey: string; write?: Record<string, unknown> }[] }[];
   };
   const v = raw.plants.find((p) => p.plantId === 'voragine')!;
   const entrada = v.signals.find((s) => s.domainKey === 'valve2')!;

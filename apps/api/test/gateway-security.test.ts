@@ -3,12 +3,11 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { Subject } from 'rxjs';
 import type { Role } from '@ptap/shared';
-import { ConnectivityGateway } from '../src/infrastructure/connectivity/connectivity.gateway';
+import { ConnectivityGateway, SOCKET_IDENTITY } from '../src/infrastructure/connectivity/connectivity.gateway';
 import { JwtService } from '../src/modules/auth/jwt.service';
 import { Module } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
 import { io, type Socket as ClientSocket } from 'socket.io-client';
-import { SOCKET_IDENTITY } from '../src/infrastructure/connectivity/connectivity.gateway';
 import { PlantCache } from '../src/infrastructure/connectivity/pipeline/plant-cache';
 import { PlantPipelineService } from '../src/infrastructure/connectivity/pipeline/plant-pipeline.service';
 

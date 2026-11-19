@@ -5,6 +5,8 @@ import { ConnectivityModule } from '../../infrastructure/connectivity/connectivi
 import { MappingController } from './mapping.controller';
 import { MappingOverrideRepository } from './mapping-override.repository';
 import { MappingOverrideService } from './mapping-override.service';
+import { MappingGitService } from './mapping-git.service';
+import { MappingWriteLock } from './mapping-write-lock';
 
 /**
  * Edición del mapeo desde la app (modo desarrollador).
@@ -16,7 +18,7 @@ import { MappingOverrideService } from './mapping-override.service';
 @Module({
   imports: [ConnectivityModule, DatabaseModule, AuthModule],
   controllers: [MappingController],
-  providers: [MappingOverrideRepository, MappingOverrideService],
+  providers: [MappingOverrideRepository, MappingOverrideService, MappingGitService, MappingWriteLock],
   exports: [MappingOverrideService],
 })
 export class MappingModule {}

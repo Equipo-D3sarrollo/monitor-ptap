@@ -11,7 +11,7 @@ import {
   StyleSheet,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Ionicons } from '@expo/vector-icons';
+import Ionicons from '../../components/AppIcon';
 import { router } from 'expo-router';
 import { apiRegister } from '../../services/auth';
 import { PLANTS } from '../../context/PlantContext';

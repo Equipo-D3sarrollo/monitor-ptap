@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { View, Text, TouchableOpacity, ActivityIndicator, StyleSheet } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import Ionicons from './AppIcon';
 import Colors from '../constants/colors';
 import { useAuth } from '../context/AuthContext';
 import { fetchVerificacionFirmas, type VerificacionFirmas } from '../services/command-signatures';
@@ -37,8 +37,19 @@ export function RegistroIntegridadCard() {
   }, []);
 
   useEffect(() => {
-    if (puede) comprobar();
-  }, [puede, comprobar]);
+    if (!puede) return;
+    let activo = true;
+    fetchVerificacionFirmas()
+      .then((resultado) => {
+        if (activo) setEstado(resultado);
+      })
+      .catch(() => {
+        if (activo) setError(true);
+      });
+    return () => {
+      activo = false;
+    };
+  }, [puede]);
 
   if (!puede) return null;
 

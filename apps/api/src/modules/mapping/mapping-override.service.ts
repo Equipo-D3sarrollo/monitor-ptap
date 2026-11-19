@@ -14,6 +14,7 @@ import {
 } from '../../infrastructure/connectivity/mapping/mapping-overrides';
 import type { LoadedMapping, SignalMapping } from '../../infrastructure/connectivity/mapping/opc-mapping.loader';
 import { MappingOverrideRepository } from './mapping-override.repository';
+import { MappingWriteLock } from './mapping-write-lock';
 
 /**
  * Editar el mapeo desde la app: valida, guarda y **aplica en caliente**.
@@ -118,6 +119,7 @@ export class MappingOverrideService implements OnModuleInit {
   constructor(
     @Inject(MappingOverrideRepository) private readonly repo: MappingOverrideRepository,
     @Inject(PlantPipelineService) private readonly pipeline: PlantPipelineService,
+    @Inject(MappingWriteLock) private readonly writeLock: MappingWriteLock,
   ) {}
 
   /**
@@ -181,6 +183,15 @@ export class MappingOverrideService implements OnModuleInit {
     patch: MappingPatch,
     usuario: { id?: string; email?: string; name?: string } | undefined,
   ): Promise<SenalEditableDto> {
+    return this.writeLock.run(() => this.aplicarInterno(plantId, domainKey, patch, usuario));
+  }
+
+  private async aplicarInterno(
+    plantId: string,
+    domainKey: string,
+    patch: MappingPatch,
+    usuario: { id?: string; email?: string; name?: string } | undefined,
+  ): Promise<SenalEditableDto> {
     const efectivo = this.pipeline.getMapping();
     const senal = efectivo.signals.find((s) => s.plantId === plantId && s.domainKey === domainKey);
     if (!senal) throw new NotFoundException(`${plantId} no tiene una señal llamada ${domainKey}`);
@@ -219,6 +230,14 @@ export class MappingOverrideService implements OnModuleInit {
 
   /** Vuelve al mapeo del repositorio para esa señal. No borra nada: inserta la reversión. */
   async revertir(
+    plantId: string,
+    domainKey: string,
+    usuario: { id?: string; email?: string; name?: string } | undefined,
+  ): Promise<SenalEditableDto> {
+    return this.writeLock.run(() => this.revertirInterno(plantId, domainKey, usuario));
+  }
+
+  private async revertirInterno(
     plantId: string,
     domainKey: string,
     usuario: { id?: string; email?: string; name?: string } | undefined,

@@ -1,5 +1,12 @@
 # Checklist de producción — traslado al servidor real
 
+> La tabla de infraestructura y autorizaciones de este documento es histórica. Para la copia local
+> revisada, el primer ensayo en una VM autorizada debe ser de **solo lectura**:
+> `OPCUA_WRITES_ENABLED=false`. No copiar excepciones antiguas de cifrado ni activar escrituras
+> por una autorización mencionada aquí. Confirmar endpoint, certificados, secretos y permisos con
+> la empresa. Para la nueva atribución de IP y el límite de mando, configurar y verificar
+> [SEGURIDAD_MANDOS.md](SEGURIDAD_MANDOS.md) antes de exponer la API.
+
 Qué revisar/ajustar para pasar el backend del entorno de desarrollo (simulador, cuentas demo) al
 **servidor real** con el **PLC real**. La receta de instalación en el VPS está en
 [RUNBOOK_PRODUCCION.md §11](RUNBOOK_PRODUCCION.md); esto es el **endurecimiento** de configuración y datos.

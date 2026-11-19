@@ -44,6 +44,7 @@ async function fakeRepo(isActive: boolean): Promise<UsersRepository & { touched:
     passwordHash,
     pepperVersion,
     isActive,
+    emailVerified: true,
   };
   const touched: string[] = [];
   return {

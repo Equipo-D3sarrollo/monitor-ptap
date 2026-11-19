@@ -1,3 +1,5 @@
+import { PlantReportService } from './diagnostics/plant-report.service';
+import { FreshnessService } from './opcua/freshness.service';
 import { Module } from '@nestjs/common';
 import { AuthModule } from '../../modules/auth/auth.module';
 import { AuditModule } from '../audit/audit.module';
@@ -23,7 +25,7 @@ import { UsersRepository } from '../../modules/users/users.repository';
 @Module({
   imports: [ConnectivityModule, AuthModule, AuditModule, MetricsModule, LoggingModule],
   controllers: [OpcController, DiagnosticsController],
-  providers: [ConnectionEventsSubscriber, OpcMetricsSubscriber, StructuredEventsSubscriber, RouteCheckService, RouteProbeSampler,
+  providers: [PlantReportService, FreshnessService, ConnectionEventsSubscriber, OpcMetricsSubscriber, StructuredEventsSubscriber, RouteCheckService, RouteProbeSampler,
     ConnectivityGateway,
     { provide: SOCKET_IDENTITY, inject: [UsersRepository], useFactory: (users: UsersRepository) => (id: string) => users.findById(id) },
   ],

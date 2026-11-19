@@ -65,8 +65,8 @@ function fakeVerification(): { repo: EmailVerificationRepository; issued: string
 }
 
 /** Doble del correo: registra los enlaces "enviados". */
-function fakeEmail(): { service: EmailService; sent: Array<{ to: string; link: string }> } {
-  const sent: Array<{ to: string; link: string }> = [];
+function fakeEmail(): { service: EmailService; sent: { to: string; link: string }[] } {
+  const sent: { to: string; link: string }[] = [];
   const service = {
     sendVerificationEmail: async (to: string, link: string) => { sent.push({ to, link }); },
   } as unknown as EmailService;

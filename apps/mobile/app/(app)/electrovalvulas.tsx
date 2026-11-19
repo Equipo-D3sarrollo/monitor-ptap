@@ -1,7 +1,7 @@
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { View, Text, ScrollView, RefreshControl, StyleSheet } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Ionicons } from '@expo/vector-icons';
+import Ionicons from '../../components/AppIcon';
 import { useSnapshot } from '../../hooks/useSnapshot';
 import { usePlant } from '../../context/PlantContext';
 import { useAuth } from '../../context/AuthContext';
@@ -9,16 +9,23 @@ import { ValveItem } from '../../components/ValveItem';
 import { ValveConfirmDialog } from '../../components/ValveConfirmDialog';
 import { ValveResultDialog } from '../../components/ValveResultDialog';
 import { ValveSetpointDialog } from '../../components/ValveSetpointDialog';
-import { PlantSelector } from '../../components/PlantSelector';
+import { PlantPickerLayout, PlantPickerTrigger } from '../../components/PlantPicker';
 import { ConnectionBanner } from '../../components/ConnectionBanner';
 import { LiveBadge } from '../../components/LiveBadge';
 import { ListSkeleton } from '../../components/Skeleton';
 import { OfflineNotice } from '../../components/OfflineNotice';
-import { valvesFromSnapshot, accionDisponible, resumenDeValvulas, type CommandVerdict } from '../../services/valves';
+import {
+  valvesFromSnapshot,
+  accionDisponible,
+  resumenDeValvulas,
+  type CommandVerdict,
+} from '../../services/valves';
 import { useValveSupervisor, type SupervisedValve } from '../../hooks/useValveSupervisor';
 import { useDashboardPrefs } from '../../services/dashboard-prefs';
+import { getAuthGeneration } from '../../services/api';
 import { EN_INTEGRACION } from '../../services/plant-status';
 import Colors from '../../constants/colors';
+import { Fonts } from '../../constants/fonts';
 
 /**
  * El mando remoto está habilitado en TODAS las plantas que tengan válvula mapeada. Antes solo
@@ -45,7 +52,13 @@ export default function ElectrovalvulasScreen() {
   const canView = hasPermission('view_dashboard'); // el Civil no ve electroválvulas
   const canControl = hasPermission('control_valves');
 
-  const { data: snapshot, isLoading, isError, refetch, isRefetching } = useSnapshot(selectedPlant.id, canView);
+  const {
+    data: snapshot,
+    isLoading,
+    isError,
+    refetch,
+    isRefetching,
+  } = useSnapshot(selectedPlant.id, canView);
   const rawValves = useMemo(() => valvesFromSnapshot(snapshot), [snapshot]);
   const { valves, send, busy } = useValveSupervisor(selectedPlant.id, rawValves);
   const [pendiente, setPendiente] = useState<Pendiente | null>(null);
@@ -54,6 +67,13 @@ export default function ElectrovalvulasScreen() {
   /** Veredicto de la última orden, a la espera de acuse de recibo. NUNCA es un toast: ver
    *  `ValveResultDialog`. */
   const [resultado, setResultado] = useState<(CommandVerdict & { valveName: string }) | null>(null);
+  const mounted = useRef(true);
+  useEffect(() => {
+    mounted.current = true;
+    return () => {
+      mounted.current = false;
+    };
+  }, []);
   const livenessState = snapshot?.liveness.state ?? 'frozen';
   const frozen = livenessState === 'frozen';
   // Aún no conectada al PLC maestro: su `frozen` no es una caída (ver services/plant-status.ts).
@@ -110,7 +130,9 @@ export default function ElectrovalvulasScreen() {
         <View style={styles.centered}>
           <Ionicons name="lock-closed-outline" size={40} color={Colors.textSecondary} />
           <Text style={styles.plantName}>Acceso restringido</Text>
-          <Text style={styles.sectionSubtitle}>Las electroválvulas no están disponibles para tu rol.</Text>
+          <Text style={styles.sectionSubtitle}>
+            Las electroválvulas no están disponibles para tu rol.
+          </Text>
         </View>
       </SafeAreaView>
     );
@@ -127,55 +149,84 @@ export default function ElectrovalvulasScreen() {
     // Se re-evalúa con la lectura de AHORA: entre elegir y aceptar la planta pudo congelarse.
     const action = accionDisponible(current, frozen, verb === 'setpoint' ? undefined : verb);
     if (action.kind === 'blocked') {
-      setResultado({ ok: false, signalSent: false, tone: 'danger', title: 'Orden bloqueada', message: action.explain, valveName: current.name });
+      setResultado({
+        ok: false,
+        signalSent: false,
+        tone: 'danger',
+        title: 'Orden bloqueada',
+        message: action.explain,
+        valveName: current.name,
+      });
       return;
     }
     if ((verb === 'setpoint') !== (action.kind === 'setpoint') || (verb === 'setpoint' && value === undefined)) return;
+    const originName = plantName;
+    const authGeneration = getAuthGeneration();
     const verdict = await send(current, verb, value);
+    if (!mounted.current || getAuthGeneration() !== authGeneration) return verdict;
     // A un diálogo con acuse de recibo, NO a un toast: aquí se movió un actuador físico y el
     // veredicto puede ser "enviado pero sin confirmar", que el operador debe leer sí o sí.
-    setResultado({ ...verdict, valveName: valve.name });
+    setResultado({
+      ...verdict,
+      valveName: `${originName} · ${valve.name}`,
+      message: `Planta: ${originName} (${plantId}).\n\n${verdict.message}`,
+    });
+    return verdict;
   }
 
   return (
-    <SafeAreaView style={styles.safe} edges={['bottom']}>
-      <PlantSelector />
-      <ConnectionBanner
-        apiReachable={apiReachable}
-        bridgeStatus={snapshot?.bridgeStatus}
-        integrationPending={integrationPending}
-      />
+    <PlantPickerLayout>
+      <SafeAreaView style={styles.safe} edges={['bottom']}>
+        <ConnectionBanner
+          apiReachable={apiReachable}
+          bridgeStatus={snapshot?.bridgeStatus}
+          integrationPending={integrationPending}
+        />
 
-      <ScrollView
-        contentContainerStyle={styles.content}
-        refreshControl={
-          <RefreshControl
-            refreshing={isRefetching}
-            onRefresh={() => {
-              void refetch();
-            }}
-            colors={[Colors.primary]}
-            tintColor={Colors.primary}
-          />
-        }
-      >
-        <View style={styles.sectionHeader}>
-          <View style={{ flex: 1 }}>
-            <Text style={styles.plantName}>{plantName}</Text>
-            <Text style={styles.sectionSubtitle}>Electroválvulas</Text>
-          </View>
-          {valves.length > 0 && (
-            <View style={styles.summary}>
-              <Text style={[styles.summaryCount, { color: Colors.success }]}>{openCount} abiertas</Text>
-              <Text style={styles.summaryDot}> · </Text>
-              <Text style={[styles.summaryCount, { color: Colors.danger }]}>{closedCount} cerradas</Text>
-              {unconfirmedCount > 0 && <Text style={[styles.summaryCount, { color: Colors.textSecondary }]}> · {unconfirmedCount} sin confirmar</Text>}
-              {faultCount > 0 && <Text style={[styles.summaryCount, { color: Colors.danger }]}> · {faultCount} en falla</Text>}
+        <ScrollView
+          contentContainerStyle={styles.content}
+          refreshControl={
+            <RefreshControl
+              refreshing={isRefetching}
+              onRefresh={() => {
+                void refetch();
+              }}
+              colors={[Colors.primary]}
+              tintColor={Colors.primary}
+            />
+          }
+        >
+          <View style={styles.sectionHeader}>
+            <View style={{ flex: 1 }}>
+              <PlantPickerTrigger name={plantName} textStyle={styles.plantName} />
+              <Text style={styles.sectionSubtitle}>Electroválvulas</Text>
             </View>
-          )}
-        </View>
+            {valves.length > 0 && (
+              <View style={styles.summary}>
+                <Text style={[styles.summaryCount, { color: Colors.success }]}>
+                  {openCount} abiertas
+                </Text>
+                <Text style={styles.summaryDot}> · </Text>
+                <Text style={[styles.summaryCount, { color: Colors.danger }]}>
+                  {closedCount} cerradas
+                </Text>
+                {unconfirmedCount > 0 && (
+                  <Text style={[styles.summaryCount, { color: Colors.textSecondary }]}>
+                    {' '}
+                    · {unconfirmedCount} sin confirmar
+                  </Text>
+                )}
+                {faultCount > 0 && (
+                  <Text style={[styles.summaryCount, { color: Colors.danger }]}>
+                    {' '}
+                    · {faultCount} en falla
+                  </Text>
+                )}
+              </View>
+            )}
+          </View>
 
-        {/*
+          {/*
           Aquí había dos franjas fijas y una lista de avisos efímeros. Se quitaron a petición de
           operación: TODO lo que tenga que ver con una válvula va a la bandeja de notificaciones,
           donde queda registrado con quién lo hizo, a qué hora y con la firma de la maniobra — y
@@ -185,102 +236,127 @@ export default function ElectrovalvulasScreen() {
           eléctricamente la maniobra vive ahora en el diálogo de confirmación, justo antes de que
           alguien mande la orden, que es cuando sirve para algo.
         */}
-        {isLoading && !snapshot ? (
-          <ListSkeleton rows={3} label="Cargando las electroválvulas" />
-        ) : showError ? (
-          <OfflineNotice
-            title="No se pudieron cargar las electroválvulas."
-            detail="No hay conexión con el servidor y este dispositivo no tiene ninguna lectura guardada de esta planta. Sin estado real no se debe operar una válvula."
-            onRetry={() => void refetch()}
-            retryLabel="Reintentar la carga de las electroválvulas"
-          />
-        ) : valves.length === 0 && integrationPending ? (
-          // No es «sin válvulas mapeadas» a secas: las tiene en campo, pero la planta aún no está
-          // conectada al PLC maestro, y decirlo así evita que alguien lo reporte como una falla.
-          <View style={styles.loadingWrap}>
-            <Ionicons name="construct-outline" size={34} color={Colors.textSecondary} />
-            <Text style={styles.loadingText}>{EN_INTEGRACION.titulo}</Text>
-            <Text style={styles.loadingSub}>{EN_INTEGRACION.valvulas}</Text>
-          </View>
-        ) : valves.length === 0 ? (
-          <View style={styles.loadingWrap}>
-            <Ionicons name="git-branch-outline" size={34} color={Colors.textSecondary} />
-            <Text style={styles.loadingText}>Esta planta no tiene electroválvulas mapeadas.</Text>
-            <Text style={styles.loadingSub}>
-              Solo aparecen las válvulas declaradas en el mapping de la planta: las de mando
-              (INT_OUT/INT_IN) y las proporcionales que reportan su apertura. Los tanques
-              retransmitidos por otra planta no tienen canal propio.
-            </Text>
-          </View>
-        ) : (
-          valves.map((valve) => (
-            <ValveItem
-              key={valve.id}
-              valve={valve}
-              frozen={frozen}
-              busy={busy !== null}
-              compact={compact}
-              // Sin canal de comando no hay botón: hacer confirmar una maniobra que solo puede
-              // acabar en 404 es peor que no ofrecerla. ValveItem pone la nota en su lugar.
-              onToggle={canControl && valve.commandable ? onToggle : undefined}
-              onSetpoint={canControl && valve.commandable ? onSetpoint : undefined}
+          {isLoading && !snapshot ? (
+            <ListSkeleton rows={3} label="Cargando las electroválvulas" />
+          ) : showError ? (
+            <OfflineNotice
+              title="No se pudieron cargar las electroválvulas."
+              detail="No hay conexión con el servidor y este dispositivo no tiene ninguna lectura guardada de esta planta. Sin estado real no se debe operar una válvula."
+              onRetry={() => void refetch()}
+              retryLabel="Reintentar la carga de las electroválvulas"
             />
-          ))
+          ) : valves.length === 0 && integrationPending ? (
+            // No es «sin válvulas mapeadas» a secas: las tiene en campo, pero la planta aún no está
+            // conectada al PLC maestro, y decirlo así evita que alguien lo reporte como una falla.
+            <View style={styles.loadingWrap}>
+              <Ionicons name="construct-outline" size={34} color={Colors.textSecondary} />
+              <Text style={styles.loadingText}>{EN_INTEGRACION.titulo}</Text>
+              <Text style={styles.loadingSub}>{EN_INTEGRACION.valvulas}</Text>
+            </View>
+          ) : valves.length === 0 ? (
+            <View style={styles.loadingWrap}>
+              <Ionicons name="git-branch-outline" size={34} color={Colors.textSecondary} />
+              <Text style={styles.loadingText}>Esta planta no tiene electroválvulas mapeadas.</Text>
+              <Text style={styles.loadingSub}>
+                Solo aparecen las válvulas declaradas en el mapping de la planta: las de mando
+                (INT_OUT/INT_IN) y las proporcionales que reportan su apertura. Los tanques
+                retransmitidos por otra planta no tienen canal propio.
+              </Text>
+            </View>
+          ) : (
+            valves.map((valve) => (
+              <ValveItem
+                key={valve.id}
+                valve={valve}
+                frozen={frozen}
+                busy={busy !== null}
+                compact={compact}
+                // Sin canal de comando no hay botón: hacer confirmar una maniobra que solo puede
+                // acabar en 404 es peor que no ofrecerla. ValveItem pone la nota en su lugar.
+                onToggle={canControl && valve.commandable ? onToggle : undefined}
+                onSetpoint={canControl && valve.commandable ? onSetpoint : undefined}
+              />
+            ))
+          )}
+
+          {valves.length > 0 && !canControl && (
+            <Text style={styles.note}>Tu rol puede ver el estado, pero no operar válvulas.</Text>
+          )}
+        </ScrollView>
+
+        <ValveConfirmDialog
+          visible={pendiente !== null}
+          valveName={pendiente?.valve.name ?? ''}
+          plantName={plantName}
+          verb={pendiente?.verb ?? 'open'}
+          consigna={
+            pendiente?.verb === 'setpoint' && pendiente.value !== undefined
+              ? { desde: pendiente.valve.positionPct, hasta: pendiente.value, unit: pendiente.valve.setpoint?.unit ?? null }
+              : undefined
+          }
+          busy={pendiente !== null && busy === pendiente.valve.id}
+          // Una consigna se confirma con la apertura medida, que es lectura del propio equipo.
+          conLecturaDeEstado={pendiente?.verb === 'setpoint' ? true : conLecturaDeEstado}
+          onConfirm={() => void onConfirmar()}
+          onCancel={() => setPendiente(null)}
+        />
+
+        {/* Se MONTA al abrirlo (no solo `visible`): así arranca cada vez con la consigna vigente. */}
+        {eligiendo && (
+          <ValveSetpointDialog
+            visible
+            valveName={eligiendo.name}
+            plantName={plantName}
+            // La apertura en vivo, no la del momento de abrir el diálogo.
+            positionPct={valves.find((v) => v.id === eligiendo.id)?.positionPct ?? eligiendo.positionPct}
+            setpointPct={eligiendo.setpointPct}
+            limites={eligiendo.setpoint ?? { min: 0, max: 100, unit: '%' }}
+            onCancel={() => setEligiendo(null)}
+            onContinue={(value) => {
+              setPendiente({ plantId: selectedPlant.id, valve: eligiendo, verb: 'setpoint', value });
+              setEligiendo(null);
+            }}
+          />
         )}
 
-        {valves.length > 0 && !canControl && (
-          <Text style={styles.note}>Tu rol puede ver el estado, pero no operar válvulas.</Text>
-        )}
-      </ScrollView>
+        <ValveResultDialog verdict={resultado} onClose={() => setResultado(null)} />
 
-      <ValveConfirmDialog
-        visible={pendiente !== null}
-        valveName={pendiente?.valve.name ?? ''}
-        plantName={plantName}
-        verb={pendiente?.verb ?? 'open'}
-        consigna={pendiente?.verb === 'setpoint' && pendiente.value !== undefined
-          ? { desde: pendiente.valve.positionPct, hasta: pendiente.value, unit: pendiente.valve.setpoint?.unit ?? null }
-          : undefined}
-        busy={pendiente !== null && busy === pendiente.valve.id}
-        // Una consigna se confirma con la apertura medida, que es lectura del propio equipo.
-        conLecturaDeEstado={pendiente?.verb === 'setpoint' ? true : conLecturaDeEstado}
-        onConfirm={() => void onConfirmar()}
-        onCancel={() => setPendiente(null)}
-      />
-
-      {/* Se MONTA al abrirlo (no solo `visible`): así arranca cada vez con la consigna vigente. */}
-      {eligiendo && (
-      <ValveSetpointDialog
-        visible
-        valveName={eligiendo.name}
-        plantName={plantName}
-        // La apertura en vivo, no la del momento de abrir el diálogo.
-        positionPct={valves.find((v) => v.id === eligiendo.id)?.positionPct ?? eligiendo.positionPct}
-        setpointPct={eligiendo.setpointPct}
-        limites={eligiendo.setpoint ?? { min: 0, max: 100, unit: '%' }}
-        onCancel={() => setEligiendo(null)}
-        onContinue={(value) => {
-          setPendiente({ plantId: selectedPlant.id, valve: eligiendo, verb: 'setpoint', value });
-          setEligiendo(null);
-        }}
-      />
-      )}
-
-      <ValveResultDialog verdict={resultado} onClose={() => setResultado(null)} />
-
-      <LiveBadge state={livenessState} loading={isLoading && !snapshot} integrationPending={integrationPending} />
-    </SafeAreaView>
+        <LiveBadge
+          state={livenessState}
+          loading={isLoading && !snapshot}
+          integrationPending={integrationPending}
+        />
+      </SafeAreaView>
+    </PlantPickerLayout>
   );
 }
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: Colors.surface },
+  safe: { flex: 1, minWidth: 0, backgroundColor: Colors.brand.page },
   centered: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 32, gap: 10 },
-  content: { padding: 14 },
-  sectionHeader: { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 12 },
-  plantName: { fontSize: 17, fontWeight: '800', color: Colors.textPrimary },
-  sectionSubtitle: { fontSize: 12, color: Colors.textSecondary, marginTop: 2 },
-  summary: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'flex-end', alignItems: 'center', maxWidth: '65%', marginTop: 4 },
+  content: { padding: 16, paddingBottom: 28 },
+  sectionHeader: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    justifyContent: 'space-between',
+    marginBottom: 12,
+  },
+  plantName: { fontSize: 22, lineHeight: 30, fontFamily: Fonts.semibold, color: Colors.brand.text },
+  sectionSubtitle: {
+    fontFamily: Fonts.regular,
+    fontSize: 13,
+    lineHeight: 20,
+    color: Colors.brand.textSecondary,
+    marginTop: 4,
+  },
+  summary: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'flex-end',
+    alignItems: 'center',
+    maxWidth: '65%',
+    marginTop: 4,
+  },
   summaryCount: { fontSize: 12, fontWeight: '700' },
   summaryDot: { color: Colors.textSecondary, fontSize: 12 },
   notice: {
@@ -312,6 +388,17 @@ const styles = StyleSheet.create({
   eventMsg: { fontSize: 11.5, lineHeight: 16, color: Colors.textSecondary, marginTop: 2 },
   loadingWrap: { paddingVertical: 44, alignItems: 'center', gap: 8 },
   loadingText: { color: Colors.textSecondary, fontSize: 14, textAlign: 'center' },
-  loadingSub: { color: Colors.textSecondary, fontSize: 12, textAlign: 'center', paddingHorizontal: 20 },
-  note: { fontSize: 12, color: Colors.textSecondary, textAlign: 'center', marginTop: 12, fontStyle: 'italic' },
+  loadingSub: {
+    color: Colors.textSecondary,
+    fontSize: 12,
+    textAlign: 'center',
+    paddingHorizontal: 20,
+  },
+  note: {
+    fontSize: 12,
+    color: Colors.textSecondary,
+    textAlign: 'center',
+    marginTop: 12,
+    fontStyle: 'italic',
+  },
 });

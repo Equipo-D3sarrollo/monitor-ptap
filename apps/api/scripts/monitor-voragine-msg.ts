@@ -41,7 +41,7 @@ import { resolverEndpoint } from './opc-endpoint';
 const NS_URI = 'AQUATECH4';
 
 /** Hijos de MSG_WRITE_INT_VORAGINE (g=6E45CF3A-…), del inventario del servidor. */
-const MSG: ReadonlyArray<[string, string]> = [
+const MSG: readonly [string, string][] = [
   ['EN', '7F083AC0-44B6-7714-56B8-49B58CF6CC52'],
   ['ST', '614CE682-7AB7-6579-C9D9-D09AEC67AE25'],
   ['DN', '5C424FA5-A3DD-2D8A-5126-0FBA34868E1A'],

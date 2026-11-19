@@ -435,7 +435,7 @@ export interface Muestra {
   /** INT_OUT_VORAGINE[0] tal cual llega (Int16 con signo), o null si no se pudo leer. */
   mando: number | null;
   /** INT_IN_VORAGINE[0..2]. */
-  estado: Array<number | null>;
+  estado: (number | null)[];
   caudalEntrada: number | null;
   caudalSalida: number | null;
   nivel: number | null;
@@ -482,11 +482,11 @@ interface BufferCrudo {
 interface PlantaCruda {
   plantId?: string;
   opcBuffers?: Record<string, BufferCrudo[]>;
-  signals?: Array<{
+  signals?: {
     domainKey?: string;
     writable?: boolean;
     write?: { target?: { channel?: string; sourceBuffer?: string; index?: number }; commands?: Record<string, unknown>; mode?: string; sustained?: unknown };
-  }>;
+  }[];
 }
 
 function plantaDelMapping(raw: unknown): PlantaCruda {
@@ -527,7 +527,7 @@ export function verificarContraMapping(raw: unknown): string[] {
     return [err instanceof Error ? err.message : String(err)];
   }
   const errores: string[] = [];
-  for (const [nombre, v] of Object.entries(VALVULAS) as Array<[Valvula, (typeof VALVULAS)[Valvula]]>) {
+  for (const [nombre, v] of Object.entries(VALVULAS) as [Valvula, (typeof VALVULAS)[Valvula]][]) {
     const s = (p.signals ?? []).find((x) => x.domainKey === v.domainKey);
     const w = s?.write;
     if (!s || !s.writable || !w) {

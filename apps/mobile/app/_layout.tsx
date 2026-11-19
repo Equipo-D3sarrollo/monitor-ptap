@@ -1,4 +1,5 @@
-import { Stack } from 'expo-router';
+import { Slot, Stack } from 'expo-router';
+import { Platform } from 'react-native';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { AuthProvider } from '../context/AuthContext';
 import { PlantProvider } from '../context/PlantContext';
@@ -25,7 +26,7 @@ export default function RootLayout() {
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
         <PlantProvider>
-          <Stack screenOptions={{ headerShown: false }} />
+          {Platform.OS === 'web' ? <Slot /> : <Stack screenOptions={{ headerShown: false }} />}
           {/* Pila de avisos no bloqueantes, montada UNA sola vez en la raíz para que también
               cubra las pantallas de (auth) — login y registro también dan feedback. */}
           <ToastHost />

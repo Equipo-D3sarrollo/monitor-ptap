@@ -289,7 +289,7 @@ test('reserva alcanzada y vacío congruente son hechos medidos aun sin historia'
 
 test('estabilización/llenado reciente y nivel que contradice volumen invalidan tendencia', () => {
   const [stock] = analizarAutonomia(voragine(), null);
-  const histories = [
+  const histories: MuestraTanque[][] = [
     [60, 59, 58, 57, 57, 57],
     [60, 59, 58, 57, 57.1, 57.2],
   ].map((volumes) => descenso().map((m, i) => ({ ...m, volumenM3: volumes[i], nivelM: volumes[i] / 40 })));
