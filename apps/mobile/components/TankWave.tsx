@@ -3,7 +3,7 @@ import { Animated, Easing, Platform, StyleSheet } from 'react-native';
 import Svg, { Path } from './WaterVector';
 import { wavePath } from './wave-path';
 import { useReducedMotion } from '../hooks/useReducedMotion';
-import Colors from '../constants/colors';
+import { useTheme } from '../context/ThemeContext';
 
 const WIDTH = 64;
 const HEIGHT = 10;
@@ -13,6 +13,7 @@ const CSS = '@keyframes aquora-tank-drift{from{transform:translateX(0)}to{transf
 /** La onda conserva su ciclo aunque lleguen lecturas nuevas al resto de la tarjeta. */
 export const TankWave = memo(function TankWave({ still }: { still: boolean }) {
   const reduced = useReducedMotion();
+  const { t } = useTheme();
   const moving = !reduced && !still;
   const [drift] = useState(() => new Animated.Value(0));
   const translateX = useMemo(() => drift.interpolate({ inputRange: [0, 1], outputRange: [0, -WIDTH] }), [drift]);
@@ -26,7 +27,7 @@ export const TankWave = memo(function TankWave({ still }: { still: boolean }) {
   }, [moving, drift]);
   if (!moving) return null;
   const wave = <Svg width={WIDTH * 2} height={HEIGHT} viewBox="0 0 400 100" preserveAspectRatio="none">
-    <Path d={PATH} fill={Colors.login.waveMid} />
+    <Path d={PATH} fill={t.agua} />
   </Svg>;
   if (Platform.OS === 'web') return <>
     {createElement('style', null, CSS)}

@@ -1,6 +1,6 @@
 import { memo, useEffect, useRef, useState } from 'react';
-import { Animated, Easing, Platform, StyleSheet, View } from 'react-native';
-import Colors from '../constants/colors';
+import { Animated, Easing, Platform, View } from 'react-native';
+import { estilosConTema } from '../context/ThemeContext';
 import { useReducedMotion } from '../hooks/useReducedMotion';
 
 export const SignalDistributionBar = memo(function SignalDistributionBar({
@@ -16,6 +16,7 @@ export const SignalDistributionBar = memo(function SignalDistributionBar({
   const [progress] = useState(() => new Animated.Value(ratio));
   const previous = useRef(ratio);
   const reduced = useReducedMotion();
+  const styles = useStyles();
   useEffect(() => {
     if (reduced || previous.current === ratio) {
       previous.current = ratio;
@@ -40,7 +41,7 @@ export const SignalDistributionBar = memo(function SignalDistributionBar({
     </View>
   );
 });
-const styles = StyleSheet.create({
-  track: { height: 8, backgroundColor: Colors.brand.divider, borderRadius: 4, overflow: 'hidden' },
+const useStyles = estilosConTema((t) => ({
+  track: { height: 8, backgroundColor: t.divisor, borderRadius: 4, overflow: 'hidden' },
   fill: { width: '100%', height: '100%', transformOrigin: 'left center' },
-});
+}));

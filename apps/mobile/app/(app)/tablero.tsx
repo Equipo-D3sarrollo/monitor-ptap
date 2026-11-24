@@ -5,7 +5,6 @@ import {
   Text,
   ScrollView,
   RefreshControl,
-  StyleSheet,
   TouchableOpacity,
   useWindowDimensions,
 } from 'react-native';
@@ -32,7 +31,6 @@ import { DashboardSummary } from '../../components/DashboardSummary';
 import { GroupHeader } from '../../components/GroupHeader';
 import { DashboardSkeleton } from '../../components/Skeleton';
 import { OfflineNotice } from '../../components/OfflineNotice';
-import Colors from '../../constants/colors';
 import { Fonts } from '../../constants/fonts';
 import { groupTanks, tanksFromSnapshot } from '../../services/tanks';
 import { cardKindFor } from '../../services/signal-kind';
@@ -46,6 +44,7 @@ import { setCompact, toggleGroup, useDashboardPrefs } from '../../services/dashb
 import { formatUnit } from '../../services/units';
 import { ESPERA_MAXIMA_MS } from '../../services/load-wait';
 import { useLoadWait } from '../../hooks/useLoadWait';
+import { estilosConTema, useTheme } from '../../context/ThemeContext';
 
 /** Formato numérico es-CO, igual que las tarjetas. */
 const fmt = new Intl.NumberFormat('es-CO', {
@@ -75,6 +74,8 @@ const ICONS: Record<string, string> = {
 };
 
 export default function TableroScreen() {
+  const { t } = useTheme();
+  const styles = useStyles();
   const { selectedPlant } = usePlant();
   const { hasPermission, user } = useAuth();
   const canView = hasPermission('view_dashboard');
@@ -157,19 +158,19 @@ export default function TableroScreen() {
         alert: hasRangeAnomaly(sig),
       });
     };
-    add('inletFlow1', 'Caudal de entrada', Colors.brand.inflow);
-    add('outletFlow1', 'Caudal de salida', Colors.brand.outflow);
+    add('inletFlow1', 'Caudal de entrada', t.entrada);
+    add('outletFlow1', 'Caudal de salida', t.salida);
     if (signals.length > 0) {
       out.push({
         key: 'anomalies',
         label: 'Fuera de rango',
         value: String(summary.anomalies),
-        color: Colors.brand.text,
+        color: t.texto,
         alert: summary.anomalies > 0,
       });
     }
     return out;
-  }, [snapshot, signals.length, summary.anomalies]);
+  }, [snapshot, signals.length, summary.anomalies, t]);
 
   // Guard de rol: el tablero detallado es para operador/jefe/admin. El Civil (solo estado
   // básico) no entra aquí ni siquiera por navegación directa. El backend igual responde 403.
@@ -177,7 +178,7 @@ export default function TableroScreen() {
     return (
       <SafeAreaView style={styles.safe} edges={['bottom']}>
         <View style={styles.centered}>
-          <Ionicons name="lock-closed-outline" size={40} color={Colors.textSecondary} />
+          <Ionicons name="lock-closed-outline" size={40} color={t.antTextoSec} />
           <Text style={styles.plantName}>Acceso restringido</Text>
           <Text style={styles.sectionSubtitle}>
             El tablero detallado no está disponible para tu rol.
@@ -203,8 +204,8 @@ export default function TableroScreen() {
             onRefresh={() => {
               void refetch();
             }}
-            colors={[Colors.primary]}
-            tintColor={Colors.primary}
+            colors={[t.antPrimario]}
+            tintColor={t.antPrimario}
           />
         }
       >
@@ -232,7 +233,7 @@ export default function TableroScreen() {
                     <Ionicons
                       name={prefs.compact ? 'list-outline' : 'grid-outline'}
                       size={18}
-                      color={Colors.brand.textSecondary}
+                      color={t.textoSec}
                     />
                   </TouchableOpacity>
                 )}
@@ -266,7 +267,7 @@ export default function TableroScreen() {
         ) : isLoading && !snapshot ? (
           <View>
             <View style={styles.loadingRow} accessibilityLiveRegion="polite">
-              <ActivityIndicator size="small" color={Colors.brand.link} />
+              <ActivityIndicator size="small" color={t.enlace} />
               <Text style={styles.loadingText}>Consultando {selectedPlant.name}…</Text>
             </View>
             <DashboardSkeleton />
@@ -432,6 +433,7 @@ export default function TableroScreen() {
 /** Reloj aislado: el tick de 1 s re-renderiza SOLO este texto, no todo el tablero (antes
  *  `useTime()` en la pantalla recomputaba señales/tanques cada segundo). */
 function Clock() {
+  const styles = useStyles();
   const time = useTime();
   return (
     <Text style={styles.clock}>
@@ -440,9 +442,9 @@ function Clock() {
   );
 }
 
-const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: Colors.brand.page },
-  row: { flex: 1, flexDirection: 'row', backgroundColor: Colors.brand.page },
+const useStyles = estilosConTema((t) => ({
+  safe: { flex: 1, backgroundColor: t.fondo },
+  row: { flex: 1, flexDirection: 'row', backgroundColor: t.fondo },
   centered: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 32, gap: 10 },
   content: { padding: 16, paddingBottom: 28 },
   scrollHeader: { marginHorizontal: -16, marginTop: -16, marginBottom: 12 },
@@ -453,13 +455,13 @@ const styles = StyleSheet.create({
     marginBottom: 14,
     paddingHorizontal: 4,
   },
-  plantName: { fontSize: 17, fontWeight: '800', color: Colors.textPrimary },
-  sectionSubtitle: { fontSize: 12, color: Colors.textSecondary, marginTop: 2 },
+  plantName: { fontSize: 17, fontWeight: '800', color: t.antTexto },
+  sectionSubtitle: { fontSize: 12, color: t.antTextoSec, marginTop: 2 },
   densityBtn: {
     width: 44,
     height: 44,
     borderWidth: 1,
-    borderColor: Colors.brand.cardBorder,
+    borderColor: t.bordeSuave,
     borderRadius: 12,
     alignItems: 'center',
     justifyContent: 'center',
@@ -467,14 +469,14 @@ const styles = StyleSheet.create({
   clock: {
     fontFamily: Fonts.medium,
     fontSize: 13,
-    color: Colors.brand.textSecondary,
+    color: t.textoSec,
     fontVariant: ['tabular-nums'],
   },
   grid: { flexDirection: 'row', flexWrap: 'wrap', marginBottom: 8 },
-  tankSectionTitle: { fontFamily: Fonts.semibold, fontSize: 16, lineHeight: 24, color: Colors.brand.text, marginHorizontal: 8, marginBottom: 8 },
-  tankSectionNote: { fontFamily: Fonts.regular, fontSize: 13, lineHeight: 20, color: Colors.brand.textSecondary, marginHorizontal: 8, marginBottom: 12 },
-  externalTankSection: { borderTopWidth: 1, borderTopColor: Colors.brand.divider, paddingTop: 16, marginTop: 8 },
-  externalTankLabel: { fontFamily: Fonts.medium, fontSize: 12, lineHeight: 18, color: Colors.brand.textSecondary, marginHorizontal: 8, marginBottom: 4 },
+  tankSectionTitle: { fontFamily: Fonts.semibold, fontSize: 16, lineHeight: 24, color: t.texto, marginHorizontal: 8, marginBottom: 8 },
+  tankSectionNote: { fontFamily: Fonts.regular, fontSize: 13, lineHeight: 20, color: t.textoSec, marginHorizontal: 8, marginBottom: 12 },
+  externalTankSection: { borderTopWidth: 1, borderTopColor: t.divisor, paddingTop: 16, marginTop: 8 },
+  externalTankLabel: { fontFamily: Fonts.medium, fontSize: 12, lineHeight: 18, color: t.textoSec, marginHorizontal: 8, marginBottom: 4 },
   cell: { width: '50%' },
   /** Fila entera: para los tanques en pantallas estrechas, donde el texto largo no cabe a la mitad. */
   cellFull: { width: '100%' },
@@ -485,14 +487,14 @@ const styles = StyleSheet.create({
     marginHorizontal: 8,
     marginBottom: 8,
   },
-  loadingText: { fontFamily: Fonts.regular, fontSize: 14, color: Colors.brand.textSecondary },
+  loadingText: { fontFamily: Fonts.regular, fontSize: 14, color: t.textoSec },
   info: { paddingVertical: 48, alignItems: 'center', gap: 6 },
-  infoText: { color: Colors.textSecondary, fontSize: 14, textAlign: 'center' },
+  infoText: { color: t.antTextoSec, fontSize: 14, textAlign: 'center' },
   infoSub: {
-    color: Colors.textSecondary,
+    color: t.antTextoSec,
     fontSize: 12,
     marginTop: 6,
     textAlign: 'center',
     paddingHorizontal: 20,
   },
-});
+}));

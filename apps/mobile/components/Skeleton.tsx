@@ -1,6 +1,6 @@
 import { memo, useEffect, useState } from 'react';
-import { View, Animated, Easing, Platform, StyleSheet, type ViewStyle } from 'react-native';
-import Colors from '../constants/colors';
+import { View, Animated, Easing, Platform, type ViewStyle } from 'react-native';
+import { estilosConTema } from '../context/ThemeContext';
 import { useReducedMotion } from '../hooks/useReducedMotion';
 
 /**
@@ -31,6 +31,7 @@ function usePulse(): Animated.Value {
 }
 
 function SkeletonBlock({ pulse, style }: { pulse: Animated.Value; style?: ViewStyle }) {
+  const styles = useStyles();
   return <Animated.View style={[styles.block, style, { opacity: pulse }]} />;
 }
 
@@ -45,6 +46,7 @@ function SkeletonBlock({ pulse, style }: { pulse: Animated.Value; style?: ViewSt
  */
 function DashboardSkeletonBase({ cards = 6 }: { cards?: number }) {
   const pulse = usePulse();
+  const styles = useStyles();
   return (
     <View
       style={styles.grid}
@@ -63,6 +65,7 @@ function DashboardSkeletonBase({ cards = 6 }: { cards?: number }) {
 /** Filas fantasma, con la forma de la lista de electroválvulas. Comparten un solo pulso. */
 function ListSkeletonBase({ rows = 4, label }: { rows?: number; label: string }) {
   const pulse = usePulse();
+  const styles = useStyles();
   return (
     <View accessibilityRole="progressbar" accessibilityLabel={label}>
       {Array.from({ length: rows }, (_, i) => (
@@ -75,15 +78,15 @@ function ListSkeletonBase({ rows = 4, label }: { rows?: number; label: string })
 export const DashboardSkeleton = memo(DashboardSkeletonBase);
 export const ListSkeleton = memo(ListSkeletonBase);
 
-const styles = StyleSheet.create({
+const useStyles = estilosConTema((t) => ({
   block: {
-    backgroundColor: Colors.bg,
+    backgroundColor: t.antFondo,
     borderWidth: 1,
-    borderColor: Colors.divider,
+    borderColor: t.antDivisor,
     borderRadius: 16,
   },
   grid: { flexDirection: 'row', flexWrap: 'wrap' },
   cell: { width: '50%' },
   card: { height: 150, margin: 5 },
   row: { height: 82, marginBottom: 8, borderRadius: 14 },
-});
+}));

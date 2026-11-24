@@ -1,7 +1,7 @@
 import { memo } from 'react';
-import { View, Text, StyleSheet } from 'react-native';
+import { View, Text } from 'react-native';
 import Ionicons from './AppIcon';
-import Colors from '../constants/colors';
+import { estilosConTema, useTheme } from '../context/ThemeContext';
 
 /**
  * Titular del tablero: cuántas señales hay, cuántas están fuera de rango y cuántas sin dato.
@@ -25,6 +25,8 @@ function DashboardSummaryBase({
   compact: boolean;
 }) {
   const allGood = anomalies === 0 && noData === 0;
+  const { t } = useTheme();
+  const styles = useStyles();
 
   return (
     <View
@@ -36,16 +38,16 @@ function DashboardSummaryBase({
           : `${total} señales. ${anomalies} fuera de rango. ${noData} sin dato.`
       }
     >
-      <Stat icon="analytics-outline" color={Colors.textSecondary} value={total} label="señales" />
+      <Stat icon="analytics-outline" color={t.antTextoSec} value={total} label="señales" />
       <Stat
         icon={anomalies > 0 ? 'alert-circle' : 'checkmark-circle-outline'}
-        color={anomalies > 0 ? Colors.danger : Colors.success}
+        color={anomalies > 0 ? t.antPeligro : t.antExito}
         value={anomalies}
         label="fuera de rango"
       />
       <Stat
         icon="help-circle-outline"
-        color={noData > 0 ? Colors.warning : Colors.textSecondary}
+        color={noData > 0 ? t.antAdvertencia : t.antTextoSec}
         value={noData}
         label="sin dato"
       />
@@ -69,6 +71,7 @@ function Stat({
   value: number;
   label: string;
 }) {
+  const styles = useStyles();
   return (
     <View style={styles.stat}>
       <Ionicons name={icon} size={15} color={color} />
@@ -80,15 +83,15 @@ function Stat({
 
 export const DashboardSummary = memo(DashboardSummaryBase);
 
-const styles = StyleSheet.create({
+const useStyles = estilosConTema((t) => ({
   strip: {
     flexDirection: 'row',
     alignItems: 'center',
     flexWrap: 'wrap',
     gap: 14,
-    backgroundColor: Colors.bg,
+    backgroundColor: t.antFondo,
     borderWidth: 1,
-    borderColor: Colors.divider,
+    borderColor: t.antDivisor,
     borderRadius: 12,
     paddingHorizontal: 12,
     paddingVertical: 10,
@@ -96,14 +99,14 @@ const styles = StyleSheet.create({
   },
   stat: { flexDirection: 'row', alignItems: 'center', gap: 5 },
   statValue: { fontSize: 15, fontWeight: '800', fontVariant: ['tabular-nums'] },
-  statLabel: { fontSize: 12, color: Colors.textSecondary },
+  statLabel: { fontSize: 12, color: t.antTextoSec },
   compactTag: {
     marginLeft: 'auto',
     borderWidth: 1,
-    borderColor: Colors.divider,
+    borderColor: t.antDivisor,
     borderRadius: 6,
     paddingHorizontal: 6,
     paddingVertical: 1,
   },
-  compactTagText: { fontSize: 11, color: Colors.textSecondary, fontWeight: '600' },
-});
+  compactTagText: { fontSize: 11, color: t.antTextoSec, fontWeight: '600' },
+}));

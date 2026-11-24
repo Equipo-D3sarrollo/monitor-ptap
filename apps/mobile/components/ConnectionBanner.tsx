@@ -1,10 +1,11 @@
 import { memo } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import { View, Text, TouchableOpacity } from 'react-native';
 import Ionicons from './AppIcon';
 import { router } from 'expo-router';
 import { CONNECTION_CODES } from '@ptap/shared';
-import Colors from '../constants/colors';
 import { useAuth } from '../context/AuthContext';
+import type { Paleta } from '../constants/theme';
+import { estilosConTema, useTheme } from '../context/ThemeContext';
 import { useClientNetworkStatus } from '../hooks/useClientNetworkStatus';
 import { plcFaultForBanner } from '../services/plant-status';
 
@@ -127,11 +128,13 @@ function ConnectionBannerBase({
 /** Props primitivas (incluida `integrationPending`): el `memo` de fábrica basta. */
 export const ConnectionBanner = memo(ConnectionBannerBase);
 
-const TONE_COLOR: Record<Tone, string> = {
-  danger: Colors.danger,
-  warning: Colors.warning,
-  neutral: Colors.neutral,
-};
+/** Color del borde y el ícono (`marca`) y del título (`texto`) por tono. El título rojo usa el rojo
+ *  para TEXTO: el rojo de bordes no llega a 4,5:1 sobre el fondo oscuro. */
+function tonoDe(t: Paleta, tone: Tone): { marca: string; texto: string } {
+  if (tone === 'danger') return { marca: t.critico, texto: t.criticoTexto };
+  if (tone === 'warning') return { marca: t.antAdvertencia, texto: t.antAdvertencia };
+  return { marca: t.antNeutro, texto: t.antTextoSec };
+}
 
 function Banner({
   code,
@@ -146,7 +149,9 @@ function Banner({
   title: string;
   detail: string;
 }) {
-  const color = TONE_COLOR[tone];
+  const { t } = useTheme();
+  const styles = useStyles();
+  const { marca: color, texto } = tonoDe(t, tone);
   return (
     <View
       style={[styles.banner, { backgroundColor: color + '12', borderLeftColor: color }]}
@@ -160,7 +165,7 @@ function Banner({
       <Ionicons name={icon} size={20} color={color} />
       <View style={styles.texts}>
         <View style={styles.titleRow}>
-          <Text style={[styles.title, { color }]}>{title}</Text>
+          <Text style={[styles.title, { color: texto }]}>{title}</Text>
           <Text style={styles.code}>{code}</Text>
         </View>
         <Text style={styles.detail}>{detail}</Text>
@@ -169,7 +174,7 @@ function Banner({
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = estilosConTema((t) => ({
   banner: {
     flexDirection: 'row',
     gap: 10,
@@ -185,6 +190,6 @@ const styles = StyleSheet.create({
   titleRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8 },
   title: { flex: 1, fontSize: 14, fontWeight: '700' },
   // Código discreto pero copiable/dictable, para reportar con precisión (ver CATALOGO_ERRORES.md).
-  code: { fontSize: 12, fontWeight: '700', color: Colors.textSecondary, letterSpacing: 0.5 },
-  detail: { fontSize: 12.5, lineHeight: 18, color: Colors.textSecondary },
-});
+  code: { fontSize: 12, fontWeight: '700', color: t.antTextoSec, letterSpacing: 0.5 },
+  detail: { fontSize: 12.5, lineHeight: 18, color: t.antTextoSec },
+}));

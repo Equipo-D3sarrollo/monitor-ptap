@@ -1,4 +1,4 @@
-import { View, Text, StyleSheet, Animated, Easing } from 'react-native';
+import { View, Text, Animated, Easing } from 'react-native';
 import { memo, useEffect, useRef, useState } from 'react';
 import Ionicons from './AppIcon';
 import { TankWave } from './TankWave';
@@ -6,15 +6,11 @@ import { tankAutonomyText } from '../services/tank-autonomy';
 import type { TankView } from '../services/tanks';
 import { isAutonomyLow, tankFill, tankState } from '../services/card-look';
 import { useStateFlash } from '../hooks/useStateFlash';
-import Colors from '../constants/colors';
 import { Fonts } from '../constants/fonts';
+import { estilosConTema, sombraTarjeta, useTheme } from '../context/ThemeContext';
 import { BotonSilencio } from './BotonSilencio';
 import { sameTankCard } from './memo-compare';
 import { useReducedMotion } from '../hooks/useReducedMotion';
-
-const B = Colors.brand;
-/** Agua del tanque: el azul medio de las olas del login. */
-const WATER = Colors.login.waveMid;
 
 /** Cambio de nivel por debajo del cual no vale la pena animar (en puntos porcentuales).
  *  La animación de ancho NO puede usar el driver nativo, así que cada tween corre en el hilo de
@@ -44,6 +40,8 @@ function sujetoDelTanque(id: string): string | null {
 }
 
 function TankGaugeCardBase({ tank, frozen = false, still = false, plantId }: Props) {
+  const { t } = useTheme();
+  const styles = useStyles();
   const reducedMotion = useReducedMotion();
   // percentage llega null hasta que la planta confirme la capacidad real del tanque;
   // en ese caso NO se dibuja % de llenado (sería inventado), solo nivel y volumen reales.
@@ -133,7 +131,7 @@ function TankGaugeCardBase({ tank, frozen = false, still = false, plantId }: Pro
               {pct > 0 && <TankWave still={still || frozen} />}
             </Animated.View>
           ) : (
-            <Ionicons name="help" size={22} color={B.gray} style={styles.tankHelp} />
+            <Ionicons name="help" size={22} color={t.integracion} style={styles.tankHelp} />
           )}
           {tank.levelOpMax !== null && fill.kind !== 'unconfirmed' && (
             <View style={styles.maxMark} />
@@ -159,7 +157,7 @@ function TankGaugeCardBase({ tank, frozen = false, still = false, plantId }: Pro
             </>
           ) : (
             // El número es el REAL, sin recortar: si marca 106 % hay que verlo, no esconderlo.
-            <Text style={[styles.big, outOfRange && { color: B.dangerText }]}>
+            <Text style={[styles.big, outOfRange && { color: t.criticoTexto }]}>
               {Math.round(pctReal as number)}
               <Text style={styles.unit}> %</Text>
             </Text>
@@ -167,8 +165,8 @@ function TankGaugeCardBase({ tank, frozen = false, still = false, plantId }: Pro
 
           {fill.kind === 'overflow' && (
             <View style={styles.tag}>
-              <Ionicons name="alert-circle" size={13} color={Colors.danger} />
-              <Text style={[styles.tagText, { color: B.dangerText }]}>
+              <Ionicons name="alert-circle" size={13} color={t.critico} />
+              <Text style={[styles.tagText, { color: t.criticoTexto }]}>
                 Rebose: por encima del máximo (
                 {tank.levelOpMax !== null ? `${fmtM(tank.levelOpMax)} m` : '—'}). Puede ser un
                 rebose, un error de lectura o un máximo incorrecto. Verifica en planta.
@@ -177,13 +175,13 @@ function TankGaugeCardBase({ tank, frozen = false, still = false, plantId }: Pro
           )}
           {outOfRange && fill.kind !== 'overflow' && (
             <View style={styles.tag}>
-              <Ionicons name="alert-circle" size={13} color={Colors.danger} />
-              <Text style={[styles.tagText, { color: B.dangerText }]}>Fuera de rango</Text>
+              <Ionicons name="alert-circle" size={13} color={t.critico} />
+              <Text style={[styles.tagText, { color: t.criticoTexto }]}>Fuera de rango</Text>
             </View>
           )}
           {frozen && (
             <View style={styles.tag}>
-              <Ionicons name="time-outline" size={13} color={B.gray} />
+              <Ionicons name="time-outline" size={13} color={t.integracion} />
               <Text style={styles.tagText}>Congelado</Text>
             </View>
           )}
@@ -239,17 +237,19 @@ function InfoRow({
   hint?: string;
   warn?: boolean;
 }) {
+  const { t } = useTheme();
+  const styles = useStyles();
   return (
     <View>
       <View style={styles.infoRow}>
         <View style={styles.infoLabelRow}>
-          {warn && <Ionicons name="time-outline" size={13} color={B.yellow} />}
-          <Text style={[styles.infoLabel, warn && { color: B.yellow }]}>
+          {warn && <Ionicons name="time-outline" size={13} color={t.alerta} />}
+          <Text style={[styles.infoLabel, warn && { color: t.alerta }]}>
             {label}
             {warn ? ' · baja' : ''}
           </Text>
         </View>
-        <Text style={[styles.infoValue, warn && { color: B.yellow }]}>{value}</Text>
+        <Text style={[styles.infoValue, warn && { color: t.alerta }]}>{value}</Text>
       </View>
       {/* El pie dice de dónde sale el número. Sin él, "4 h" con la entrada abierta se leería como
           una cuenta atrás cuando en realidad el tanque no se está vaciando. */}
@@ -258,18 +258,19 @@ function InfoRow({
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = estilosConTema((t, nombre) => ({
   card: {
     flex: 1,
     margin: 5,
     padding: 16,
-    backgroundColor: B.card,
+    backgroundColor: t.superficie,
     borderRadius: 16,
     borderWidth: 1,
-    borderColor: '#1B3044',
+    borderColor: t.bordeTarjeta,
     overflow: 'hidden',
+    ...sombraTarjeta(nombre),
   },
-  cardAnomaly: { borderColor: Colors.danger, borderWidth: 1.5 },
+  cardAnomaly: { borderColor: t.critico, borderWidth: 1.5 },
   cardFrozen: { borderStyle: 'dashed' },
   flash: {
     position: 'absolute',
@@ -277,7 +278,7 @@ const styles = StyleSheet.create({
     right: 0,
     bottom: 0,
     left: 0,
-    backgroundColor: 'rgba(36,145,204,0.12)',
+    backgroundColor: t.destelloTanque,
   },
   row: { flexDirection: 'row', gap: 16, alignItems: 'center', marginBottom: 12 },
   tank: {
@@ -285,16 +286,23 @@ const styles = StyleSheet.create({
     height: 92,
     borderWidth: 2,
     borderTopWidth: 0,
-    borderColor: B.searchBorder,
+    borderColor: t.bordeControl,
     borderBottomLeftRadius: 10,
     borderBottomRightRadius: 10,
     overflow: 'hidden',
     justifyContent: 'flex-end',
   },
   tankUnknown: { borderStyle: 'dashed', justifyContent: 'center', alignItems: 'center' },
-  tankOverflow: { borderColor: Colors.danger },
+  tankOverflow: { borderColor: t.critico },
   tankHelp: { alignSelf: 'center' },
-  water: { width: '100%', backgroundColor: WATER },
+  // Línea de la superficie del agua (1,5 px, color de marca): el relleno solo no llega a 3:1 contra
+  // la tarjeta oscura, y sin borde el nivel se lee peor. En los dos temas.
+  water: {
+    width: '100%',
+    backgroundColor: t.agua,
+    borderTopWidth: 1.5,
+    borderTopColor: t.aguaSuperficie,
+  },
   infoLabelRow: { flexDirection: 'row', alignItems: 'center', gap: 4, flexShrink: 1 },
   maxMark: {
     position: 'absolute',
@@ -303,23 +311,23 @@ const styles = StyleSheet.create({
     top: 0,
     borderTopWidth: 1,
     borderStyle: 'dashed',
-    borderColor: B.textSecondary,
+    borderColor: t.textoSec,
     opacity: 0.6,
   },
   body: { flex: 1, minWidth: 0, gap: 4 },
   nameRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  name: { flex: 1, fontFamily: Fonts.semibold, fontSize: 15, color: B.text },
+  name: { flex: 1, fontFamily: Fonts.semibold, fontSize: 15, color: t.texto },
   big: {
     fontFamily: Fonts.semibold,
     fontSize: 30,
     lineHeight: 38,
-    color: B.text,
+    color: t.texto,
     fontVariant: ['tabular-nums'],
   },
-  unit: { fontFamily: Fonts.regular, fontSize: 15, color: B.textSecondary },
-  muted: { fontFamily: Fonts.medium, fontSize: 13, color: B.textSecondary },
+  unit: { fontFamily: Fonts.regular, fontSize: 15, color: t.textoSec },
+  muted: { fontFamily: Fonts.medium, fontSize: 13, color: t.textoSec },
   tag: { flexDirection: 'row', alignItems: 'flex-start', gap: 4 },
-  tagText: { flex: 1, fontFamily: Fonts.medium, fontSize: 12, color: B.textSecondary },
+  tagText: { flex: 1, fontFamily: Fonts.medium, fontSize: 12, color: t.textoSec },
   info: { gap: 4 },
   /**
    * Etiqueta a la izquierda, valor a la derecha — y si no caben juntos, el valor baja ENTERO a su
@@ -330,11 +338,11 @@ const styles = StyleSheet.create({
    * que salte de línea en bloque en vez de romperse; el `gap` garantiza que nunca se toquen.
    */
   infoRow: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', gap: 8 },
-  infoLabel: { fontFamily: Fonts.regular, fontSize: 12, color: B.textSecondary, flexShrink: 1 },
+  infoLabel: { fontFamily: Fonts.regular, fontSize: 12, color: t.textoSec, flexShrink: 1 },
   infoValue: {
     fontFamily: Fonts.medium,
     fontSize: 12,
-    color: B.text,
+    color: t.texto,
     flexGrow: 1,
     // Por debajo de esto no se comprime: prefiere bajar de línea antes que quedar en una columna
     // de dos caracteres.
@@ -344,8 +352,8 @@ const styles = StyleSheet.create({
   infoHint: {
     fontFamily: Fonts.regular,
     fontSize: 11,
-    color: B.textSecondary,
+    color: t.textoSec,
     marginTop: -2,
     marginBottom: 2,
   },
-});
+}));

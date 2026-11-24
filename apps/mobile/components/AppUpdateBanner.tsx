@@ -1,12 +1,12 @@
 import { useEffect, useState } from 'react';
-import { Linking, Platform, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import Colors from '../constants/colors';
+import { Linking, Platform, Text, TouchableOpacity, View } from 'react-native';
 import {
   fetchAppRelease,
   hayActualizacionInstalada,
   tamanoLegible,
   type AppRelease,
 } from '../services/app-release';
+import { estilosConTema } from '../context/ThemeContext';
 
 /**
  * Franja de descarga/actualización de la app.
@@ -26,6 +26,7 @@ import {
 type Modo = 'descarga' | 'actualizacion';
 
 export function AppUpdateBanner({ modo }: { modo: Modo }) {
+  const styles = useStyles();
   const [release, setRelease] = useState<AppRelease | null>(null);
 
   useEffect(() => {
@@ -76,24 +77,24 @@ export function AppUpdateBanner({ modo }: { modo: Modo }) {
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = estilosConTema((t) => ({
   caja: {
     marginTop: 20,
     padding: 14,
     borderRadius: 10,
     borderWidth: 1,
-    borderColor: Colors.divider,
-    backgroundColor: Colors.surface,
+    borderColor: t.antDivisor,
+    backgroundColor: t.antSuperficie,
   },
-  titulo: { color: Colors.textPrimary, fontWeight: '700', fontSize: 14, textAlign: 'center' },
-  detalle: { color: Colors.textSecondary, fontSize: 12, textAlign: 'center', marginTop: 4 },
+  titulo: { color: t.antTexto, fontWeight: '700', fontSize: 14, textAlign: 'center' },
+  detalle: { color: t.antTextoSec, fontSize: 12, textAlign: 'center', marginTop: 4 },
   boton: {
     marginTop: 10,
     paddingVertical: 10,
     borderRadius: 8,
     borderWidth: 1,
-    borderColor: Colors.primary,
+    borderColor: t.antPrimario,
     alignItems: 'center',
   },
-  botonTexto: { color: Colors.primary, fontWeight: '700', fontSize: 14 },
-});
+  botonTexto: { color: t.antPrimario, fontWeight: '700', fontSize: 14 },
+}));

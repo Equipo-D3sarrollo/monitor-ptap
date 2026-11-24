@@ -1,8 +1,8 @@
 import { memo } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import { View, Text, TouchableOpacity } from 'react-native';
 import Ionicons from './AppIcon';
-import Colors from '../constants/colors';
 import { Fonts } from '../constants/fonts';
+import { estilosConTema, useTheme } from '../context/ThemeContext';
 import { motivoBloqueo, type GroupId } from '../services/signal-groups';
 
 /**
@@ -36,9 +36,11 @@ function GroupHeaderBase({
   collapsed: boolean;
   onToggle: (id: GroupId) => void;
 }) {
+  const { t } = useTheme();
+  const styles = useStyles();
   const bloqueo = motivoBloqueo(anomalyCount, noDataCount);
   const motivo = bloqueo.texto;
-  const colorBloqueo = bloqueo.tono === 'critico' ? Colors.brand.dangerText : Colors.textSecondary;
+  const colorBloqueo = bloqueo.tono === 'critico' ? t.criticoTexto : t.antTextoSec;
 
   const body = (
     <View style={styles.row}>
@@ -49,7 +51,7 @@ function GroupHeaderBase({
 
       {anomalyCount > 0 && (
         <View style={styles.alertPill}>
-          <Ionicons name="alert-circle" size={12} color={Colors.danger} />
+          <Ionicons name="alert-circle" size={12} color={t.critico} />
           <Text style={styles.alertText}>{anomalyCount}</Text>
         </View>
       )}
@@ -65,7 +67,7 @@ function GroupHeaderBase({
         <Ionicons
           name={collapsed ? 'chevron-down' : 'chevron-up'}
           size={18}
-          color={Colors.textSecondary}
+          color={t.antTextoSec}
         />
       )}
     </View>
@@ -99,12 +101,12 @@ function GroupHeaderBase({
 
 export const GroupHeader = memo(GroupHeaderBase);
 
-const styles = StyleSheet.create({
+const useStyles = estilosConTema((t) => ({
   header: { paddingHorizontal: 5, paddingVertical: 8, marginTop: 4 },
   row: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  title: { fontFamily: Fonts.semibold, fontSize: 13, color: Colors.textPrimary, letterSpacing: 0.3 },
+  title: { fontFamily: Fonts.semibold, fontSize: 13, color: t.antTexto, letterSpacing: 0.3 },
   countPill: {
-    backgroundColor: Colors.surface,
+    backgroundColor: t.antSuperficie,
     borderRadius: 8,
     paddingHorizontal: 7,
     paddingVertical: 1,
@@ -112,14 +114,14 @@ const styles = StyleSheet.create({
   countText: {
     fontFamily: Fonts.semibold,
     fontSize: 12,
-    color: Colors.textSecondary,
+    color: t.antTextoSec,
     fontVariant: ['tabular-nums'],
   },
   alertPill: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 3,
-    backgroundColor: Colors.danger + '18',
+    backgroundColor: t.critico + '18',
     borderRadius: 8,
     paddingHorizontal: 6,
     paddingVertical: 1,
@@ -127,10 +129,10 @@ const styles = StyleSheet.create({
   alertText: {
     fontFamily: Fonts.semibold,
     fontSize: 12,
-    color: Colors.brand.dangerText,
+    color: t.criticoTexto,
     fontVariant: ['tabular-nums'],
   },
   spacer: { flex: 1 },
   lockRow: { flexDirection: 'row', alignItems: 'center', gap: 4 },
   lockText: { fontFamily: Fonts.regular, fontSize: 12 },
-});
+}));

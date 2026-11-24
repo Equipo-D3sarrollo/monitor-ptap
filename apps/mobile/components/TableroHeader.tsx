@@ -1,13 +1,12 @@
 import type { ReactNode } from 'react';
-import { StyleSheet, Text, View, useWindowDimensions } from 'react-native';
+import { Text, View, useWindowDimensions } from 'react-native';
 import Ionicons from './AppIcon';
-import Colors from '../constants/colors';
 import { Fonts } from '../constants/fonts';
+import { estilosConTema, useTheme } from '../context/ThemeContext';
 import type { PlantStatus } from '../services/plant-status';
 import { formatSince } from '../services/plant-status';
 import { PlantPickerTrigger } from './PlantPicker';
 
-const B = Colors.brand;
 /** Controles en fila para escritorio y apilados en pantallas estrechas. */
 const KPI_MIN_WIDTH = 768;
 
@@ -37,10 +36,12 @@ export function TableroHeader({
   /** Controles a la derecha de la fila superior (reloj, densidad). */
   right?: ReactNode;
 }) {
+  const { t } = useTheme();
+  const styles = useStyles();
   const { width } = useWindowDimensions();
   const wide = width >= KPI_MIN_WIDTH;
-  const tone = status ? (status.tone === 'ok' ? B.green : B.gray) : B.gray;
-  const toneText = status?.tone === 'ok' ? B.green : B.textSecondary;
+  const tone = status ? (status.tone === 'ok' ? t.enVivo : t.integracion) : t.integracion;
+  const toneText = status?.tone === 'ok' ? t.enVivo : t.textoSec;
   // "Sin datos desde…" ya lleva su hora; a "En vivo"/"Estable" se le añade la del último cambio.
   const since =
     status?.online && lastChangeAt ? ` · último cambio ${formatSince(lastChangeAt)}` : '';
@@ -50,9 +51,9 @@ export function TableroHeader({
       <View style={[styles.content, wide && styles.contentWide]}>
         <View style={styles.identity}>
           <View style={styles.brandBar} accessible={false}>
-            <View style={[styles.brandSeg, { flex: 55, backgroundColor: B.blue }]} />
-            <View style={[styles.brandSeg, { flex: 30, backgroundColor: B.green }]} />
-            <View style={[styles.brandSeg, { flex: 15, backgroundColor: B.yellow }]} />
+            <View style={[styles.brandSeg, { flex: 55, backgroundColor: t.marca }]} />
+            <View style={[styles.brandSeg, { flex: 30, backgroundColor: t.marcaVerde }]} />
+            <View style={[styles.brandSeg, { flex: 15, backgroundColor: t.marcaAmarillo }]} />
           </View>
           <PlantPickerTrigger
             name={plantName}
@@ -96,7 +97,7 @@ export function TableroHeader({
                   style={[
                     styles.kpiValue,
                     !wide && styles.kpiValueNarrow,
-                    { color: k.alert ? B.dangerText : k.color },
+                    { color: k.alert ? t.criticoTexto : k.color },
                   ]}
                 >
                   {k.value}
@@ -111,11 +112,11 @@ export function TableroHeader({
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = estilosConTema((t) => ({
   header: {
-    backgroundColor: B.panel,
+    backgroundColor: t.panel,
     borderBottomWidth: 1,
-    borderBottomColor: B.divider,
+    borderBottomColor: t.divisor,
     overflow: 'hidden',
   },
   headerWide: { paddingHorizontal: 32, paddingTop: 20, paddingBottom: 24 },
@@ -135,29 +136,29 @@ const styles = StyleSheet.create({
   nameWide: { fontSize: 28, lineHeight: 38 },
   nameNarrow: { fontSize: 22, lineHeight: 30 },
   statusRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  statusText: { fontFamily: Fonts.regular, fontSize: 14, color: B.textSecondary, flexShrink: 1 },
+  statusText: { fontFamily: Fonts.regular, fontSize: 14, color: t.textoSec, flexShrink: 1 },
   statusLabel: { fontFamily: Fonts.medium },
   kpis: { width: '100%', flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   kpi: {
     minWidth: 88,
     flexGrow: 1,
     flexBasis: 88,
-    backgroundColor: B.page,
+    backgroundColor: t.fondo,
     borderWidth: 1,
-    borderColor: '#1E3A52',
+    borderColor: t.bordeHoja,
     borderRadius: 14,
     paddingHorizontal: 8,
     paddingVertical: 10,
   },
   kpiWide: { paddingHorizontal: 16 },
   kpiValueNarrow: { fontSize: 18, lineHeight: 26 },
-  kpiAlert: { borderColor: Colors.danger },
-  kpiLabel: { fontFamily: Fonts.regular, fontSize: 12, color: B.textSecondary },
+  kpiAlert: { borderColor: t.critico },
+  kpiLabel: { fontFamily: Fonts.regular, fontSize: 12, color: t.textoSec },
   kpiValue: {
     fontFamily: Fonts.semibold,
     fontSize: 24,
     lineHeight: 32,
     fontVariant: ['tabular-nums'],
   },
-  kpiUnit: { fontFamily: Fonts.regular, fontSize: 13, color: B.textSecondary },
-});
+  kpiUnit: { fontFamily: Fonts.regular, fontSize: 13, color: t.textoSec },
+}));

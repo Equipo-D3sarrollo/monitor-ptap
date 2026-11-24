@@ -1,6 +1,6 @@
-import { TouchableOpacity, StyleSheet } from 'react-native';
+import { StyleSheet, TouchableOpacity } from 'react-native';
 import Ionicons from './AppIcon';
-import Colors from '../constants/colors';
+import { useTheme } from '../context/ThemeContext';
 import { useItemSilenciado } from '../services/notification-prefs';
 
 /**
@@ -31,6 +31,7 @@ export function BotonSilencio({
   etiqueta: string;
 }) {
   const { silenciado, alternar, guardando } = useItemSilenciado(plantId, subject);
+  const { t } = useTheme();
 
   return (
     <TouchableOpacity
@@ -51,7 +52,7 @@ export function BotonSilencio({
       <Ionicons
         name={silenciado ? 'notifications-off' : 'notifications-outline'}
         size={15}
-        color={silenciado ? Colors.warning : Colors.textSecondary}
+        color={silenciado ? t.antAdvertencia : t.antTextoSec}
       />
     </TouchableOpacity>
   );

@@ -3,7 +3,6 @@ import {
   ActivityIndicator,
   Pressable,
   ScrollView,
-  StyleSheet,
   Text,
   TextInput,
   View,
@@ -12,10 +11,11 @@ import {
 } from 'react-native';
 import Ionicons from './AppIcon';
 import { router } from 'expo-router';
-import Colors from '../constants/colors';
 import { SignalDistributionBar } from './SignalDistributionBar';
 import { Fonts } from '../constants/fonts';
 import { useAuth } from '../context/AuthContext';
+import type { Paleta } from '../constants/theme';
+import { estilosConTema, sombraTarjeta, useTheme } from '../context/ThemeContext';
 import { useNotifications } from '../hooks/useNotifications';
 import { formatWhen } from '../services/notifications';
 import { formatUnit } from '../services/units';
@@ -26,12 +26,15 @@ import {
   type SignalFilter,
 } from '../services/dashboard-view';
 
-const B = Colors.brand;
-const STATES = {
-  ok: { label: 'En rango', color: B.green, icon: 'checkmark-circle-outline' },
-  alert: { label: 'Fuera de rango', color: B.dangerText, icon: 'alert-circle-outline' },
-  missing: { label: 'Sin dato', color: B.textSecondary, icon: 'help-circle-outline' },
-} as const;
+/** Estado de cada lectura: color del tema + ícono + texto (el color nunca va solo). */
+function estadosDe(t: Paleta) {
+  return {
+    ok: { label: 'En rango', color: t.enVivo, icon: 'checkmark-circle-outline' },
+    alert: { label: 'Fuera de rango', color: t.criticoTexto, icon: 'alert-circle-outline' },
+    missing: { label: 'Sin dato', color: t.textoSec, icon: 'help-circle-outline' },
+  } as const;
+}
+type EstadoLectura = keyof ReturnType<typeof estadosDe>;
 const FILTERS: { value: SignalFilter; label: string }[] = [
   { value: 'all', label: 'Todas' },
   { value: 'ok', label: 'En rango' },
@@ -41,6 +44,8 @@ const FILTERS: { value: SignalFilter; label: string }[] = [
 const PAGE_SIZE = 10;
 
 export function DashboardActions() {
+  const { t } = useTheme();
+  const styles = useStyles();
   const { hasPermission } = useAuth();
   return (
     <View style={styles.actions}>
@@ -53,7 +58,7 @@ export function DashboardActions() {
           accessibilityRole="button"
           onPress={() => router.push('/(app)/alertas')}
         >
-          <Ionicons name="notifications-outline" color={B.link} size={18} />
+          <Ionicons name="notifications-outline" color={t.enlace} size={18} />
           <Text style={styles.actionText}>Alertas</Text>
         </Pressable>
         <Pressable
@@ -61,7 +66,7 @@ export function DashboardActions() {
           accessibilityRole="button"
           onPress={() => router.push('/(app)/electrovalvulas')}
         >
-          <Ionicons name="options-outline" color={B.link} size={18} />
+          <Ionicons name="options-outline" color={t.enlace} size={18} />
           <Text style={styles.actionText}>Válvulas</Text>
         </Pressable>
         {hasPermission('export_data') && (
@@ -70,7 +75,7 @@ export function DashboardActions() {
             accessibilityRole="button"
             onPress={() => router.push('/(app)/reportes')}
           >
-            <Ionicons name="document-text-outline" color={B.link} size={18} />
+            <Ionicons name="document-text-outline" color={t.enlace} size={18} />
             <Text style={styles.actionText}>Informes</Text>
           </Pressable>
         )}
@@ -88,6 +93,9 @@ export const DashboardWorkspace = memo(function DashboardWorkspace({
   frozen: boolean;
   plantId: string;
 }) {
+  const { t } = useTheme();
+  const styles = useStyles();
+  const STATES = estadosDe(t);
   const [query, setQuery] = useState('');
   const [filter, setFilter] = useState<SignalFilter>('all');
   const [page, setPage] = useState(0);
@@ -124,7 +132,7 @@ export const DashboardWorkspace = memo(function DashboardWorkspace({
             <Text style={styles.empty}>Aún no hay señales disponibles para esta planta.</Text>
           ) : (
             <View style={styles.distribution}>
-              {(Object.keys(STATES) as (keyof typeof STATES)[]).map((key) => (
+              {(Object.keys(STATES) as EstadoLectura[]).map((key) => (
                 <View key={key} style={styles.statRow}>
                   <View style={styles.labelRow}>
                     <Ionicons name={STATES[key].icon} color={STATES[key].color} size={18} />
@@ -154,7 +162,7 @@ export const DashboardWorkspace = memo(function DashboardWorkspace({
           </Text>
         </View>
         <View style={styles.search}>
-          <Ionicons name="search-outline" size={20} color={B.textSecondary} />
+          <Ionicons name="search-outline" size={20} color={t.textoSec} />
           <TextInput
             value={query}
             onChangeText={(value) => {
@@ -162,7 +170,7 @@ export const DashboardWorkspace = memo(function DashboardWorkspace({
               setPage(0);
             }}
             placeholder="Buscar señal o unidad"
-            placeholderTextColor={B.placeholder}
+            placeholderTextColor={t.placeholder}
             accessibilityLabel="Buscar señal o unidad"
             style={styles.input}
           />
@@ -176,7 +184,7 @@ export const DashboardWorkspace = memo(function DashboardWorkspace({
               accessibilityLabel="Limpiar búsqueda"
               style={styles.iconButton}
             >
-              <Ionicons name="close" size={20} color={B.textSecondary} />
+              <Ionicons name="close" size={20} color={t.textoSec} />
             </Pressable>
           )}
         </View>
@@ -289,6 +297,8 @@ export const DashboardWorkspace = memo(function DashboardWorkspace({
 });
 
 function RecentActivity({ plantId }: { plantId: string }) {
+  const { t } = useTheme();
+  const styles = useStyles();
   const { notifications, isLoading, isError, refetch } = useNotifications();
   const recent = useMemo(
     () =>
@@ -314,7 +324,7 @@ function RecentActivity({ plantId }: { plantId: string }) {
       </View>
       <Text style={styles.description}>Avisos registrados de esta planta</Text>
       {isLoading ? (
-        <ActivityIndicator color={B.blue} accessibilityLabel="Cargando actividad" />
+        <ActivityIndicator color={t.marca} accessibilityLabel="Cargando actividad" />
       ) : isError ? (
         <Pressable accessibilityRole="button" onPress={refetch} style={styles.action}>
           <Text style={styles.actionText}>No se pudo cargar. Reintentar</Text>
@@ -335,10 +345,10 @@ function RecentActivity({ plantId }: { plantId: string }) {
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = estilosConTema((t, nombre) => ({
   workspace: { gap: 20, marginVertical: 20 },
   actions: { gap: 12, paddingVertical: 12, paddingHorizontal: 5 },
-  description: { fontFamily: Fonts.regular, fontSize: 13, lineHeight: 20, color: B.textSecondary },
+  description: { fontFamily: Fonts.regular, fontSize: 13, lineHeight: 20, color: t.textoSec },
   toolbar: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   action: {
     minHeight: 44,
@@ -348,20 +358,21 @@ const styles = StyleSheet.create({
     gap: 8,
     paddingHorizontal: 8,
   },
-  actionText: { fontFamily: Fonts.medium, fontSize: 13, color: B.link },
+  actionText: { fontFamily: Fonts.medium, fontSize: 13, color: t.enlace },
   analysis: { gap: 16 },
   analysisWide: { flexDirection: 'row' },
   panel: {
     flex: 1,
     minWidth: 0,
     borderWidth: 1,
-    borderColor: B.cardBorder,
+    borderColor: t.bordeSuave,
     borderRadius: 16,
-    backgroundColor: B.card,
+    backgroundColor: t.superficie,
     padding: 20,
     gap: 8,
+    ...sombraTarjeta(nombre),
   },
-  title: { fontFamily: Fonts.semibold, fontSize: 18, color: B.text },
+  title: { fontFamily: Fonts.semibold, fontSize: 18, color: t.texto },
   headingRow: {
     flexDirection: 'row',
     flexWrap: 'wrap',
@@ -372,35 +383,36 @@ const styles = StyleSheet.create({
   distribution: { gap: 16, marginTop: 16 },
   statRow: { gap: 8 },
   labelRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  text: { fontFamily: Fonts.regular, fontSize: 14, color: B.text },
+  text: { fontFamily: Fonts.regular, fontSize: 14, color: t.texto },
   count: {
     marginLeft: 'auto',
     fontFamily: Fonts.semibold,
-    color: B.text,
+    color: t.texto,
     fontVariant: ['tabular-nums'],
   },
-  track: { height: 8, backgroundColor: B.divider, borderRadius: 4, overflow: 'hidden' },
+  track: { height: 8, backgroundColor: t.divisor, borderRadius: 4, overflow: 'hidden' },
   empty: {
     fontFamily: Fonts.regular,
     fontSize: 14,
     lineHeight: 22,
-    color: B.textSecondary,
+    color: t.textoSec,
     paddingVertical: 20,
   },
   tablePanel: {
     borderWidth: 1,
-    borderColor: B.cardBorder,
+    borderColor: t.bordeSuave,
     borderRadius: 16,
     padding: 16,
-    backgroundColor: B.card,
+    backgroundColor: t.superficie,
     gap: 12,
+    ...sombraTarjeta(nombre),
   },
   search: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
     borderWidth: 1,
-    borderColor: B.searchBorder,
+    borderColor: t.bordeControl,
     borderRadius: 10,
     paddingHorizontal: 12,
   },
@@ -408,10 +420,10 @@ const styles = StyleSheet.create({
     flex: 1,
     minWidth: 0,
     minHeight: 48,
-    outlineColor: B.blue,
+    outlineColor: t.marca,
     fontFamily: Fonts.regular,
     fontSize: 14,
-    color: B.text,
+    color: t.texto,
   },
   iconButton: { width: 44, height: 44, justifyContent: 'center', alignItems: 'center' },
   filter: {
@@ -420,9 +432,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     borderRadius: 10,
     borderWidth: 1,
-    borderColor: B.cardBorder,
+    borderColor: t.bordeSuave,
   },
-  filterActive: { backgroundColor: B.selected, borderColor: B.blue },
+  filterActive: { backgroundColor: t.seleccionado, borderColor: t.marca },
   tableScroll: { flexGrow: 1 },
   table: { flex: 1, minWidth: 480 },
   tableRow: {
@@ -431,14 +443,14 @@ const styles = StyleSheet.create({
     gap: 12,
     paddingVertical: 16,
     borderBottomWidth: 1,
-    borderBottomColor: B.divider,
+    borderBottomColor: t.divisor,
   },
-  tableHead: { backgroundColor: B.panel },
+  tableHead: { backgroundColor: t.panel },
   column: { flex: 1, paddingLeft: 8 },
   valueColumn: { width: 120, fontVariant: ['tabular-nums'] },
   statusColumn: { width: 150 },
   pagination: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  small: { fontFamily: Fonts.regular, fontSize: 12, color: B.textSecondary },
+  small: { fontFamily: Fonts.regular, fontSize: 12, color: t.textoSec },
   disabled: { opacity: 0.4 },
-  activity: { gap: 6, paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: B.divider },
-});
+  activity: { gap: 6, paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: t.divisor },
+}));

@@ -137,7 +137,7 @@ test('tank waves keep compositor motion on reading rerenders and stop for frozen
         loop: () => ({ start: () => runs++, stop: () => stops++ }) } },
     './WaterVector': { default: 'Svg', Path: 'Path', __esModule: true },
     './wave-path': { wavePath: () => '' },
-    '../constants/colors': { login: { waveMid: 'water' } },
+    '../context/ThemeContext': { useTheme: () => ({ t: { agua: 'water' } }) },
     '../hooks/useReducedMotion': { useReducedMotion: () => reduced },
   });
   const first = module.TankWave({ still: false });
@@ -578,7 +578,7 @@ test('distribution motion runs only on change and stops for reduced motion', () 
         }),
       },
     },
-    '../constants/colors': { brand: { divider: '#000' } },
+    '../context/ThemeContext': { estilosConTema: () => () => ({ track: {}, fill: {} }) },
     '../hooks/useReducedMotion': { useReducedMotion: () => reduced },
   });
   module.SignalDistributionBar({ fraction: 0.5, color: '#000', label: 'test' });

@@ -1,7 +1,7 @@
 import { memo } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import { View, Text, TouchableOpacity } from 'react-native';
 import Ionicons from './AppIcon';
-import Colors from '../constants/colors';
+import { estilosConTema, useTheme } from '../context/ThemeContext';
 
 /**
  * Estado de error "no se pudo cargar y no hay respaldo que enseñar", con botón de reintentar.
@@ -22,9 +22,11 @@ function OfflineNoticeBase({
   /** Etiqueta accesible del botón; el texto visible siempre es "Reintentar". */
   retryLabel: string;
 }) {
+  const { t } = useTheme();
+  const styles = useStyles();
   return (
     <View style={styles.wrap}>
-      <Ionicons name="cloud-offline-outline" size={36} color={Colors.textSecondary} />
+      <Ionicons name="cloud-offline-outline" size={36} color={t.antTextoSec} />
       <Text style={styles.title}>{title}</Text>
       <Text style={styles.detail}>{detail}</Text>
       <TouchableOpacity
@@ -33,7 +35,7 @@ function OfflineNoticeBase({
         accessibilityRole="button"
         accessibilityLabel={retryLabel}
       >
-        <Ionicons name="refresh-outline" size={16} color={Colors.primary} />
+        <Ionicons name="refresh-outline" size={16} color={t.antPrimario} />
         <Text style={styles.retryText}>Reintentar</Text>
       </TouchableOpacity>
     </View>
@@ -42,11 +44,11 @@ function OfflineNoticeBase({
 
 export const OfflineNotice = memo(OfflineNoticeBase);
 
-const styles = StyleSheet.create({
+const useStyles = estilosConTema((t) => ({
   wrap: { paddingVertical: 46, alignItems: 'center', gap: 6 },
-  title: { color: Colors.textSecondary, fontSize: 14, textAlign: 'center', marginTop: 2 },
+  title: { color: t.antTextoSec, fontSize: 14, textAlign: 'center', marginTop: 2 },
   detail: {
-    color: Colors.textSecondary,
+    color: t.antTextoSec,
     fontSize: 12,
     textAlign: 'center',
     paddingHorizontal: 20,
@@ -58,10 +60,10 @@ const styles = StyleSheet.create({
     gap: 6,
     marginTop: 14,
     borderWidth: 1,
-    borderColor: Colors.primary,
+    borderColor: t.antPrimario,
     borderRadius: 10,
     paddingHorizontal: 16,
     paddingVertical: 8,
   },
-  retryText: { color: Colors.primary, fontWeight: '700', fontSize: 13 },
-});
+  retryText: { color: t.antPrimario, fontWeight: '700', fontSize: 13 },
+}));

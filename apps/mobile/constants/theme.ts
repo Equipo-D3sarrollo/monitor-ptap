@@ -55,6 +55,21 @@ export interface Paleta {
   agua: string;
   /** Línea de la superficie del agua del tanque (D2): da el borde que el relleno solo no da. */
   aguaSuperficie: string;
+  /**
+   * Paleta ANTERIOR (`Colors.bg`, `Colors.surface`…), que aún usan varias piezas. En oscuro conserva
+   * su valor exacto; en claro se unifica con los tokens de arriba (decisión del PASO 0).
+   */
+  antFondo: string;
+  antSuperficie: string;
+  antTexto: string;
+  antTextoSec: string;
+  antDivisor: string;
+  antPrimario: string;
+  antPrimarioClaro: string;
+  antExito: string;
+  antAdvertencia: string;
+  antPeligro: string;
+  antNeutro: string;
   velo: string;
   destello: string;
   /** Destello más suave para el tanque, que ya tiene mucho color propio. */
@@ -101,6 +116,17 @@ export const TEMAS: Record<NombreTema, Paleta> = {
     foco: B.blue,
     agua: Colors.login.waveMid,
     aguaSuperficie: B.blue,
+    antFondo: Colors.bg,
+    antSuperficie: Colors.surface,
+    antTexto: Colors.textPrimary,
+    antTextoSec: Colors.textSecondary,
+    antDivisor: Colors.divider,
+    antPrimario: Colors.primary,
+    antPrimarioClaro: Colors.primaryLight,
+    antExito: Colors.success,
+    antAdvertencia: Colors.warning,
+    antPeligro: Colors.danger,
+    antNeutro: Colors.neutral,
     velo: 'rgba(2,8,14,0.7)',
     destello: 'rgba(36,145,204,0.2)',
     destelloTanque: 'rgba(36,145,204,0.12)',
@@ -140,6 +166,17 @@ export const TEMAS: Record<NombreTema, Paleta> = {
     foco: '#0B6AA2',
     agua: '#12608F',
     aguaSuperficie: '#2491CC',
+    antFondo: '#F2F5F7',
+    antSuperficie: '#FFFFFF',
+    antTexto: '#0E1C28',
+    antTextoSec: '#475867',
+    antDivisor: '#DCE3E9',
+    antPrimario: '#1D5FCC',
+    antPrimarioClaro: '#1D5FCC',
+    antExito: '#1E7A3C',
+    antAdvertencia: '#8A6500',
+    antPeligro: '#C62828',
+    antNeutro: '#626A71',
     velo: 'rgba(14,28,40,0.45)',
     destello: 'rgba(36,145,204,0.16)',
     destelloTanque: 'rgba(36,145,204,0.1)',

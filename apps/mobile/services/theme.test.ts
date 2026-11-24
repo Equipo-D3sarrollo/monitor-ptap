@@ -37,6 +37,11 @@ test('tema oscuro: es EXACTAMENTE la identidad de siempre (no se mueve un píxel
   assert.equal(o.bannerFondo, '#2A1416');
   assert.equal(o.bannerTexto, '#E6C9C9');
   assert.equal(o.velo, 'rgba(2,8,14,0.7)');
+  // Paleta anterior: intacta en oscuro.
+  assert.equal(o.antFondo, Colors.bg);
+  assert.equal(o.antSuperficie, Colors.surface);
+  assert.equal(o.antTextoSec, Colors.textSecondary);
+  assert.equal(o.antPrimario, Colors.primary);
   assert.equal(o.destello, 'rgba(36,145,204,0.2)');
 });
 
@@ -79,6 +84,10 @@ const PARES: [keyof Paleta, keyof Paleta, number][] = [
   ['foco', 'fondo', 3],
   ['foco', 'panel', 3],
   ['aguaSuperficie', 'superficie', 3],
+  ['antTexto', 'antSuperficie', 4.5],
+  ['antTextoSec', 'antSuperficie', 4.5],
+  ['antTextoSec', 'antFondo', 4.5],
+  ['antPeligro', 'antSuperficie', 3],
 ];
 
 for (const nombre of ['oscuro', 'claro'] as NombreTema[]) {

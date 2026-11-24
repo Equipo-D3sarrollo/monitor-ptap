@@ -1,8 +1,8 @@
 import { memo } from 'react';
-import { View, Text, StyleSheet, Animated } from 'react-native';
+import { View, Text, Animated } from 'react-native';
 import Ionicons from './AppIcon';
-import Colors from '../constants/colors';
 import { Fonts } from '../constants/fonts';
+import { estilosConTema, sombraTarjeta, useTheme } from '../context/ThemeContext';
 import type { SignalDto, UnusableReason } from '../services/api';
 import { directionLook, isAnomalous, signalState } from '../services/card-look';
 import { useStateFlash } from '../hooks/useStateFlash';
@@ -10,7 +10,6 @@ import { sameSignalCard } from './memo-compare';
 import { BotonSilencio } from './BotonSilencio';
 import { formatUnit } from '../services/units';
 
-const B = Colors.brand;
 
 const REASON_TEXT: Record<UnusableReason, string> = {
   BAD_QUALITY: 'calidad OPC no buena',
@@ -51,13 +50,17 @@ function GaugeCardBase({
   /** Tablero en modo compacto: oculta la fila Mín/Máx, que es la que más ruido aporta por tarjeta. */
   compact?: boolean;
 }) {
+  const { t } = useTheme();
+  const styles = useStyles();
   const numeric = typeof signal.value === 'number';
   const isBool = typeof signal.value === 'boolean';
   const hasMin = typeof signal.opMin === 'number';
   const hasMax = typeof signal.opMax === 'number';
   const anomaly = isAnomalous(signal);
   const dir = directionLook(name);
-  const accent = dir?.color ?? B.text;
+  // card-look da el azul de la paleta oscura; la tarjeta usa el del tema.
+  const dirColor = dir ? (dir.label === 'Entrada' ? t.entrada : t.salida) : null;
+  const accent = dirColor ?? t.texto;
   const flash = useStateFlash(signalState(signal), frozen);
   const label = signal.label ?? name;
 
@@ -77,14 +80,14 @@ function GaugeCardBase({
       </Text>
       {dir && (
         <View style={styles.dirRow}>
-          <Ionicons name={dir.icon} size={12} color={dir.color} />
-          <Text style={[styles.dirText, { color: dir.color }]}>{dir.label}</Text>
+          <Ionicons name={dir.icon} size={12} color={dirColor ?? undefined} />
+          <Text style={[styles.dirText, { color: dirColor ?? undefined }]}>{dir.label}</Text>
         </View>
       )}
 
       {numeric ? (
         <Text
-          style={[styles.value, { color: anomaly ? B.dangerText : accent }]}
+          style={[styles.value, { color: anomaly ? t.criticoTexto : accent }]}
           numberOfLines={1}
           adjustsFontSizeToFit
         >
@@ -93,7 +96,7 @@ function GaugeCardBase({
         </Text>
       ) : isBool ? (
         <Text
-          style={[styles.value, { color: (signal.value as boolean) ? B.green : B.textSecondary }]}
+          style={[styles.value, { color: (signal.value as boolean) ? t.enVivo : t.textoSec }]}
         >
           {(signal.value as boolean) ? 'Encendido' : 'Apagado'}
         </Text>
@@ -112,13 +115,13 @@ function GaugeCardBase({
         <View style={styles.tagsRow}>
           {anomaly && (
             <View style={styles.tag}>
-              <Ionicons name="alert-circle" size={13} color={Colors.danger} />
-              <Text style={[styles.tagText, { color: B.dangerText }]}>Fuera de rango</Text>
+              <Ionicons name="alert-circle" size={13} color={t.critico} />
+              <Text style={[styles.tagText, { color: t.criticoTexto }]}>Fuera de rango</Text>
             </View>
           )}
           {frozen && (
             <View style={styles.tag}>
-              <Ionicons name="time-outline" size={13} color={B.gray} />
+              <Ionicons name="time-outline" size={13} color={t.integracion} />
               <Text style={styles.tagText}>Congelado</Text>
             </View>
           )}
@@ -126,7 +129,7 @@ function GaugeCardBase({
       )}
 
       {!compact && (hasMin || hasMax) && (
-        <Text style={[styles.rangeText, anomaly && { color: B.dangerText }]}>
+        <Text style={[styles.rangeText, anomaly && { color: t.criticoTexto }]}>
           {hasMin ? `Mín ${fmt(signal.opMin as number)}` : ''}
           {hasMin && hasMax ? '  ·  ' : ''}
           {hasMax ? `Máx ${fmt(signal.opMax as number)}` : ''}
@@ -142,19 +145,20 @@ function GaugeCardBase({
  */
 export const GaugeCard = memo(GaugeCardBase, sameSignalCard);
 
-const styles = StyleSheet.create({
+const useStyles = estilosConTema((t, nombre) => ({
   flex: { flex: 1 },
   card: {
     flex: 1,
     margin: 5,
     padding: 16,
-    backgroundColor: B.card,
+    backgroundColor: t.superficie,
     borderRadius: 16,
     borderWidth: 1,
-    borderColor: '#1B3044',
+    borderColor: t.bordeTarjeta,
     overflow: 'hidden',
+    ...sombraTarjeta(nombre),
   },
-  cardAnomaly: { borderColor: Colors.danger, borderWidth: 1.5 },
+  cardAnomaly: { borderColor: t.critico, borderWidth: 1.5 },
   cardFrozen: { borderStyle: 'dashed' },
   flash: {
     position: 'absolute',
@@ -162,19 +166,19 @@ const styles = StyleSheet.create({
     right: 0,
     bottom: 0,
     left: 0,
-    backgroundColor: 'rgba(36,145,204,0.2)',
+    backgroundColor: t.destello,
   },
   top: { flexDirection: 'row', alignItems: 'flex-start' },
   iconWrap: {
     width: 34,
     height: 34,
     borderRadius: 17,
-    backgroundColor: B.panel,
+    backgroundColor: t.panel,
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 8,
   },
-  name: { fontFamily: Fonts.regular, fontSize: 13, lineHeight: 18, color: B.textSecondary },
+  name: { fontFamily: Fonts.regular, fontSize: 13, lineHeight: 18, color: t.textoSec },
   dirRow: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 2 },
   dirText: { fontFamily: Fonts.medium, fontSize: 12 },
   value: {
@@ -184,12 +188,12 @@ const styles = StyleSheet.create({
     marginTop: 6,
     fontVariant: ['tabular-nums'],
   },
-  unit: { fontFamily: Fonts.regular, fontSize: 14, color: B.textSecondary },
+  unit: { fontFamily: Fonts.regular, fontSize: 14, color: t.textoSec },
   tagsRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginTop: 6 },
   tag: { flexDirection: 'row', alignItems: 'center', gap: 4 },
-  tagText: { fontFamily: Fonts.medium, fontSize: 12, color: B.textSecondary },
-  rangeText: { fontFamily: Fonts.regular, fontSize: 12, color: B.textSecondary, marginTop: 6 },
+  tagText: { fontFamily: Fonts.medium, fontSize: 12, color: t.textoSec },
+  rangeText: { fontFamily: Fonts.regular, fontSize: 12, color: t.textoSec, marginTop: 6 },
   noData: { marginTop: 6 },
-  noDataValue: { fontFamily: Fonts.semibold, fontSize: 20, color: B.textSecondary },
-  noDataReason: { fontFamily: Fonts.regular, fontSize: 12, color: B.textSecondary, marginTop: 2 },
-});
+  noDataValue: { fontFamily: Fonts.semibold, fontSize: 20, color: t.textoSec },
+  noDataReason: { fontFamily: Fonts.regular, fontSize: 12, color: t.textoSec, marginTop: 2 },
+}));
