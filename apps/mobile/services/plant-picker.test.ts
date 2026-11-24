@@ -53,6 +53,20 @@ test('plant-picker: filtros En línea / Sin conexión; lo desconocido solo en To
   assert.deepEqual(names(filterRows(rows, '', 'sin')), ['pichinde', 'quijote']);
 });
 
+test('plant-picker: una planta en integración dice «En integración» y no cuenta como caída', () => {
+  // Cabuyo y compañía: frozen desde el arranque porque nunca se han conectado.
+  const cabuyo = { ...item('sirena', 'frozen', 'Connected'), integrationPending: true as const };
+  const rows = pickerRows(PLANTS, [...LIVE, cabuyo], NOW);
+  const fila = rows.find((r) => r.plant.id === 'sirena');
+  assert.equal(fila?.status?.kind, 'integration');
+  assert.equal(fila?.status?.label, 'En integración');
+  assert.equal(fila?.status?.icon, 'construct-outline');
+  assert.equal(fila?.status?.tone, 'muted');
+  assert.ok(names(filterRows(rows, '', 'todas')).includes('sirena'));
+  assert.ok(!names(filterRows(rows, '', 'sin')).includes('sirena'), 'no es «Sin conexión»');
+  assert.ok(!names(filterRows(rows, '', 'linea')).includes('sirena'), 'tampoco «En línea»');
+});
+
 test('plant-picker: la búsqueda se combina con el filtro', () => {
   const rows = pickerRows(PLANTS, LIVE, NOW);
   assert.deepEqual(names(filterRows(rows, 'pichinde', 'todas')), ['pichinde']);
