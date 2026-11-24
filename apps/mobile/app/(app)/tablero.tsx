@@ -42,6 +42,7 @@ import {
   type GroupId,
 } from '../../services/signal-groups';
 import { setCompact, toggleGroup, useDashboardPrefs } from '../../services/dashboard-prefs';
+import { formatUnit } from '../../services/units';
 
 /** Formato numérico es-CO, igual que las tarjetas. */
 const fmt = new Intl.NumberFormat('es-CO', {
@@ -139,7 +140,7 @@ export default function TableroScreen() {
         key,
         label,
         value: fmt(sig.value),
-        unit: sig.unit ?? undefined,
+        unit: formatUnit(sig.unit) || undefined,
         color,
         alert: hasRangeAnomaly(sig),
       });

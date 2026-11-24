@@ -8,6 +8,7 @@ import { directionLook, isAnomalous, signalState } from '../services/card-look';
 import { useStateFlash } from '../hooks/useStateFlash';
 import { sameSignalCard } from './memo-compare';
 import { BotonSilencio } from './BotonSilencio';
+import { formatUnit } from '../services/units';
 
 const B = Colors.brand;
 
@@ -88,7 +89,7 @@ function GaugeCardBase({
           adjustsFontSizeToFit
         >
           {fmt(signal.value as number)}
-          <Text style={styles.unit}> {signal.unit ?? ''}</Text>
+          <Text style={styles.unit}> {formatUnit(signal.unit)}</Text>
         </Text>
       ) : isBool ? (
         <Text

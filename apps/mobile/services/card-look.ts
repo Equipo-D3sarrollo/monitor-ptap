@@ -2,6 +2,7 @@ import { hasRangeAnomaly, type SignalDto, type TankAutonomyDto } from '@ptap/sha
 import Colors from '../constants/colors';
 import { directionFor } from './signal-kind';
 import type { TankView } from './tanks';
+import { formatLps, formatUnit } from './units';
 
 /**
  * Umbrales del aviso `tank_autonomy`, COPIADOS de
@@ -108,8 +109,8 @@ export function autonomyLook(a: TankAutonomyDto | null): AutonomyLook | null {
     label: real ? 'Autonomía' : 'Si cierras la entrada',
     texto: `${humanHoras(a.hoursTo0)}${hasta50}`,
     pie: real
-      ? `Entrada cerrada · vaciándose a ${a.flowLps.toFixed(1)} l/s`
-      : `Proyección con el consumo medio del día (${a.flowLps.toFixed(1)} l/s)`,
+      ? `Entrada cerrada · vaciándose a ${formatLps(a.flowLps)}`
+      : `Proyección con el consumo medio del día (${formatLps(a.flowLps)})`,
     low: isAutonomyLow(a),
   };
 }
@@ -147,7 +148,7 @@ export function anomalyBanner(
   if (bad.length === 0) return null;
   const [key, s] = bad[0];
   const name = s.label ?? key;
-  const unit = s.unit ? ` ${s.unit}` : '';
+  const unit = s.unit ? ` ${formatUnit(s.unit)}` : '';
   let limit = 'fuera de su rango válido';
   if (typeof s.value === 'number') {
     if (typeof s.opMax === 'number' && s.value > s.opMax) limit = `máximo ${fmt(s.opMax)}`;

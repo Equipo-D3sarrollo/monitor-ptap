@@ -18,6 +18,7 @@ import { Fonts } from '../constants/fonts';
 import { useAuth } from '../context/AuthContext';
 import { useNotifications } from '../hooks/useNotifications';
 import { formatWhen } from '../services/notifications';
+import { formatUnit } from '../services/units';
 import {
   filterReadings,
   readingState,
@@ -247,7 +248,7 @@ export const DashboardWorkspace = memo(function DashboardWorkspace({
                       </Text>
                       <Text role="cell" style={[styles.valueColumn, styles.text]}>
                         {value}
-                        {signal.value !== null && signal.unit ? ` ${signal.unit}` : ''}
+                        {signal.value !== null && signal.unit ? ` ${formatUnit(signal.unit)}` : ''}
                       </Text>
                       <View role="cell" style={[styles.statusColumn, styles.labelRow]}>
                         <Ionicons name={state.icon} color={state.color} size={16} />

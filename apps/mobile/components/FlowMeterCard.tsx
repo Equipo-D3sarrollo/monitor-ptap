@@ -9,6 +9,7 @@ import { useStateFlash } from '../hooks/useStateFlash';
 import { GaugeCard } from './GaugeCard';
 import { BotonSilencio } from './BotonSilencio';
 import { sameSignalCard } from './memo-compare';
+import { formatUnit } from '../services/units';
 
 const B = Colors.brand;
 
@@ -94,7 +95,7 @@ function FlowMeterCardBase({
         adjustsFontSizeToFit
       >
         {fmt(value)}
-        <Text style={styles.unit}> {signal.unit ?? ''}</Text>
+        <Text style={styles.unit}> {formatUnit(signal.unit)}</Text>
       </Text>
 
       <View style={styles.barOuter}>

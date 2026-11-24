@@ -1,4 +1,5 @@
 import type { TankAutonomyDto } from './api';
+import { formatLps } from './units';
 
 export function autonomyDuration(hours: number): string {
   if (!Number.isFinite(hours) || hours < 0) return 'Sin estimación';
@@ -28,10 +29,10 @@ export function tankAutonomyText(a: TankAutonomyDto | null, frozen = false) {
     : trend
     ? 'Según el descenso medido de este tanque'
     : a.basis === 'vaciado_real'
-      ? `Balance neto de caudales (${a.flowLps.toFixed(1)} l/s)`
+      ? `Balance neto de caudales (${formatLps(a.flowLps)})`
       : a.basis === 'proyeccion_24h'
-        ? `Supuesto con consumo medio de 24 h (${a.flowLps.toFixed(1)} l/s)`
-        : `Supuesto con caudal actual (${a.flowLps.toFixed(1)} l/s)`;
+        ? `Supuesto con consumo medio de 24 h (${formatLps(a.flowLps)})`
+        : `Supuesto con caudal actual (${formatLps(a.flowLps)})`;
   const empty = reserve != null && a.hoursTo0 !== null ? ` · ${autonomyDuration(a.hoursTo0)} hasta vacío` : '';
   const reserveNote = a.reserveBasis === '50_percent' ? ' · Referencia: 50 % (sin mínimo configurado)' : '';
   return { label: projection && !a.limitation ? 'Autonomía si cierras' : 'Autonomía estimada', texto, pie: `${source}${empty}${reserveNote}` };

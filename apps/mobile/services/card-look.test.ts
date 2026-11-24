@@ -144,7 +144,8 @@ test('card-look: la franja dice cuál, su valor y el límite que rompe, y cuánt
   const ok = signal({ value: 2, opMin: 1, opMax: 3 });
   assert.equal(anomalyBanner([['outletPressure1', ok]]), null);
   assert.deepEqual(anomalyBanner([['outletFlow1', out]]), {
-    text: 'Caudal de salida fuera de rango: 62,27 l/s, máximo 3,00',
+    // El mapping dice «l/s»; en pantalla va «L/s» (con Poppins la ele se lee «I»).
+    text: 'Caudal de salida fuera de rango: 62,27 L/s, máximo 3,00',
     more: 0,
   });
   assert.deepEqual(anomalyBanner([['x', ok], ['inletPressure1', low], ['outletFlow1', out]]), {

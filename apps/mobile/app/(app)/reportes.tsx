@@ -23,6 +23,7 @@ import { PlantPickerLayout, PlantPickerTrigger } from '../../components/PlantPic
 import { toast } from '../../services/toast-store';
 import Colors from '../../constants/colors';
 import { Fonts } from '../../constants/fonts';
+import { formatUnit } from '../../services/units';
 
 function fechaHora(iso: string | null): string {
   if (!iso) return '';
@@ -206,7 +207,7 @@ function ReportRow({
       <View style={styles.info}>
         <Text style={styles.title}>
           {report.label}
-          {report.unit ? <Text style={styles.unit}> ({report.unit})</Text> : null}
+          {report.unit ? <Text style={styles.unit}> ({formatUnit(report.unit)})</Text> : null}
         </Text>
         <Text style={styles.status}>
           {collecting
