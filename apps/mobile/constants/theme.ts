@@ -27,6 +27,8 @@ export interface Paleta {
   pulsado: string;
   bordeTarjeta: string;
   bordeSuave: string;
+  /** Borde de las filas de la lista de plantas. */
+  bordeFila: string;
   bordeHoja: string;
   bordeControl: string;
   divisor: string;
@@ -73,6 +75,7 @@ export const TEMAS: Record<NombreTema, Paleta> = {
     pulsado: '#0E2536',
     bordeTarjeta: '#1B3044',
     bordeSuave: B.cardBorder,
+    bordeFila: B.rowBorder,
     bordeHoja: '#1E3A52',
     bordeControl: B.searchBorder,
     divisor: B.divider,
@@ -111,6 +114,7 @@ export const TEMAS: Record<NombreTema, Paleta> = {
     pulsado: '#EAF1F7',
     bordeTarjeta: '#C5D0DA',
     bordeSuave: '#D3DBE2',
+    bordeFila: '#D3DBE2',
     bordeHoja: '#C5D0DA',
     bordeControl: '#6F8394',
     divisor: '#DCE3E9',

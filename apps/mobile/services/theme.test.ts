@@ -21,6 +21,7 @@ test('tema oscuro: es EXACTAMENTE la identidad de siempre (no se mueve un píxel
   assert.equal(o.panel, B.panel);
   assert.equal(o.superficie, B.card);
   assert.equal(o.fila, B.row);
+  assert.equal(o.bordeFila, B.rowBorder);
   assert.equal(o.texto, B.text);
   assert.equal(o.textoSec, B.textSecondary);
   assert.equal(o.enlace, B.link);
