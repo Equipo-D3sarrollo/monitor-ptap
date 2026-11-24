@@ -2,6 +2,25 @@ const fs = require('node:fs');
 const path = require('node:path');
 const zlib = require('node:zlib');
 
+/**
+ * Tema ANTES de que cargue el JS (sin parpadeo). La app lee la preferencia de forma síncrona en su
+ * primer render, pero hasta que el bundle descarga el navegador pinta el HTML vacío: sin esto, quien
+ * eligió el claro ve un instante el fondo oscuro (y al revés). Lee la misma clave que la app
+ * (`aquora.tema`) y fija el fondo y el `color-scheme` del documento.
+ * Los dos fondos son `TEMAS.oscuro.fondo` y `TEMAS.claro.fondo` de apps/mobile/constants/theme.ts;
+ * services/theme.test.ts falla si dejan de coincidir.
+ */
+const FONDO_OSCURO = '#04101A';
+const FONDO_CLARO = '#F2F5F7';
+const THEME_SCRIPT =
+  '<script id="aquora-tema">(function(){try{' +
+  "var p=localStorage.getItem('aquora.tema');" +
+  "var c=p==='claro'||(p==='sistema'&&matchMedia('(prefers-color-scheme: light)').matches);" +
+  'var d=document.documentElement;' +
+  `d.style.backgroundColor=c?'${FONDO_CLARO}':'${FONDO_OSCURO}';` +
+  "d.style.colorScheme=c?'light':'dark';" +
+  `}catch(e){document.documentElement.style.backgroundColor='${FONDO_OSCURO}';}})();</script>`;
+
 function prepare(directory) {
   const root = path.resolve(directory);
   const htmlPath = path.join(root, 'index.html');
@@ -42,7 +61,7 @@ function prepare(directory) {
   html = html.replace(/<!-- aquora-fonts -->[\s\S]*?<!-- \/aquora-fonts -->\n?/g, '');
   html = html.replace(
     '</head>',
-    `<!-- aquora-fonts -->\n${links}\n<style id="aquora-fonts">${faces}</style>\n<!-- /aquora-fonts -->\n</head>`,
+    `<!-- aquora-fonts -->\n${THEME_SCRIPT}\n${links}\n<style id="aquora-fonts">${faces}</style>\n<!-- /aquora-fonts -->\n</head>`,
   );
   fs.writeFileSync(htmlPath, html);
   function compress(dir) {
@@ -62,6 +81,6 @@ function prepare(directory) {
   compress(root);
   return fonts;
 }
-module.exports = { prepare };
+module.exports = { prepare, FONDO_OSCURO, FONDO_CLARO };
 if (require.main === module)
   console.log(`Preloaded ${prepare(process.argv[2] || 'apps/mobile/dist-audit').length} fonts`);

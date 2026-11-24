@@ -16,6 +16,7 @@ import { ConnectionDiagnostics } from '../../components/ConnectionDiagnostics';
 import { NotificationPermissionCard } from '../../components/NotificationPermissionCard';
 import { NotificationPrefsCard } from '../../components/NotificationPrefsCard';
 import { AppUpdateBanner } from '../../components/AppUpdateBanner';
+import { ThemePreferenceCard } from '../../components/ThemePreferenceCard';
 import { runningVersion } from '../../services/app-release';
 import Colors from '../../constants/colors';
 
@@ -90,6 +91,10 @@ export default function AjustesScreen() {
               se vuelve parte del decorado y deja de leerse. */}
           <AppUpdateBanner modo="actualizacion" />
         </View>
+
+        {/* ── Tema ───────────────────────────────────────────────── */}
+        <Text style={styles.sectionTitle}>Apariencia</Text>
+        <ThemePreferenceCard />
 
         <Text style={styles.sectionTitle}>Ayuda</Text>
         <TouchableOpacity

@@ -23,6 +23,7 @@ import { usePlant } from '../../context/PlantContext';
 import { useUnseenNotifications } from '../../hooks/useNotifications';
 import { NavigationSearch, ProfileButton } from '../../components/NavigationSearch';
 import { NotificationOptIn } from '../../components/NotificationOptIn';
+import { ThemeToggle } from '../../components/ThemeToggle';
 import { usePendingUsers } from '../../hooks/usePendingUsers';
 import { useReducedMotion } from '../../hooks/useReducedMotion';
 import { useWebEscape } from '../../hooks/useWebEscape';
@@ -354,6 +355,9 @@ export default function AppLayout() {
         <HeaderFocusGroup>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, paddingRight: 12 }}>
             <NavigationSearch />
+            {/* La cabecera sigue con la paleta oscura hasta migrar la estructura: el ícono va en
+                el color de texto de esa cabecera. */}
+            <ThemeToggle color={B.text} />
             <AlertBell />
             <ProfileButton onPress={() => setMenuMode('account')} />
           </View>
