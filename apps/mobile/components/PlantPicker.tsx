@@ -18,6 +18,7 @@ import { useQuery } from '@tanstack/react-query';
 import { PLANTS, usePlant, type PlantOption } from '../context/PlantContext';
 import { useReduceMotion } from '../hooks/useReduceMotion';
 import { useWebEscape } from '../hooks/useWebEscape';
+import { useLoadWait } from '../hooks/useLoadWait';
 import { fetchPlants } from '../services/api';
 import {
   PLANT_FILTERS,
@@ -222,6 +223,9 @@ function PickerBody({
 }) {
   const { selectedPlant, setSelectedPlant } = usePlant();
   const { rows, isLoading, isError } = usePickerRows();
+  // Si la consulta del estado se queda colgada, a los 15 s la lista deja de decir «Consultando…».
+  const sinRespuesta = useLoadWait(isLoading) === 'sin_respuesta';
+  const failed = isError || sinRespuesta;
   const [query, setQuery] = useState('');
   const [filter, setFilter] = useState<PlantFilter>('todas');
   const [focused, setFocused] = useState(false);
@@ -272,9 +276,11 @@ function PickerBody({
         </View>
       )}
 
-      {isError && (
+      {failed && (
         <Text style={styles.note} accessibilityLiveRegion="polite">
-          No se pudo consultar el estado de las plantas. Puedes elegir igual.
+          {isError
+            ? 'No se pudo consultar el estado de las plantas. Puedes elegir igual.'
+            : 'El servidor no responde todavía. Puedes elegir igual.'}
         </Text>
       )}
 
@@ -291,8 +297,8 @@ function PickerBody({
               key={row.plant.id}
               row={row}
               layout={layout}
-              loading={isLoading}
-              failed={isError}
+              loading={isLoading && !sinRespuesta}
+              failed={failed}
               selected={row.plant.id === selectedPlant.id}
               onPress={pick}
             />

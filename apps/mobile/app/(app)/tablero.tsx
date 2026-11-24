@@ -1,5 +1,6 @@
-import { useCallback, useMemo } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import {
+  ActivityIndicator,
   View,
   Text,
   ScrollView,
@@ -43,6 +44,8 @@ import {
 } from '../../services/signal-groups';
 import { setCompact, toggleGroup, useDashboardPrefs } from '../../services/dashboard-prefs';
 import { formatUnit } from '../../services/units';
+import { ESPERA_MAXIMA_MS } from '../../services/load-wait';
+import { useLoadWait } from '../../hooks/useLoadWait';
 
 /** Formato numérico es-CO, igual que las tarjetas. */
 const fmt = new Intl.NumberFormat('es-CO', {
@@ -120,6 +123,15 @@ export default function TableroScreen() {
   const showError = isError && !snapshot;
 
   const onToggleGroup = useCallback((id: GroupId) => toggleGroup(id), []);
+
+  // Primera carga: «Consultando…» y, pasado el límite sin respuesta, aviso con Reintentar.
+  // `intento` reinicia la cuenta al reintentar o al cambiar de planta.
+  const [intento, setIntento] = useState(0);
+  const espera = useLoadWait(isLoading && !snapshot, `${selectedPlant.id}:${intento}`);
+  const reintentar = useCallback(() => {
+    setIntento((n) => n + 1);
+    void refetch();
+  }, [refetch]);
 
   // Estado de la planta para el encabezado. Sin snapshot no se afirma nada.
   const status = useMemo(
@@ -242,8 +254,23 @@ export default function TableroScreen() {
 
         <DashboardActions />
 
-        {isLoading && !snapshot ? (
-          <DashboardSkeleton />
+        {isLoading && !snapshot && espera === 'sin_respuesta' ? (
+          // La primera lectura no llegó en 15 s: en vez de cajas grises para siempre, se dice qué
+          // pasa y se ofrece reintentar.
+          <OfflineNotice
+            title="La planta no responde todavía."
+            detail={`Pasaron ${ESPERA_MAXIMA_MS / 1000} s sin recibir lecturas de ${selectedPlant.name}. Puede ser la conexión de este dispositivo o del servidor.`}
+            onRetry={reintentar}
+            retryLabel="Reintentar la carga del tablero"
+          />
+        ) : isLoading && !snapshot ? (
+          <View>
+            <View style={styles.loadingRow} accessibilityLiveRegion="polite">
+              <ActivityIndicator size="small" color={Colors.brand.link} />
+              <Text style={styles.loadingText}>Consultando {selectedPlant.name}…</Text>
+            </View>
+            <DashboardSkeleton />
+          </View>
         ) : showError ? (
           <OfflineNotice
             title="No se pudo cargar el tablero."
@@ -451,6 +478,14 @@ const styles = StyleSheet.create({
   cell: { width: '50%' },
   /** Fila entera: para los tanques en pantallas estrechas, donde el texto largo no cabe a la mitad. */
   cellFull: { width: '100%' },
+  loadingRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginHorizontal: 8,
+    marginBottom: 8,
+  },
+  loadingText: { fontFamily: Fonts.regular, fontSize: 14, color: Colors.brand.textSecondary },
   info: { paddingVertical: 48, alignItems: 'center', gap: 6 },
   infoText: { color: Colors.textSecondary, fontSize: 14, textAlign: 'center' },
   infoSub: {
