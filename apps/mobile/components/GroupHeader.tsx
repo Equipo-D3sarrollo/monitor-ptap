@@ -2,15 +2,17 @@ import { memo } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import Ionicons from './AppIcon';
 import Colors from '../constants/colors';
-import type { GroupId } from '../services/signal-groups';
+import { Fonts } from '../constants/fonts';
+import { motivoBloqueo, type GroupId } from '../services/signal-groups';
 
 /**
  * Encabezado de un grupo de señales (Entrada / Salida / Proceso).
  *
- * **Candado de seguridad:** si el grupo trae algo fuera de rango, sin dato, o la planta está
+ * **Grupo siempre abierto:** si el grupo trae algo fuera de rango, sin dato, o la planta está
  * congelada, `lockedOpen` es true y el encabezado deja de ser pulsable. Una anomalía no puede
  * quedar detrás de un gesto en un tablero de planta — la agrupación es para dar jerarquía, no para
- * esconder. Cuando está bloqueado se dice por qué, para que no parezca un botón roto.
+ * esconder. Cuando está bloqueado se dice por qué, con el ícono del MOTIVO (advertencia, sin dato,
+ * reloj) y no un candado, que se leía como «sin permiso».
  *
  * Recibe PRIMITIVAS, no el objeto grupo: los grupos se reconstruyen en cada push de ~2 s, así que
  * pasar el objeto dejaría el `memo` sin efecto.
@@ -34,12 +36,9 @@ function GroupHeaderBase({
   collapsed: boolean;
   onToggle: (id: GroupId) => void;
 }) {
-  const motivo =
-    anomalyCount > 0
-      ? `${anomalyCount} fuera de rango`
-      : noDataCount > 0
-        ? `${noDataCount} sin dato`
-        : 'datos congelados';
+  const bloqueo = motivoBloqueo(anomalyCount, noDataCount);
+  const motivo = bloqueo.texto;
+  const colorBloqueo = bloqueo.tono === 'critico' ? Colors.brand.dangerText : Colors.textSecondary;
 
   const body = (
     <View style={styles.row}>
@@ -59,8 +58,8 @@ function GroupHeaderBase({
 
       {lockedOpen ? (
         <View style={styles.lockRow}>
-          <Ionicons name="lock-closed" size={12} color={Colors.textSecondary} />
-          <Text style={styles.lockText}>{motivo}</Text>
+          <Ionicons name={bloqueo.icon} size={13} color={colorBloqueo} />
+          <Text style={[styles.lockText, { color: colorBloqueo }]}>{motivo}</Text>
         </View>
       ) : (
         <Ionicons
@@ -103,14 +102,19 @@ export const GroupHeader = memo(GroupHeaderBase);
 const styles = StyleSheet.create({
   header: { paddingHorizontal: 5, paddingVertical: 8, marginTop: 4 },
   row: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  title: { fontSize: 13, fontWeight: '800', color: Colors.textPrimary, letterSpacing: 0.3 },
+  title: { fontFamily: Fonts.semibold, fontSize: 13, color: Colors.textPrimary, letterSpacing: 0.3 },
   countPill: {
     backgroundColor: Colors.surface,
     borderRadius: 8,
     paddingHorizontal: 7,
     paddingVertical: 1,
   },
-  countText: { fontSize: 11, fontWeight: '700', color: Colors.textSecondary },
+  countText: {
+    fontFamily: Fonts.semibold,
+    fontSize: 12,
+    color: Colors.textSecondary,
+    fontVariant: ['tabular-nums'],
+  },
   alertPill: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -120,8 +124,13 @@ const styles = StyleSheet.create({
     paddingHorizontal: 6,
     paddingVertical: 1,
   },
-  alertText: { fontSize: 11, fontWeight: '700', color: Colors.danger },
+  alertText: {
+    fontFamily: Fonts.semibold,
+    fontSize: 12,
+    color: Colors.brand.dangerText,
+    fontVariant: ['tabular-nums'],
+  },
   spacer: { flex: 1 },
   lockRow: { flexDirection: 'row', alignItems: 'center', gap: 4 },
-  lockText: { fontSize: 11, color: Colors.textSecondary, fontStyle: 'italic' },
+  lockText: { fontFamily: Fonts.regular, fontSize: 12 },
 });

@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import type { SignalDto } from '@ptap/shared';
-import { dashboardSignals, groupSignals, summarize } from './signal-groups';
+import { dashboardSignals, groupSignals, motivoBloqueo, summarize } from './signal-groups';
 
 function signal(over: Partial<SignalDto> = {}): SignalDto {
   return {
@@ -115,4 +115,10 @@ test('el resumen se deriva de los grupos y suma sus conteos', () => {
     false,
   );
   assert.deepEqual(summarize(groups), { total: 4, anomalies: 2, noData: 1 });
+});
+
+test('motivoBloqueo: el ícono dice el motivo (ya no un candado) y el texto lo repite', () => {
+  assert.deepEqual(motivoBloqueo(2, 1), { texto: '2 fuera de rango', icon: 'warning-outline', tono: 'critico' });
+  assert.deepEqual(motivoBloqueo(0, 3), { texto: '3 sin dato', icon: 'help-circle-outline', tono: 'neutro' });
+  assert.deepEqual(motivoBloqueo(0, 0), { texto: 'datos congelados', icon: 'time-outline', tono: 'neutro' });
 });

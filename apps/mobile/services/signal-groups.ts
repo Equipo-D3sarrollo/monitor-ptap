@@ -103,3 +103,28 @@ export function summarize(groups: SignalGroup[]): DashboardSummary {
     { total: 0, anomalies: 0, noData: 0 },
   );
 }
+
+/**
+ * Por qué un grupo no se puede plegar, como se PINTA en su encabezado. Antes era siempre un candado,
+ * que se leía como «bloqueado / sin permiso» justo cuando había algo fuera de rango. Ahora el ícono
+ * dice el motivo y el texto lo repite: el color nunca va solo.
+ * - fuera de rango → advertencia (rojo, el único rojo del tablero);
+ * - sin dato → interrogante (gris);
+ * - planta congelada → reloj (gris).
+ */
+export function motivoBloqueo(
+  anomalyCount: number,
+  noDataCount: number,
+): {
+  texto: string;
+  icon: 'warning-outline' | 'help-circle-outline' | 'time-outline';
+  tono: 'critico' | 'neutro';
+} {
+  if (anomalyCount > 0) {
+    return { texto: `${anomalyCount} fuera de rango`, icon: 'warning-outline', tono: 'critico' };
+  }
+  if (noDataCount > 0) {
+    return { texto: `${noDataCount} sin dato`, icon: 'help-circle-outline', tono: 'neutro' };
+  }
+  return { texto: 'datos congelados', icon: 'time-outline', tono: 'neutro' };
+}
