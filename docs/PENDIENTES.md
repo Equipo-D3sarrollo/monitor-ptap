@@ -80,6 +80,12 @@ sí sola la APK. No volver a poner el despliegue de esas correcciones web como p
       [Auditoría conservada](./LIGHTHOUSE_PENDIENTES_2026-10-31.md).
 - [ ] Definir aceptación visual y funcional de esa fase y publicar la web y, cuando
       corresponda, una nueva APK con firma y comprobación en dispositivo real.
+- [ ] Ondas de la lista de plantas según el estado (hoy la forma es la misma para todas; solo
+      cambia el color). Sin tocar el API: forma por `liveness`/integración, sin animación.
+- [ ] «Actualizado hace X s» en el tablero en lugar de la hora del dispositivo (usar
+      `dataUpdatedAt` de `useSnapshot`; con datos del respaldo local, decir «Datos guardados»).
+- [ ] Aviso de React «Updating a style property during rerender» que aparece en web (ya estaba
+      antes del tema claro/oscuro; localizar qué estilo se reescribe durante el render).
 
 ### Planes futuros conservados
 
