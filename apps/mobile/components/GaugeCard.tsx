@@ -192,7 +192,7 @@ const useStyles = estilosConTema((t, nombre) => ({
   tagsRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginTop: 6 },
   tag: { flexDirection: 'row', alignItems: 'center', gap: 4 },
   tagText: { fontFamily: Fonts.medium, fontSize: 12, color: t.textoSec },
-  rangeText: { fontFamily: Fonts.regular, fontSize: 12, color: t.textoSec, marginTop: 6 },
+  rangeText: { fontFamily: Fonts.regular, fontSize: 12, color: t.textoSec, marginTop: 6, fontVariant: ['tabular-nums'] },
   noData: { marginTop: 6 },
   noDataValue: { fontFamily: Fonts.semibold, fontSize: 20, color: t.textoSec },
   noDataReason: { fontFamily: Fonts.regular, fontSize: 12, color: t.textoSec, marginTop: 2 },

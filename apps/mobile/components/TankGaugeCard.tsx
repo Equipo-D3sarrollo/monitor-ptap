@@ -343,6 +343,7 @@ const useStyles = estilosConTema((t, nombre) => ({
     fontFamily: Fonts.medium,
     fontSize: 12,
     color: t.texto,
+    fontVariant: ['tabular-nums'],
     flexGrow: 1,
     // Por debajo de esto no se comprime: prefiere bajar de línea antes que quedar en una columna
     // de dos caracteres.

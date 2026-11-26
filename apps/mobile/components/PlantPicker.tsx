@@ -426,7 +426,7 @@ const useStyles = estilosConTema((t, nombre) => ({
     marginBottom: 14,
   },
   panelTitle: { fontFamily: Fonts.semibold, fontSize: 18, color: t.texto },
-  panelCount: { fontFamily: Fonts.regular, fontSize: 13, color: t.textoSec },
+  panelCount: { fontFamily: Fonts.regular, fontSize: 13, color: t.textoSec, fontVariant: ['tabular-nums'] },
 
   trigger: {
     flexDirection: 'row',

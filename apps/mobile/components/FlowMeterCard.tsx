@@ -170,5 +170,5 @@ const useStyles = estilosConTema((t, nombre) => ({
   },
   barFill: { height: '100%', borderRadius: 3 },
   barLabels: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 6, gap: 6 },
-  barLabelText: { fontFamily: Fonts.regular, fontSize: 12, color: t.textoSec },
+  barLabelText: { fontFamily: Fonts.regular, fontSize: 12, color: t.textoSec, fontVariant: ['tabular-nums'] },
 }));

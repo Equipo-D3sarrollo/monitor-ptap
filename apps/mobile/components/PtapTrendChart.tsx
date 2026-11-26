@@ -290,5 +290,6 @@ const useStyles = estilosConTema((t) => ({
     fontSize: 11.5,
     fontWeight: '700',
     color: t.antTexto,
+    fontVariant: ['tabular-nums'],
   },
 }));

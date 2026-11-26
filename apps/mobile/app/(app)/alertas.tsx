@@ -382,7 +382,7 @@ const useStyles = estilosConTema((t) => ({
   pestaniaDot: { backgroundColor: t.critico },
   pestaniaTexto: { fontFamily: Fonts.medium, fontSize: 13, color: t.antTextoSec },
   pestaniaTextoActiva: { color: t.antPrimario },
-  pestaniaNum: { fontFamily: Fonts.medium, fontSize: 12, color: t.antTextoSec },
+  pestaniaNum: { fontFamily: Fonts.medium, fontSize: 12, color: t.antTextoSec, fontVariant: ['tabular-nums'] },
   limpiar: { marginTop: 12, paddingHorizontal: 16, paddingVertical: 10, minHeight: 44, justifyContent: 'center' },
   limpiarTexto: { fontFamily: Fonts.medium, fontSize: 13, color: t.antPrimario },
   heading: { fontFamily: Fonts.semibold, fontSize: 20, color: t.antTexto },
