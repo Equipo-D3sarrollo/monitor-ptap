@@ -166,9 +166,15 @@ export function anilloFoco(t: Paleta): ViewStyle {
 }
 
 /**
- * ¿El `Pressable` tiene el foco de teclado? En web, react-native-web añade `focused` (y `hovered`)
- * al estado; en Android no existe y devuelve false.
+ * ¿El `Pressable` tiene el foco DE TECLADO? react-native-web marca `focused` también al hacer clic,
+ * así que se pregunta al navegador si el elemento activo cumple `:focus-visible` (la misma regla
+ * con la que el navegador decide su propio anillo: Tab sí, clic no). En Android, false.
  */
 export function enfocado(estado: PressableStateCallbackType): boolean {
-  return (estado as PressableStateCallbackType & { focused?: boolean }).focused === true;
+  if ((estado as PressableStateCallbackType & { focused?: boolean }).focused !== true) return false;
+  try {
+    return globalThis.document?.activeElement?.matches(':focus-visible') === true;
+  } catch {
+    return false; // navegador sin :focus-visible: sin anillo propio, queda el del sistema
+  }
 }
