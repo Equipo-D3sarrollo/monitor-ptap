@@ -60,11 +60,13 @@ test('theme script paints the saved theme before the bundle loads', (t) => {
     .match(/<script id="aquora-tema">([\s\S]*?)<\/script>/)[1];
   const run = (saved, prefersLight) => {
     const style = {};
+    const meta = { content: '#171C28' };
     vm.runInNewContext(code, {
       localStorage: { getItem: () => saved },
       matchMedia: () => ({ matches: prefersLight }),
-      document: { documentElement: { style } },
+      document: { documentElement: { style }, querySelector: () => meta },
     });
+    assert.equal(meta.content, style.backgroundColor, 'la barra del navegador sigue al fondo');
     return style;
   };
   assert.deepEqual(run(null, true), { backgroundColor: FONDO_OSCURO, colorScheme: 'dark' });

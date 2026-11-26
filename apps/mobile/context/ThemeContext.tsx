@@ -47,9 +47,11 @@ const Contexto = createContext<TemaContexto>(OSCURO);
  * - Web: la preferencia se lee de `localStorage` de forma SÍNCRONA en el primer render, así que la
  *   app nunca pinta un tema y luego el otro. (El HTML de producción además fija el fondo antes de
  *   que cargue el JS: ver tools/web/prepare-production.cjs.)
- * - Android: AsyncStorage es asíncrono. Hasta leerla no se pinta nada (unos milisegundos): así quien
- *   eligió el claro no ve un fotograma oscuro de la app. Para atar esto al splash nativo hace falta
- *   `expo-splash-screen` en la próxima APK (ver services/theme-prefs.ts).
+ * - Android: AsyncStorage es asíncrono. Mientras se lee (unos milisegundos) se pinta el oscuro: la
+ *   app y el navegador de rutas tienen que estar montados desde el primer render (un aviso push
+ *   que abre la app en frío navega enseguida). Quien eligió el claro puede ver ese instante oscuro;
+ *   evitarlo del todo exige retener el splash nativo (`expo-splash-screen`, próxima APK; ver
+ *   services/theme-prefs.ts).
  *
  * El contexto cambia SOLO al cambiar de tema, nunca con los datos de la planta: es el uso que
  * React Native recomienda para un contexto (tema, sesión, idioma).
@@ -108,7 +110,6 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     [nombre, preferencia, setPreferencia, alternar],
   );
 
-  if (preferencia === undefined) return null;
   return <Contexto.Provider value={valor}>{children}</Contexto.Provider>;
 }
 

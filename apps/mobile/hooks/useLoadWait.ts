@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { ESPERA_MAXIMA_MS, estadoEspera, type EstadoEspera } from '../services/load-wait';
+import { ESPERA_MAXIMA_MS, type EstadoEspera } from '../services/load-wait';
 
 /**
  * Mientras `esperando` es true, dice si todavía se está consultando o si ya pasó el límite sin
@@ -13,8 +13,9 @@ export function useLoadWait(esperando: boolean, clave = '', limiteMs = ESPERA_MA
   useEffect(() => {
     setEstado('consultando');
     if (!esperando) return;
-    const desde = Date.now();
-    const id = setTimeout(() => setEstado(estadoEspera(desde, Date.now(), limiteMs)), limiteMs);
+    // Que el temporizador salte ya es la prueba de que pasó el límite: volver a comparar con
+    // Date.now() fallaba si saltaba 1 ms antes, y el aviso no llegaba nunca.
+    const id = setTimeout(() => setEstado('sin_respuesta'), limiteMs);
     return () => clearTimeout(id);
   }, [esperando, clave, limiteMs]);
 

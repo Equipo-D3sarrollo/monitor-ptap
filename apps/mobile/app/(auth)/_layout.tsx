@@ -2,9 +2,11 @@ import { Slot, Stack, Redirect } from 'expo-router';
 import { Platform } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { useAuth } from '../../context/AuthContext';
+import { useTheme } from '../../context/ThemeContext';
 
 export default function AuthLayout() {
   const { token, user, isLoading } = useAuth();
+  const { nombre } = useTheme();
 
   // Guard inverso al de (app): con una sesión VIVA, caer en /login o /register (historial del
   // navegador, enlace guardado) devuelve a la app — la sesión persiste hasta sus 8 h y solo el
@@ -17,8 +19,9 @@ export default function AuthLayout() {
 
   return (
     <>
-      {/* Arriba va el panel de marca, oscuro en los dos temas: íconos del sistema claros. */}
-      <StatusBar style="light" />
+      {/* La zona de la barra de estado se pinta con el fondo del tema (registro no tiene panel de
+          marca arriba): íconos oscuros en claro. */}
+      <StatusBar style={nombre === 'claro' ? 'dark' : 'light'} />
       <Stack screenOptions={{ headerShown: false }}>
         <Stack.Screen name="login" />
         <Stack.Screen name="register" />

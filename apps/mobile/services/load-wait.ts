@@ -9,12 +9,3 @@
 export const ESPERA_MAXIMA_MS = 15_000;
 
 export type EstadoEspera = 'consultando' | 'sin_respuesta';
-
-/** `desde` = cuándo empezó a esperar (ms); `ahora` = reloj actual (ms). */
-export function estadoEspera(
-  desde: number,
-  ahora: number,
-  limiteMs: number = ESPERA_MAXIMA_MS,
-): EstadoEspera {
-  return ahora - desde >= limiteMs ? 'sin_respuesta' : 'consultando';
-}

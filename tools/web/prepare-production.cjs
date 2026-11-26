@@ -19,6 +19,8 @@ const THEME_SCRIPT =
   'var d=document.documentElement;' +
   `d.style.backgroundColor=c?'${FONDO_CLARO}':'${FONDO_OSCURO}';` +
   "d.style.colorScheme=c?'light':'dark';" +
+  // La barra del navegador también, o queda oscura en claro hasta que hidrate la app.
+  "var m=document.querySelector('meta[name=\"theme-color\"]');if(m)m.content=d.style.backgroundColor;" +
   `}catch(e){document.documentElement.style.backgroundColor='${FONDO_OSCURO}';}})();</script>`;
 
 function prepare(directory) {
