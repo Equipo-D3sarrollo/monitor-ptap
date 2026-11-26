@@ -25,6 +25,7 @@ test('tema oscuro: es EXACTAMENTE la identidad de siempre (no se mueve un píxel
   assert.equal(o.texto, B.text);
   assert.equal(o.textoSec, B.textSecondary);
   assert.equal(o.enlace, B.link);
+  assert.equal(o.enlaceVerde, Colors.login.linkGreen);
   assert.equal(o.entrada, B.inflow);
   assert.equal(o.salida, B.outflow);
   assert.equal(o.enVivo, B.green);
@@ -67,6 +68,7 @@ const PARES: [keyof Paleta, keyof Paleta, number][] = [
   ['textoSec', 'fila', 4.5],
   ['enlace', 'superficie', 4.5],
   ['enlace', 'panel', 4.5],
+  ['enlaceVerde', 'fondo', 4.5],
   ['sobreAccion', 'accion', 4.5],
   ['sobreAccion', 'accionPresionada', 4.5],
   ['entrada', 'superficie', 4.5],

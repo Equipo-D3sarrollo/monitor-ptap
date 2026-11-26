@@ -8,7 +8,6 @@ import {
   Platform,
   ScrollView,
   ActivityIndicator,
-  StyleSheet,
   Animated,
   Easing,
   useWindowDimensions,
@@ -29,6 +28,7 @@ import { validateLogin, type LoginFieldErrors } from '../../services/login-valid
 import { toast } from '../../services/toast-store';
 import Colors from '../../constants/colors';
 import { Fonts, usePoppins } from '../../constants/fonts';
+import { estilosConTema, useTheme } from '../../context/ThemeContext';
 
 const L = Colors.login;
 /** Desde este ancho el login usa dos columnas (panel de agua + formulario). */
@@ -37,6 +37,8 @@ const WIDE_BREAKPOINT = 900;
 const WIDE_WATER_LEVEL = 0.26;
 
 export default function LoginScreen() {
+  const { t } = useTheme();
+  const styles = useStyles();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -110,7 +112,7 @@ export default function LoginScreen() {
   if (Platform.OS !== 'web' && !fontsLoaded && !fontError)
     return (
       <View style={[styles.safe, styles.loading]}>
-        <ActivityIndicator color={L.brandBlue} accessibilityLabel="Cargando Aquora" />
+        <ActivityIndicator color={t.marca} accessibilityLabel="Cargando Aquora" />
       </View>
     );
 
@@ -128,9 +130,9 @@ export default function LoginScreen() {
         Ingresa a Aquora
       </Text>
       <View style={styles.brandBar} accessible={false}>
-        <View style={[styles.brandSeg, { flex: 55, backgroundColor: L.brandBlue }]} />
-        <View style={[styles.brandSeg, { flex: 30, backgroundColor: L.telcobrasGreen }]} />
-        <View style={[styles.brandSeg, { flex: 15, backgroundColor: L.brandYellow }]} />
+        <View style={[styles.brandSeg, { flex: 55, backgroundColor: t.marca }]} />
+        <View style={[styles.brandSeg, { flex: 30, backgroundColor: t.marcaVerde }]} />
+        <View style={[styles.brandSeg, { flex: 15, backgroundColor: t.marcaAmarillo }]} />
       </View>
       <Text style={styles.subtitle}>Acceso para operadores y personal autorizado.</Text>
 
@@ -184,7 +186,7 @@ export default function LoginScreen() {
             <Ionicons
               name={showPassword ? 'eye-off-outline' : 'eye-outline'}
               size={22}
-              color={L.textSecondary}
+              color={t.textoSec}
             />
           </Pressable>
         }
@@ -198,7 +200,7 @@ export default function LoginScreen() {
         aria-checked={remember}
         style={styles.rememberRow}
       >
-        <Ionicons name={remember ? 'checkbox' : 'square-outline'} size={22} color={L.brandBlue} />
+        <Ionicons name={remember ? 'checkbox' : 'square-outline'} size={22} color={t.marca} />
         <Text style={styles.rememberText}>Recordar sesión en este dispositivo</Text>
       </Pressable>
       {!remember && (
@@ -218,10 +220,10 @@ export default function LoginScreen() {
           aria-disabled={isLoading}
           style={({ pressed }) => [
             styles.btnPrimary,
-            (pressed || isLoading) && { backgroundColor: L.buttonPressed },
+            (pressed || isLoading) && { backgroundColor: t.accionPresionada },
           ]}
         >
-          {isLoading && <ActivityIndicator color={L.buttonText} />}
+          {isLoading && <ActivityIndicator color={t.sobreAccion} />}
           <Text style={styles.btnPrimaryText}>{isLoading ? 'Ingresando…' : 'Ingresar'}</Text>
         </Pressable>
       </Animated.View>
@@ -266,7 +268,7 @@ export default function LoginScreen() {
 
       <View style={styles.footer} accessible accessibilityLabel={serverLabel}>
         <View
-          style={[styles.dot, { backgroundColor: serverUp ? L.telcobrasGreen : L.placeholder }]}
+          style={[styles.dot, { backgroundColor: serverUp ? t.enVivo : t.placeholder }]}
         />
         <Text style={styles.footerText}>
           {serverLabel}
@@ -331,6 +333,8 @@ const Field = forwardRef<ComponentRef<typeof TextInput>, FieldProps>(function Fi
   { label, icon, error, accessory, onFocus, onBlur, ...input },
   ref,
 ) {
+  const { t } = useTheme();
+  const styles = useStyles();
   const [focused, setFocused] = useState(false);
   return (
     <View style={styles.field}>
@@ -341,15 +345,15 @@ const Field = forwardRef<ComponentRef<typeof TextInput>, FieldProps>(function Fi
         <View
           style={[
             styles.inputRow,
-            focused && { borderColor: L.fieldBorderFocus },
-            !!error && { borderColor: Colors.danger },
+            focused && { borderColor: t.foco },
+            !!error && { borderColor: t.critico },
           ]}
         >
-          <Ionicons name={icon} size={20} color={L.textSecondary} />
+          <Ionicons name={icon} size={20} color={t.textoSec} />
           <TextInput
             ref={ref}
             style={styles.input}
-            placeholderTextColor={L.placeholder}
+            placeholderTextColor={t.placeholder}
             accessibilityLabel={label}
             aria-invalid={!!error}
             onFocus={(e) => {
@@ -373,10 +377,12 @@ const Field = forwardRef<ComponentRef<typeof TextInput>, FieldProps>(function Fi
   );
 });
 
-const styles = StyleSheet.create({
+// El panel de marca (agua, logo, frase) usa `Colors.login` FIJO: es oscuro en los dos temas.
+// Solo el formulario sigue el tema.
+const useStyles = estilosConTema((t) => ({
   rememberRow: { minHeight: 44, flexDirection: 'row', alignItems: 'center', gap: 10 },
-  rememberText: { flex: 1, fontFamily: Fonts.regular, fontSize: 13, color: L.textSecondary },
-  safe: { flex: 1, backgroundColor: L.pageBg },
+  rememberText: { flex: 1, fontFamily: Fonts.regular, fontSize: 13, color: t.textoSec },
+  safe: { flex: 1, backgroundColor: t.fondo },
   flex: { flex: 1 },
   loading: { alignItems: 'center', justifyContent: 'center' },
 
@@ -431,7 +437,7 @@ const styles = StyleSheet.create({
   narrowForm: { paddingHorizontal: 24, paddingTop: 24, paddingBottom: 28, alignItems: 'center' },
 
   form: { width: '100%', maxWidth: 440 },
-  title: { fontFamily: Fonts.semibold, fontSize: 28, lineHeight: 38, color: L.text },
+  title: { fontFamily: Fonts.semibold, fontSize: 28, lineHeight: 38, color: t.texto },
   brandBar: {
     flexDirection: 'row',
     width: 72,
@@ -447,20 +453,21 @@ const styles = StyleSheet.create({
     fontFamily: Fonts.regular,
     fontSize: 15,
     lineHeight: 22,
-    color: L.textSecondary,
+    color: t.textoSec,
   },
 
   field: { marginBottom: 4 },
-  label: { fontFamily: Fonts.medium, fontSize: 14, color: L.text, marginBottom: 6 },
+  label: { fontFamily: Fonts.medium, fontSize: 14, color: t.texto, marginBottom: 6 },
   halo: { borderWidth: 3, borderColor: 'transparent', borderRadius: 17, margin: -3 },
   inputRow: {
     flexDirection: 'row',
     alignItems: 'center',
     height: 52,
-    backgroundColor: L.field,
+    backgroundColor: t.superficie,
     borderRadius: 14,
     borderWidth: 1.5,
-    borderColor: L.fieldBorder,
+    // Borde del control ≥ 3:1 contra el campo (antes #24384A, 1,5:1): el mismo del buscador.
+    borderColor: t.bordeControl,
     paddingLeft: 14,
     gap: 10,
   },
@@ -471,7 +478,7 @@ const styles = StyleSheet.create({
     paddingRight: 14,
     fontFamily: Fonts.regular,
     fontSize: 16,
-    color: L.text,
+    color: t.texto,
     // En web el navegador dibuja su propio contorno encima del halo: el halo ya marca el foco.
     // Con estilo `auto` Chrome pinta su anillo aunque el ancho sea 0: hace falta `solid`.
     ...(Platform.OS === 'web' ? { outlineStyle: 'solid', outlineWidth: 0 } : null),
@@ -483,7 +490,7 @@ const styles = StyleSheet.create({
     fontFamily: Fonts.regular,
     fontSize: 13,
     lineHeight: 18,
-    color: Colors.danger,
+    color: t.criticoTexto,
   },
 
   btnPrimary: {
@@ -491,34 +498,34 @@ const styles = StyleSheet.create({
     height: 52,
     flexDirection: 'row',
     gap: 10,
-    backgroundColor: L.button,
+    backgroundColor: t.accion,
     borderRadius: 14,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  btnPrimaryText: { fontFamily: Fonts.semibold, color: L.buttonText, fontSize: 16 },
+  btnPrimaryText: { fontFamily: Fonts.semibold, color: t.sobreAccion, fontSize: 16 },
 
   linkTap: { minHeight: 44, justifyContent: 'center', alignSelf: 'center', paddingHorizontal: 8 },
   linkMuted: {
     fontFamily: Fonts.medium,
     fontSize: 14,
-    color: L.textSecondary,
+    color: t.textoSec,
     textDecorationLine: 'underline',
   },
-  linkGreen: { fontFamily: Fonts.semibold, fontSize: 14, color: L.linkGreen },
-  divider: { height: 1, backgroundColor: L.fieldBorder, marginVertical: 12 },
+  linkGreen: { fontFamily: Fonts.semibold, fontSize: 14, color: t.enlaceVerde },
+  divider: { height: 1, backgroundColor: t.bordeSuave, marginVertical: 12 },
   registerRow: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     alignItems: 'center',
     justifyContent: 'center',
   },
-  registerText: { fontFamily: Fonts.regular, fontSize: 14, color: L.textSecondary },
+  registerText: { fontFamily: Fonts.regular, fontSize: 14, color: t.textoSec },
   hint: {
     fontFamily: Fonts.regular,
     fontSize: 13,
     lineHeight: 19,
-    color: L.textSecondary,
+    color: t.textoSec,
     textAlign: 'center',
     marginTop: 2,
     marginBottom: 8,
@@ -531,5 +538,5 @@ const styles = StyleSheet.create({
     marginTop: 20,
   },
   dot: { width: 8, height: 8, borderRadius: 4 },
-  footerText: { fontFamily: Fonts.regular, fontSize: 13, color: L.textSecondary },
-});
+  footerText: { fontFamily: Fonts.regular, fontSize: 13, color: t.textoSec },
+}));

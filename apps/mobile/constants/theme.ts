@@ -39,6 +39,8 @@ export interface Paleta {
   accionPresionada: string;
   sobreAccion: string;
   enlace: string;
+  /** Enlace verde de marca («Solicitar acceso»). */
+  enlaceVerde: string;
   marca: string;
   marcaVerde: string;
   marcaAmarillo: string;
@@ -101,6 +103,7 @@ export const TEMAS: Record<NombreTema, Paleta> = {
     accionPresionada: B.actionPressed,
     sobreAccion: B.white,
     enlace: B.link,
+    enlaceVerde: Colors.login.linkGreen,
     marca: B.blue,
     marcaVerde: B.green,
     marcaAmarillo: B.yellow,
@@ -151,6 +154,7 @@ export const TEMAS: Record<NombreTema, Paleta> = {
     accionPresionada: '#175A84',
     sobreAccion: '#FFFFFF',
     enlace: '#0F5F8F',
+    enlaceVerde: '#3B7514',
     marca: '#2491CC',
     marcaVerde: '#88BD4C',
     marcaAmarillo: '#F3CB35',

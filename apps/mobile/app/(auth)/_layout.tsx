@@ -1,5 +1,6 @@
 import { Slot, Stack, Redirect } from 'expo-router';
 import { Platform } from 'react-native';
+import { StatusBar } from 'expo-status-bar';
 import { useAuth } from '../../context/AuthContext';
 
 export default function AuthLayout() {
@@ -15,9 +16,13 @@ export default function AuthLayout() {
   if (Platform.OS === 'web') return <Slot />;
 
   return (
-    <Stack screenOptions={{ headerShown: false }}>
-      <Stack.Screen name="login" />
-      <Stack.Screen name="register" />
-    </Stack>
+    <>
+      {/* Arriba va el panel de marca, oscuro en los dos temas: íconos del sistema claros. */}
+      <StatusBar style="light" />
+      <Stack screenOptions={{ headerShown: false }}>
+        <Stack.Screen name="login" />
+        <Stack.Screen name="register" />
+      </Stack>
+    </>
   );
 }
