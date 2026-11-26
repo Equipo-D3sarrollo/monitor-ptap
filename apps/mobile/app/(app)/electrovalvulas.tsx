@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { View, Text, ScrollView, RefreshControl, StyleSheet } from 'react-native';
+import { View, Text, ScrollView, RefreshControl } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Ionicons from '../../components/AppIcon';
 import { useSnapshot } from '../../hooks/useSnapshot';
@@ -24,8 +24,9 @@ import { useValveSupervisor, type SupervisedValve } from '../../hooks/useValveSu
 import { useDashboardPrefs } from '../../services/dashboard-prefs';
 import { getAuthGeneration } from '../../services/api';
 import { EN_INTEGRACION } from '../../services/plant-status';
-import Colors from '../../constants/colors';
 import { Fonts } from '../../constants/fonts';
+import { estilosConTema, useTheme } from '../../context/ThemeContext';
+
 
 /**
  * El mando remoto está habilitado en TODAS las plantas que tengan válvula mapeada. Antes solo
@@ -47,6 +48,8 @@ interface Pendiente {
 }
 
 export default function ElectrovalvulasScreen() {
+  const { t } = useTheme();
+  const styles = useStyles();
   const { selectedPlant } = usePlant();
   const { hasPermission } = useAuth();
   const canView = hasPermission('view_dashboard'); // el Civil no ve electroválvulas
@@ -128,7 +131,7 @@ export default function ElectrovalvulasScreen() {
     return (
       <SafeAreaView style={styles.safe} edges={['bottom']}>
         <View style={styles.centered}>
-          <Ionicons name="lock-closed-outline" size={40} color={Colors.textSecondary} />
+          <Ionicons name="lock-closed-outline" size={40} color={t.antTextoSec} />
           <Text style={styles.plantName}>Acceso restringido</Text>
           <Text style={styles.sectionSubtitle}>
             Las electroválvulas no están disponibles para tu rol.
@@ -191,8 +194,8 @@ export default function ElectrovalvulasScreen() {
               onRefresh={() => {
                 void refetch();
               }}
-              colors={[Colors.primary]}
-              tintColor={Colors.primary}
+              colors={[t.antPrimario]}
+              tintColor={t.antPrimario}
             />
           }
         >
@@ -203,21 +206,21 @@ export default function ElectrovalvulasScreen() {
             </View>
             {valves.length > 0 && (
               <View style={styles.summary}>
-                <Text style={[styles.summaryCount, { color: Colors.success }]}>
+                <Text style={[styles.summaryCount, { color: t.antExito }]}>
                   {openCount} abiertas
                 </Text>
                 <Text style={styles.summaryDot}> · </Text>
-                <Text style={[styles.summaryCount, { color: Colors.danger }]}>
+                <Text style={[styles.summaryCount, { color: t.critico }]}>
                   {closedCount} cerradas
                 </Text>
                 {unconfirmedCount > 0 && (
-                  <Text style={[styles.summaryCount, { color: Colors.textSecondary }]}>
+                  <Text style={[styles.summaryCount, { color: t.antTextoSec }]}>
                     {' '}
                     · {unconfirmedCount} sin confirmar
                   </Text>
                 )}
                 {faultCount > 0 && (
-                  <Text style={[styles.summaryCount, { color: Colors.danger }]}>
+                  <Text style={[styles.summaryCount, { color: t.critico }]}>
                     {' '}
                     · {faultCount} en falla
                   </Text>
@@ -249,13 +252,13 @@ export default function ElectrovalvulasScreen() {
             // No es «sin válvulas mapeadas» a secas: las tiene en campo, pero la planta aún no está
             // conectada al PLC maestro, y decirlo así evita que alguien lo reporte como una falla.
             <View style={styles.loadingWrap}>
-              <Ionicons name="construct-outline" size={34} color={Colors.textSecondary} />
+              <Ionicons name="construct-outline" size={34} color={t.antTextoSec} />
               <Text style={styles.loadingText}>{EN_INTEGRACION.titulo}</Text>
               <Text style={styles.loadingSub}>{EN_INTEGRACION.valvulas}</Text>
             </View>
           ) : valves.length === 0 ? (
             <View style={styles.loadingWrap}>
-              <Ionicons name="git-branch-outline" size={34} color={Colors.textSecondary} />
+              <Ionicons name="git-branch-outline" size={34} color={t.antTextoSec} />
               <Text style={styles.loadingText}>Esta planta no tiene electroválvulas mapeadas.</Text>
               <Text style={styles.loadingSub}>
                 Solo aparecen las válvulas declaradas en el mapping de la planta: las de mando
@@ -331,8 +334,8 @@ export default function ElectrovalvulasScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  safe: { flex: 1, minWidth: 0, backgroundColor: Colors.brand.page },
+const useStyles = estilosConTema((t) => ({
+  safe: { flex: 1, minWidth: 0, backgroundColor: t.fondo },
   centered: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 32, gap: 10 },
   content: { padding: 16, paddingBottom: 28 },
   sectionHeader: {
@@ -341,12 +344,12 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     marginBottom: 12,
   },
-  plantName: { fontSize: 22, lineHeight: 30, fontFamily: Fonts.semibold, color: Colors.brand.text },
+  plantName: { fontSize: 22, lineHeight: 30, fontFamily: Fonts.semibold, color: t.texto },
   sectionSubtitle: {
     fontFamily: Fonts.regular,
     fontSize: 13,
     lineHeight: 20,
-    color: Colors.brand.textSecondary,
+    color: t.textoSec,
     marginTop: 4,
   },
   summary: {
@@ -358,21 +361,21 @@ const styles = StyleSheet.create({
     marginTop: 4,
   },
   summaryCount: { fontSize: 12, fontWeight: '700' },
-  summaryDot: { color: Colors.textSecondary, fontSize: 12 },
+  summaryDot: { color: t.antTextoSec, fontSize: 12 },
   notice: {
     flexDirection: 'row',
     gap: 8,
     alignItems: 'flex-start',
-    backgroundColor: Colors.primary + '10',
+    backgroundColor: t.antPrimario + '10',
     borderLeftWidth: 3,
-    borderLeftColor: Colors.primary,
+    borderLeftColor: t.antPrimario,
     borderRadius: 8,
     padding: 10,
     marginBottom: 12,
   },
-  noticeOk: { backgroundColor: Colors.success + '10', borderLeftColor: Colors.success },
-  noticeWarn: { backgroundColor: Colors.warning + '12', borderLeftColor: Colors.warning },
-  noticeText: { flex: 1, fontSize: 12, lineHeight: 17, color: Colors.textSecondary },
+  noticeOk: { backgroundColor: t.antExito + '10', borderLeftColor: t.antExito },
+  noticeWarn: { backgroundColor: t.antAdvertencia + '12', borderLeftColor: t.antAdvertencia },
+  noticeText: { flex: 1, fontSize: 12, lineHeight: 17, color: t.antTextoSec },
   event: {
     flexDirection: 'row',
     gap: 8,
@@ -382,23 +385,23 @@ const styles = StyleSheet.create({
     padding: 10,
     marginBottom: 8,
   },
-  eventManual: { backgroundColor: Colors.warning + '12', borderLeftColor: Colors.warning },
-  eventCmd: { backgroundColor: Colors.primary + '10', borderLeftColor: Colors.primary },
-  eventTitle: { fontSize: 12.5, fontWeight: '700', color: Colors.textPrimary },
-  eventMsg: { fontSize: 11.5, lineHeight: 16, color: Colors.textSecondary, marginTop: 2 },
+  eventManual: { backgroundColor: t.antAdvertencia + '12', borderLeftColor: t.antAdvertencia },
+  eventCmd: { backgroundColor: t.antPrimario + '10', borderLeftColor: t.antPrimario },
+  eventTitle: { fontSize: 12.5, fontWeight: '700', color: t.antTexto },
+  eventMsg: { fontSize: 11.5, lineHeight: 16, color: t.antTextoSec, marginTop: 2 },
   loadingWrap: { paddingVertical: 44, alignItems: 'center', gap: 8 },
-  loadingText: { color: Colors.textSecondary, fontSize: 14, textAlign: 'center' },
+  loadingText: { color: t.antTextoSec, fontSize: 14, textAlign: 'center' },
   loadingSub: {
-    color: Colors.textSecondary,
+    color: t.antTextoSec,
     fontSize: 12,
     textAlign: 'center',
     paddingHorizontal: 20,
   },
   note: {
     fontSize: 12,
-    color: Colors.textSecondary,
+    color: t.antTextoSec,
     textAlign: 'center',
     marginTop: 12,
     fontStyle: 'italic',
   },
-});
+}));

@@ -994,7 +994,7 @@ function valveScreenRace() {
     '../../services/dashboard-prefs': { useDashboardPrefs: () => ({ compact: false }) },
     '../../services/api': { getAuthGeneration: () => generation },
     '../../services/plant-status': { EN_INTEGRACION: {} },
-    '../../constants/colors': { primary: '#2491CC', brand: {} },
+    '../../context/ThemeContext': { useTheme: () => ({ t: {} }), estilosConTema: () => () => ({}) },
     '../../constants/fonts': { Fonts: {} },
     '../../components/PlantPicker': { PlantPickerLayout: 'PlantPickerLayout', PlantPickerTrigger: 'PlantPickerTrigger' },
   };

@@ -1,5 +1,5 @@
 import { memo } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator } from 'react-native';
+import { View, Text, TouchableOpacity, ActivityIndicator } from 'react-native';
 import Ionicons from './AppIcon';
 import {
   accionDisponible,
@@ -8,8 +8,9 @@ import {
   presentacionDeValvula,
 } from '../services/valves';
 import type { SupervisedValve } from '../hooks/useValveSupervisor';
-import Colors from '../constants/colors';
 import { sameValveItem } from './memo-compare';
+import { estilosConTema, useTheme } from '../context/ThemeContext';
+
 
 interface Props {
   valve: SupervisedValve;
@@ -43,20 +44,22 @@ interface Props {
  * lo dice con el motivo de `setpoint-pending`.
  */
 function ValveItemBase({ valve, onToggle, onSetpoint, frozen = false, busy = false }: Props) {
+  const { t } = useTheme();
+  const styles = useStyles();
   const evidence = presentacionDeValvula(valve);
   const color =
     evidence.kind === 'fault'
-      ? Colors.danger
+      ? t.critico
       : evidence.physicalState === 'open'
-        ? Colors.success
+        ? t.antExito
         : evidence.physicalState === 'closed'
-          ? Colors.danger
-          : Colors.neutral;
+          ? t.critico
+          : t.antNeutro;
   const textColor =
-    color === Colors.danger
-      ? Colors.brand.dangerText
-      : color === Colors.neutral
-        ? Colors.brand.textSecondary
+    color === t.critico
+      ? t.criticoTexto
+      : color === t.antNeutro
+        ? t.textoSec
         : color;
 
   const accion = accionDisponible(valve, frozen);
@@ -127,7 +130,7 @@ function ValveItemBase({ valve, onToggle, onSetpoint, frozen = false, busy = fal
           <TouchableOpacity
             style={[
               styles.toggleBtn,
-              { backgroundColor: Colors.brand.action + '15', opacity: busy ? 0.5 : 1 },
+              { backgroundColor: t.accion + '15', opacity: busy ? 0.5 : 1 },
             ]}
             onPress={() => onToggle(valve, accion.verb)}
             activeOpacity={0.7}
@@ -137,15 +140,15 @@ function ValveItemBase({ valve, onToggle, onSetpoint, frozen = false, busy = fal
             accessibilityLabel={`${accion.verb === 'close' ? 'Cerrar' : 'Abrir'} ${valve.name}. Pedirá confirmación.`}
           >
             {busy ? (
-              <ActivityIndicator size="small" color={Colors.brand.link} />
+              <ActivityIndicator size="small" color={t.enlace} />
             ) : (
               <Ionicons
                 name={accion.verb === 'close' ? 'close-circle-outline' : 'checkmark-circle-outline'}
                 size={16}
-                color={Colors.brand.link}
+                color={t.enlace}
               />
             )}
-            <Text style={[styles.toggleText, { color: Colors.brand.link }]}>
+            <Text style={[styles.toggleText, { color: t.enlace }]}>
               {busy ? 'Enviando…' : accion.verb === 'close' ? 'Cerrar' : 'Abrir'}
             </Text>
           </TouchableOpacity>
@@ -153,7 +156,7 @@ function ValveItemBase({ valve, onToggle, onSetpoint, frozen = false, busy = fal
 
         {accion.kind === 'setpoint' && onSetpoint && (
           <TouchableOpacity
-            style={[styles.toggleBtn, { backgroundColor: Colors.primary + '15', opacity: busy ? 0.5 : 1 }]}
+            style={[styles.toggleBtn, { backgroundColor: t.antPrimario + '15', opacity: busy ? 0.5 : 1 }]}
             onPress={() => onSetpoint(valve)}
             activeOpacity={0.7}
             disabled={busy}
@@ -161,10 +164,10 @@ function ValveItemBase({ valve, onToggle, onSetpoint, frozen = false, busy = fal
             accessibilityState={{ disabled: busy, busy }}
             accessibilityLabel={`Ajustar apertura de ${valve.name}. Pedirá confirmación.`}
           >
-            {busy ? <ActivityIndicator size="small" color={Colors.primary} /> : (
-              <Ionicons name="options-outline" size={16} color={Colors.primary} />
+            {busy ? <ActivityIndicator size="small" color={t.antPrimario} /> : (
+              <Ionicons name="options-outline" size={16} color={t.antPrimario} />
             )}
-            <Text style={[styles.toggleText, { color: Colors.primary }]}>{busy ? 'Enviando…' : 'Ajustar apertura'}</Text>
+            <Text style={[styles.toggleText, { color: t.antPrimario }]}>{busy ? 'Enviando…' : 'Ajustar apertura'}</Text>
           </TouchableOpacity>
         )}
 
@@ -186,16 +189,16 @@ function ValveItemBase({ valve, onToggle, onSetpoint, frozen = false, busy = fal
 /** Memo con comparación POR VALOR — ver `memo-compare.ts`. */
 export const ValveItem = memo(ValveItemBase, sameValveItem);
 
-const styles = StyleSheet.create({
+const useStyles = estilosConTema((t) => ({
   row: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: Colors.brand.card,
+    backgroundColor: t.superficie,
     borderRadius: 14,
     padding: 14,
     marginBottom: 8,
     borderWidth: 1,
-    borderColor: Colors.brand.cardBorder,
+    borderColor: t.bordeSuave,
   },
   rowFrozen: { borderStyle: 'dashed' },
   iconWrap: {
@@ -208,19 +211,19 @@ const styles = StyleSheet.create({
   },
   info: { flex: 1 },
   nameRow: { flexDirection: 'row', alignItems: 'center', gap: 6, flexWrap: 'wrap' },
-  name: { fontSize: 14, fontWeight: '700', color: Colors.brand.text },
+  name: { fontSize: 14, fontWeight: '700', color: t.texto },
   tagWarn: {
-    backgroundColor: Colors.warning + '22',
-    borderColor: Colors.warning,
+    backgroundColor: t.antAdvertencia + '22',
+    borderColor: t.antAdvertencia,
     borderWidth: 1,
     borderRadius: 6,
     paddingHorizontal: 6,
     paddingVertical: 1,
   },
-  tagWarnText: { fontSize: 11, fontWeight: '700', color: Colors.warning, letterSpacing: 0.3 },
+  tagWarnText: { fontSize: 11, fontWeight: '700', color: t.antAdvertencia, letterSpacing: 0.3 },
   tagNeutral: {
-    backgroundColor: Colors.textSecondary + '22',
-    borderColor: Colors.textSecondary,
+    backgroundColor: t.antTextoSec + '22',
+    borderColor: t.antTextoSec,
     borderWidth: 1,
     borderRadius: 6,
     paddingHorizontal: 6,
@@ -229,13 +232,13 @@ const styles = StyleSheet.create({
   tagNeutralText: {
     fontSize: 11,
     fontWeight: '700',
-    color: Colors.textSecondary,
+    color: t.antTextoSec,
     letterSpacing: 0.3,
   },
   apertura: { marginTop: 6, marginRight: 10, gap: 4 },
-  aperturaTexto: { fontSize: 12, color: Colors.textSecondary, fontVariant: ['tabular-nums'] },
+  aperturaTexto: { fontSize: 12, color: t.antTextoSec, fontVariant: ['tabular-nums'] },
   // La misma barra que `FlowMeterCard`: pista en el color de fondo y relleno con ancho en %.
-  barOuter: { height: 8, borderRadius: 4, backgroundColor: Colors.brand.page, overflow: 'hidden' },
+  barOuter: { height: 8, borderRadius: 4, backgroundColor: t.fondo, overflow: 'hidden' },
   barFill: { height: '100%', borderRadius: 4 },
   right: { alignItems: 'flex-end', gap: 6, maxWidth: '46%' },
   badge: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 12 },
@@ -254,5 +257,5 @@ const styles = StyleSheet.create({
   toggleText: { fontSize: 12, fontWeight: '700' },
   // Discreta a propósito: informa de una limitación, no de un problema. Compite con el badge de
   // estado, que es lo que el operador viene a mirar.
-  sinMando: { fontSize: 10, color: Colors.textSecondary, marginTop: 2, textAlign: 'right' },
-});
+  sinMando: { fontSize: 10, color: t.antTextoSec, marginTop: 2, textAlign: 'right' },
+}));

@@ -1,9 +1,10 @@
 import { useEffect, useState } from 'react';
-import { Modal, View, Text, ScrollView, StyleSheet, TouchableOpacity, ActivityIndicator, Platform } from 'react-native';
+import { Modal, View, Text, ScrollView, TouchableOpacity, ActivityIndicator, Platform } from 'react-native';
 import Ionicons from './AppIcon';
-import Colors from '../constants/colors';
 import { useReducedMotion } from '../hooks/useReducedMotion';
 import { HapticFeedback } from '../services/haptics';
+import { estilosConTema, useTheme } from '../context/ThemeContext';
+
 
 /**
  * Doble confirmación antes de accionar una válvula real.
@@ -55,6 +56,8 @@ export function ValveConfirmDialog({
   onConfirm,
   onCancel,
 }: Props) {
+  const { t } = useTheme();
+  const styles = useStyles();
   const [restante, setRestante] = useState(ESPERA_SEGUNDOS);
   const reducedMotion = useReducedMotion();
 
@@ -81,7 +84,7 @@ export function ValveConfirmDialog({
   const unidad = consigna?.unit ? ` ${consigna.unit}` : '';
   const accion = verb === 'open' ? 'ABRIR' : verb === 'close' ? 'CERRAR' : `AJUSTAR A ${consigna?.hasta ?? '—'}${unidad}`;
   const listo = restante === 0 && !busy;
-  const colorAccion = verb === 'open' ? Colors.success : verb === 'close' ? Colors.danger : Colors.primary;
+  const colorAccion = verb === 'open' ? t.antExito : verb === 'close' ? t.critico : t.antPrimario;
 
   // Escape cancela — pero NUNCA con una orden en vuelo: cerrar el diálogo no la detendría, y
   // dejaría al operador creyendo que canceló algo que ya salió al PLC.
@@ -96,7 +99,7 @@ export function ValveConfirmDialog({
         <ScrollView style={styles.card} contentContainerStyle={styles.content} accessibilityViewIsModal accessibilityRole="alert">
           <View style={styles.headerRow}>
             <View style={styles.warnIcon}>
-              <Ionicons name="warning-outline" size={24} color={Colors.warning} />
+              <Ionicons name="warning-outline" size={24} color={t.antAdvertencia} />
             </View>
             <Text style={styles.title}>¿Seguro que desea mover la válvula?</Text>
           </View>
@@ -134,7 +137,7 @@ export function ValveConfirmDialog({
 
           {!conLecturaDeEstado && (
             <View style={styles.sinEstado}>
-              <Ionicons name="eye-off-outline" size={16} color={Colors.warning} />
+              <Ionicons name="eye-off-outline" size={16} color={t.antAdvertencia} />
               <Text style={styles.sinEstadoTexto}>
                 Esta planta no reporta el estado eléctrico de la válvula: después de mandar la orden,
                 el sistema no podrá confirmar que se movió.{' '}
@@ -157,7 +160,7 @@ export function ValveConfirmDialog({
               accessibilityRole="button"
               accessibilityLabel="Volver sin mover la válvula"
             >
-              <Ionicons name="arrow-back-outline" size={16} color={Colors.textPrimary} />
+              <Ionicons name="arrow-back-outline" size={16} color={t.antTexto} />
               <Text style={styles.btnVolverText}>Volver</Text>
             </TouchableOpacity>
 
@@ -172,7 +175,7 @@ export function ValveConfirmDialog({
             >
               {busy ? (
                 <>
-                  <ActivityIndicator size="small" color={Colors.bg} />
+                  <ActivityIndicator size="small" color={t.antFondo} />
                   <Text style={styles.btnAceptarText}>Enviando…</Text>
                 </>
               ) : (
@@ -192,7 +195,7 @@ export function ValveConfirmDialog({
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = estilosConTema((t) => ({
   backdrop: {
     flex: 1,
     backgroundColor: 'rgba(0,0,0,0.55)',
@@ -205,7 +208,7 @@ const styles = StyleSheet.create({
     maxWidth: 420,
     maxHeight: '100%',
     flexGrow: 0,
-    backgroundColor: Colors.bg,
+    backgroundColor: t.antFondo,
     borderRadius: 16,
     // La sombra se declara distinto por plataforma; en web `elevation` no hace nada.
     ...Platform.select({
@@ -219,35 +222,35 @@ const styles = StyleSheet.create({
     width: 42,
     height: 42,
     borderRadius: 21,
-    backgroundColor: Colors.warning + '1F',
+    backgroundColor: t.antAdvertencia + '1F',
     alignItems: 'center',
     justifyContent: 'center',
   },
-  title: { flex: 1, fontSize: 16, fontWeight: '800', color: Colors.textPrimary, lineHeight: 21 },
+  title: { flex: 1, fontSize: 16, fontWeight: '800', color: t.antTexto, lineHeight: 21 },
   detalle: {
-    backgroundColor: Colors.surface,
+    backgroundColor: t.antSuperficie,
     borderRadius: 10,
     padding: 12,
     gap: 6,
     borderWidth: 1,
-    borderColor: Colors.divider,
+    borderColor: t.antDivisor,
   },
   detalleFila: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12 },
-  detalleLabel: { fontSize: 12, color: Colors.textSecondary },
-  detalleValor: { fontSize: 13, fontWeight: '700', color: Colors.textPrimary, flexShrink: 1, textAlign: 'right' },
-  advertencia: { fontSize: 12.5, lineHeight: 18, color: Colors.textSecondary },
-  advertenciaFuerte: { fontWeight: '700', color: Colors.warning },
+  detalleLabel: { fontSize: 12, color: t.antTextoSec },
+  detalleValor: { fontSize: 13, fontWeight: '700', color: t.antTexto, flexShrink: 1, textAlign: 'right' },
+  advertencia: { fontSize: 12.5, lineHeight: 18, color: t.antTextoSec },
+  advertenciaFuerte: { fontWeight: '700', color: t.antAdvertencia },
   sinEstado: {
     flexDirection: 'row',
     alignItems: 'flex-start',
     gap: 8,
-    backgroundColor: Colors.warning + '14',
+    backgroundColor: t.antAdvertencia + '14',
     borderRadius: 10,
     padding: 10,
     marginTop: 10,
   },
-  sinEstadoTexto: { flex: 1, fontSize: 12.5, lineHeight: 17, color: Colors.textSecondary },
-  firma: { fontSize: 11.5, lineHeight: 16, color: Colors.textSecondary, marginTop: 10, fontStyle: 'italic' },
+  sinEstadoTexto: { flex: 1, fontSize: 12.5, lineHeight: 17, color: t.antTextoSec },
+  firma: { fontSize: 11.5, lineHeight: 16, color: t.antTextoSec, marginTop: 10, fontStyle: 'italic' },
   botones: { flexDirection: 'row', gap: 10, marginTop: 2 },
   btn: {
     flex: 1,
@@ -258,10 +261,10 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     borderRadius: 10,
   },
-  btnVolver: { backgroundColor: Colors.surface, borderWidth: 1, borderColor: Colors.divider },
-  btnVolverText: { fontSize: 14, fontWeight: '700', color: Colors.textPrimary },
-  btnEspera: { backgroundColor: Colors.divider },
-  btnEsperaText: { color: Colors.textSecondary },
-  btnAceptarText: { fontSize: 14, fontWeight: '800', color: Colors.bg },
-  pie: { fontSize: 11, color: Colors.textSecondary, textAlign: 'center', fontStyle: 'italic' },
-});
+  btnVolver: { backgroundColor: t.antSuperficie, borderWidth: 1, borderColor: t.antDivisor },
+  btnVolverText: { fontSize: 14, fontWeight: '700', color: t.antTexto },
+  btnEspera: { backgroundColor: t.antDivisor },
+  btnEsperaText: { color: t.antTextoSec },
+  btnAceptarText: { fontSize: 14, fontWeight: '800', color: t.antFondo },
+  pie: { fontSize: 11, color: t.antTextoSec, textAlign: 'center', fontStyle: 'italic' },
+}));

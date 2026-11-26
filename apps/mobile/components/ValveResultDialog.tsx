@@ -1,10 +1,12 @@
 import { useEffect } from 'react';
-import { Modal, View, Text, StyleSheet, TouchableOpacity, ScrollView, Platform } from 'react-native';
+import { Modal, View, Text, TouchableOpacity, ScrollView, Platform } from 'react-native';
 import Ionicons from './AppIcon';
-import Colors from '../constants/colors';
 import { useReducedMotion } from '../hooks/useReducedMotion';
 import type { CommandVerdict } from '../services/valves';
 import { HapticFeedback } from '../services/haptics';
+import type { Paleta } from '../constants/theme';
+import { estilosConTema, useTheme } from '../context/ThemeContext';
+
 
 /**
  * Resultado de una orden de válvula, con **acuse de recibo obligatorio**.
@@ -20,11 +22,15 @@ import { HapticFeedback } from '../services/haptics';
  * conserva a propósito es la parte que importa — que no desaparece hasta que alguien lo cierra.
  */
 /** Tres desenlaces, tres colores. El ámbar es el que faltaba: «salió, pero nadie lo confirma». */
-const TONO: Record<CommandVerdict['tone'], { color: string; icon: keyof typeof Ionicons.glyphMap }> = {
-  success: { color: Colors.success, icon: 'checkmark-circle' },
-  warning: { color: Colors.warning, icon: 'help-circle' },
-  danger: { color: Colors.danger, icon: 'alert-circle' },
-};
+function tonoDe(
+  t: Paleta,
+): Record<CommandVerdict['tone'], { color: string; icon: keyof typeof Ionicons.glyphMap }> {
+  return {
+    success: { color: t.antExito, icon: 'checkmark-circle' },
+    warning: { color: t.antAdvertencia, icon: 'help-circle' },
+    danger: { color: t.critico, icon: 'alert-circle' },
+  };
+}
 
 interface Props {
   /** Veredicto a mostrar; `null` cierra el diálogo. */
@@ -33,6 +39,8 @@ interface Props {
 }
 
 export function ValveResultDialog({ verdict, onClose }: Props) {
+  const { t } = useTheme();
+  const styles = useStyles();
   const reducedMotion = useReducedMotion();
 
   useEffect(() => {
@@ -47,7 +55,7 @@ export function ValveResultDialog({ verdict, onClose }: Props) {
   // puede confirmar que la válvula se movió» era `ok: true` y se pintaba verde con un tick, encima
   // de un texto que pedía ir a comprobarlo en planta. El semáforo decía «hecho» y la letra pequeña
   // decía «ve a mirar»: gana el semáforo, y nadie va.
-  const { color, icon } = TONO[verdict.tone];
+  const { color, icon } = tonoDe(t)[verdict.tone];
 
   return (
     <Modal visible transparent animationType={reducedMotion ? 'none' : 'fade'} onRequestClose={onClose}>
@@ -90,7 +98,7 @@ export function ValveResultDialog({ verdict, onClose }: Props) {
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = estilosConTema((t) => ({
   backdrop: {
     flex: 1,
     backgroundColor: 'rgba(0,0,0,0.55)',
@@ -102,7 +110,7 @@ const styles = StyleSheet.create({
     width: '100%',
     maxWidth: 420,
     maxHeight: '80%',
-    backgroundColor: Colors.bg,
+    backgroundColor: t.antFondo,
     borderRadius: 16,
     padding: 18,
     gap: 14,
@@ -119,11 +127,11 @@ const styles = StyleSheet.create({
   },
   headerRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   icon: { width: 42, height: 42, borderRadius: 21, alignItems: 'center', justifyContent: 'center' },
-  title: { fontSize: 16, fontWeight: '800', color: Colors.textPrimary, lineHeight: 21 },
-  valve: { fontSize: 12, color: Colors.textSecondary, marginTop: 2 },
+  title: { fontSize: 16, fontWeight: '800', color: t.antTexto, lineHeight: 21 },
+  valve: { fontSize: 12, color: t.antTextoSec, marginTop: 2 },
   messageWrap: { maxHeight: 260 },
-  message: { fontSize: 14, lineHeight: 20, color: Colors.textSecondary },
-  technical: { fontSize: 11, lineHeight: 15, color: Colors.textSecondary, opacity: 0.7, marginTop: 8 },
+  message: { fontSize: 14, lineHeight: 20, color: t.antTextoSec },
+  technical: { fontSize: 11, lineHeight: 15, color: t.antTextoSec, opacity: 0.7, marginTop: 8 },
   btn: { alignItems: 'center', justifyContent: 'center', paddingVertical: 12, borderRadius: 10 },
-  btnText: { fontSize: 14, fontWeight: '800', color: Colors.bg },
-});
+  btnText: { fontSize: 14, fontWeight: '800', color: t.antFondo },
+}));

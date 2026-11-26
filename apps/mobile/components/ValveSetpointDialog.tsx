@@ -5,7 +5,6 @@ import {
   Text,
   TextInput,
   ScrollView,
-  StyleSheet,
   TouchableOpacity,
   PanResponder,
   Platform,
@@ -13,9 +12,10 @@ import {
   type LayoutChangeEvent,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import Colors from '../constants/colors';
 import { useReducedMotion } from '../hooks/useReducedMotion';
 import { textoApertura, validarConsigna } from '../services/valves';
+import { estilosConTema, useTheme } from '../context/ThemeContext';
+
 
 /**
  * Primer paso para ajustar la CONSIGNA de una válvula proporcional (Fase 4): elegir el valor.
@@ -42,6 +42,8 @@ interface Props {
 }
 
 export function ValveSetpointDialog({ visible, valveName, plantName, positionPct, setpointPct, limites, onContinue, onCancel }: Props) {
+  const { t } = useTheme();
+  const styles = useStyles();
   const reducedMotion = useReducedMotion();
   const { min, max } = limites;
   const unidad = limites.unit ? ` ${limites.unit}` : '';
@@ -79,7 +81,7 @@ export function ValveSetpointDialog({ visible, valveName, plantName, positionPct
         <ScrollView style={styles.card} contentContainerStyle={styles.content} accessibilityViewIsModal>
           <View style={styles.headerRow}>
             <View style={styles.icono}>
-              <Ionicons name="options-outline" size={22} color={Colors.primary} />
+              <Ionicons name="options-outline" size={22} color={t.antPrimario} />
             </View>
             <View style={{ flex: 1 }}>
               <Text style={styles.title}>Ajustar apertura</Text>
@@ -155,18 +157,18 @@ export function ValveSetpointDialog({ visible, valveName, plantName, positionPct
 
           <View style={styles.botones}>
             <TouchableOpacity style={[styles.btn, styles.btnVolver]} onPress={onCancel} accessibilityRole="button" accessibilityLabel="Volver sin ajustar la apertura">
-              <Ionicons name="arrow-back-outline" size={16} color={Colors.textPrimary} />
+              <Ionicons name="arrow-back-outline" size={16} color={t.antTexto} />
               <Text style={styles.btnVolverText}>Volver</Text>
             </TouchableOpacity>
             <TouchableOpacity
-              style={[styles.btn, valor !== null ? { backgroundColor: Colors.primary } : styles.btnInactivo]}
+              style={[styles.btn, valor !== null ? { backgroundColor: t.antPrimario } : styles.btnInactivo]}
               onPress={() => valor !== null && onContinue(valor)}
               disabled={valor === null}
               accessibilityRole="button"
               accessibilityState={{ disabled: valor === null }}
               accessibilityLabel={valor === null ? 'Continuar (valor no válido)' : `Continuar con ${valor}${unidad}`}
             >
-              <Text style={[styles.btnContinuarText, valor === null && { color: Colors.textSecondary }]}>Continuar</Text>
+              <Text style={[styles.btnContinuarText, valor === null && { color: t.antTextoSec }]}>Continuar</Text>
             </TouchableOpacity>
           </View>
           <Text style={styles.pie}>En el siguiente paso deberá confirmar la maniobra.</Text>
@@ -176,14 +178,14 @@ export function ValveSetpointDialog({ visible, valveName, plantName, positionPct
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = estilosConTema((t) => ({
   backdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.55)', alignItems: 'center', justifyContent: 'center', padding: 20 },
   card: {
     width: '100%',
     maxWidth: 420,
     maxHeight: '100%',
     flexGrow: 0,
-    backgroundColor: Colors.bg,
+    backgroundColor: t.antFondo,
     borderRadius: 16,
     ...Platform.select({
       web: { boxShadow: '0 10px 30px rgba(0,0,0,0.25)' } as object,
@@ -192,54 +194,54 @@ const styles = StyleSheet.create({
   },
   content: { padding: 18, gap: 12 },
   headerRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
-  icono: { width: 42, height: 42, borderRadius: 21, backgroundColor: Colors.primary + '1A', alignItems: 'center', justifyContent: 'center' },
-  title: { fontSize: 16, fontWeight: '800', color: Colors.textPrimary },
-  sub: { fontSize: 12, color: Colors.textSecondary, marginTop: 2 },
-  detalle: { backgroundColor: Colors.surface, borderRadius: 10, padding: 12, gap: 6, borderWidth: 1, borderColor: Colors.divider },
+  icono: { width: 42, height: 42, borderRadius: 21, backgroundColor: t.antPrimario + '1A', alignItems: 'center', justifyContent: 'center' },
+  title: { fontSize: 16, fontWeight: '800', color: t.antTexto },
+  sub: { fontSize: 12, color: t.antTextoSec, marginTop: 2 },
+  detalle: { backgroundColor: t.antSuperficie, borderRadius: 10, padding: 12, gap: 6, borderWidth: 1, borderColor: t.antDivisor },
   fila: { flexDirection: 'row', justifyContent: 'space-between', gap: 12 },
-  label: { fontSize: 12, color: Colors.textSecondary },
-  valor: { fontSize: 13, fontWeight: '700', color: Colors.textPrimary, fontVariant: ['tabular-nums'] },
+  label: { fontSize: 12, color: t.antTextoSec },
+  valor: { fontSize: 13, fontWeight: '700', color: t.antTexto, fontVariant: ['tabular-nums'] },
   // 44 px de alto: el área táctil mínima, aunque la pista visible sea fina.
   pista: { height: 44, justifyContent: 'center' },
-  pistaFondo: { height: 8, borderRadius: 4, backgroundColor: Colors.surface, overflow: 'hidden', borderWidth: 1, borderColor: Colors.divider },
-  pistaRelleno: { height: '100%', backgroundColor: Colors.primary },
-  marcaActual: { position: 'absolute', width: 2, height: 22, marginLeft: -1, backgroundColor: Colors.textSecondary },
+  pistaFondo: { height: 8, borderRadius: 4, backgroundColor: t.antSuperficie, overflow: 'hidden', borderWidth: 1, borderColor: t.antDivisor },
+  pistaRelleno: { height: '100%', backgroundColor: t.antPrimario },
+  marcaActual: { position: 'absolute', width: 2, height: 22, marginLeft: -1, backgroundColor: t.antTextoSec },
   pulgar: {
     position: 'absolute',
     width: 26,
     height: 26,
     marginLeft: -13,
     borderRadius: 13,
-    backgroundColor: Colors.bg,
+    backgroundColor: t.antFondo,
     borderWidth: 3,
-    borderColor: Colors.primary,
+    borderColor: t.antPrimario,
   },
   leyenda: { flexDirection: 'row', justifyContent: 'space-between', marginTop: -6 },
-  leyendaTexto: { fontSize: 10.5, color: Colors.textSecondary },
+  leyendaTexto: { fontSize: 10.5, color: t.antTextoSec },
   ajuste: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6 },
-  paso: { minWidth: 44, minHeight: 44, borderRadius: 10, borderWidth: 1, borderColor: Colors.divider, alignItems: 'center', justifyContent: 'center', backgroundColor: Colors.surface },
-  pasoTexto: { fontSize: 13, fontWeight: '700', color: Colors.textPrimary, fontVariant: ['tabular-nums'] },
+  paso: { minWidth: 44, minHeight: 44, borderRadius: 10, borderWidth: 1, borderColor: t.antDivisor, alignItems: 'center', justifyContent: 'center', backgroundColor: t.antSuperficie },
+  pasoTexto: { fontSize: 13, fontWeight: '700', color: t.antTexto, fontVariant: ['tabular-nums'] },
   input: {
     width: 72,
     minHeight: 44,
     borderRadius: 10,
     borderWidth: 1,
-    borderColor: Colors.divider,
+    borderColor: t.antDivisor,
     textAlign: 'center',
     fontSize: 18,
     fontWeight: '800',
-    color: Colors.textPrimary,
-    backgroundColor: Colors.bg,
+    color: t.antTexto,
+    backgroundColor: t.antFondo,
   },
-  inputMal: { borderColor: Colors.danger },
-  unidad: { fontSize: 14, fontWeight: '700', color: Colors.textSecondary },
-  error: { fontSize: 12, color: Colors.danger, textAlign: 'center' },
-  nota: { fontSize: 11.5, color: Colors.textSecondary, textAlign: 'center', fontStyle: 'italic' },
+  inputMal: { borderColor: t.critico },
+  unidad: { fontSize: 14, fontWeight: '700', color: t.antTextoSec },
+  error: { fontSize: 12, color: t.critico, textAlign: 'center' },
+  nota: { fontSize: 11.5, color: t.antTextoSec, textAlign: 'center', fontStyle: 'italic' },
   botones: { flexDirection: 'row', gap: 10, marginTop: 4 },
   btn: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingVertical: 12, borderRadius: 10, minHeight: 44 },
-  btnVolver: { backgroundColor: Colors.surface, borderWidth: 1, borderColor: Colors.divider },
-  btnVolverText: { fontSize: 14, fontWeight: '700', color: Colors.textPrimary },
-  btnInactivo: { backgroundColor: Colors.divider },
-  btnContinuarText: { fontSize: 14, fontWeight: '800', color: Colors.bg },
-  pie: { fontSize: 11, color: Colors.textSecondary, textAlign: 'center', fontStyle: 'italic' },
-});
+  btnVolver: { backgroundColor: t.antSuperficie, borderWidth: 1, borderColor: t.antDivisor },
+  btnVolverText: { fontSize: 14, fontWeight: '700', color: t.antTexto },
+  btnInactivo: { backgroundColor: t.antDivisor },
+  btnContinuarText: { fontSize: 14, fontWeight: '800', color: t.antFondo },
+  pie: { fontSize: 11, color: t.antTextoSec, textAlign: 'center', fontStyle: 'italic' },
+}));
