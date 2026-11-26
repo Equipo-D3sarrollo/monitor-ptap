@@ -166,8 +166,11 @@ export const TEMAS: Record<NombreTema, Paleta> = {
     foco: '#0B6AA2',
     agua: '#12608F',
     aguaSuperficie: '#2491CC',
-    antFondo: '#F2F5F7',
-    antSuperficie: '#FFFFFF',
+    // En la paleta anterior los nombres van al revés de su uso: `surface` (#0B0F19, el más oscuro)
+    // es el fondo de página y `bg` (#171C28) la tarjeta. Por eso en claro surface → gris papel y
+    // bg → blanco, como en el resto del tema.
+    antFondo: '#FFFFFF',
+    antSuperficie: '#F2F5F7',
     antTexto: '#0E1C28',
     antTextoSec: '#475867',
     antDivisor: '#DCE3E9',

@@ -1,9 +1,9 @@
 import { useCallback, useEffect, useState } from 'react';
-import { View, Text, TouchableOpacity, ActivityIndicator, StyleSheet } from 'react-native';
+import { View, Text, TouchableOpacity, ActivityIndicator } from 'react-native';
 import Ionicons from './AppIcon';
-import Colors from '../constants/colors';
 import { useAuth } from '../context/AuthContext';
 import { fetchVerificacionFirmas, type VerificacionFirmas } from '../services/command-signatures';
+import { estilosConTema, useTheme } from '../context/ThemeContext';
 
 /**
  * Estado del libro de firmas de las maniobras de válvula.
@@ -21,6 +21,8 @@ import { fetchVerificacionFirmas, type VerificacionFirmas } from '../services/co
  * devuelve 403 es peor que no tenerlo.
  */
 export function RegistroIntegridadCard() {
+  const { t } = useTheme();
+  const styles = useStyles();
   const { hasPermission } = useAuth();
   const puede = hasPermission('view_event_logs');
   const [estado, setEstado] = useState<VerificacionFirmas | null>(null);
@@ -60,7 +62,7 @@ export function RegistroIntegridadCard() {
   const roto = estado ? estado.rotos.length > 0 && estado.verificable : false;
   const sinFirmar = estado ? !estado.verificable : false;
   const legadoSinFirma = Boolean(estado?.legado?.sinFirma);
-  const tono = error || sinFirmar ? Colors.warning : roto ? Colors.danger : legadoSinFirma ? Colors.warning : Colors.success;
+  const tono = error || sinFirmar ? t.antAdvertencia : roto ? t.critico : legadoSinFirma ? t.antAdvertencia : t.antExito;
   const icono: keyof typeof Ionicons.glyphMap = error
     ? 'cloud-offline-outline'
     : sinFirmar || legadoSinFirma && !roto
@@ -113,7 +115,7 @@ export function RegistroIntegridadCard() {
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = estilosConTema((t) => ({
   card: {
     flexDirection: 'row',
     alignItems: 'flex-start',
@@ -125,7 +127,7 @@ const styles = StyleSheet.create({
   },
   cuerpo: { flex: 1, gap: 3 },
   titulo: { fontSize: 13.5, fontWeight: '700' },
-  detalle: { fontSize: 12, lineHeight: 16.5, color: Colors.textSecondary },
+  detalle: { fontSize: 12, lineHeight: 16.5, color: t.antTextoSec },
   // Objetivo táctil real sin robarle sitio al texto: el `hitSlop` hace el resto.
   boton: { padding: 6, minWidth: 28, alignItems: 'center' },
-});
+}));

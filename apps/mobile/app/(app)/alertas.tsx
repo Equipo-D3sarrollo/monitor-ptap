@@ -5,7 +5,6 @@ import {
   ScrollView,
   TouchableOpacity,
   TextInput,
-  StyleSheet,
   RefreshControl,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -27,8 +26,9 @@ import { OfflineNotice } from '../../components/OfflineNotice';
 import { RegistroIntegridadCard } from '../../components/RegistroIntegridadCard';
 import { NovedadesLista } from '../../components/NovedadesLista';
 import { versionMasReciente } from '../../services/novedades';
-import Colors from '../../constants/colors';
 import { Fonts } from '../../constants/fonts';
+import type { Paleta } from '../../constants/theme';
+import { estilosConTema, useTheme } from '../../context/ThemeContext';
 
 /**
  * Bandeja de notificaciones.
@@ -41,21 +41,24 @@ import { Fonts } from '../../constants/fonts';
  *  2. **La campana se apaga al marcarlas vistas, no al resolverlas.** El aviso sigue en la lista.
  *  3. **Tocar un aviso lleva a la planta afectada**, seleccionándola primero.
  */
-function severityOf(n: AppNotification): { color: string; icon: keyof typeof Ionicons.glyphMap } {
+function severityOf(
+  n: AppNotification,
+  t: Paleta,
+): { color: string; icon: keyof typeof Ionicons.glyphMap } {
   // Una maniobra correcta NO es una alarma: pintarla de rojo con un triangulo ensenaria a leer el
   // registro de valvulas como un problema, cuando casi siempre es el registro de que alguien hizo
   // su trabajo.
   if (n.kind === 'valve_command') {
     return n.severity === 'info'
-      ? { color: Colors.primary, icon: 'git-commit-outline' }
-      : { color: Colors.warning, icon: 'git-commit-outline' };
+      ? { color: t.antPrimario, icon: 'git-commit-outline' }
+      : { color: t.antAdvertencia, icon: 'git-commit-outline' };
   }
-  if (n.kind === 'valve_manual') return { color: Colors.warning, icon: 'hand-left-outline' };
-  if (n.kind === 'signature_broken') return { color: Colors.danger, icon: 'shield-outline' };
-  if (n.kind === 'sensor_stale') return { color: Colors.danger, icon: 'pulse-outline' };
-  if (n.severity === 'critical') return { color: Colors.danger, icon: 'alert-circle' };
-  if (n.severity === 'warning') return { color: Colors.warning, icon: 'warning-outline' };
-  return { color: Colors.primary, icon: 'information-circle-outline' };
+  if (n.kind === 'valve_manual') return { color: t.antAdvertencia, icon: 'hand-left-outline' };
+  if (n.kind === 'signature_broken') return { color: t.critico, icon: 'shield-outline' };
+  if (n.kind === 'sensor_stale') return { color: t.critico, icon: 'pulse-outline' };
+  if (n.severity === 'critical') return { color: t.critico, icon: 'alert-circle' };
+  if (n.severity === 'warning') return { color: t.antAdvertencia, icon: 'warning-outline' };
+  return { color: t.antPrimario, icon: 'information-circle-outline' };
 }
 
 const NotificationRow = memo(function NotificationRow({
@@ -65,7 +68,9 @@ const NotificationRow = memo(function NotificationRow({
   notification: AppNotification;
   onPress: (n: AppNotification) => void;
 }) {
-  const { color, icon } = severityOf(notification);
+  const { t } = useTheme();
+  const styles = useStyles();
+  const { color, icon } = severityOf(notification, t);
   const nuevo = !notification.seen;
   return (
     <TouchableOpacity
@@ -84,7 +89,7 @@ const NotificationRow = memo(function NotificationRow({
         <Text style={styles.message}>{notification.message}</Text>
         <Text style={styles.when}>{formatWhen(notification.createdAt)}</Text>
       </View>
-      <Ionicons name="chevron-forward" size={16} color={Colors.textSecondary} />
+      <Ionicons name="chevron-forward" size={16} color={t.antTextoSec} />
     </TouchableOpacity>
   );
 });
@@ -104,6 +109,7 @@ function Pestania({
   nuevo?: boolean;
   onPress: () => void;
 }) {
+  const styles = useStyles();
   return (
     <TouchableOpacity
       style={[styles.pestania, activa && styles.pestaniaActiva]}
@@ -121,6 +127,8 @@ function Pestania({
 }
 
 export default function AlertasScreen() {
+  const { t } = useTheme();
+  const styles = useStyles();
   const { notifications, unseen, isLoading, isError, refetch, markSeen } = useNotifications();
   const novedadesQ = useNovedades();
   const { setSelectedPlant } = usePlant();
@@ -183,7 +191,7 @@ export default function AlertasScreen() {
           <RefreshControl
             refreshing={false}
             onRefresh={vista === 'novedades' ? novedadesQ.refetch : refetch}
-            tintColor={Colors.primary}
+            tintColor={t.antPrimario}
           />
         }
       >
@@ -202,13 +210,13 @@ export default function AlertasScreen() {
 
         {vista === 'avisos' && notifications.length > 0 && (
           <View style={styles.buscador}>
-            <Ionicons name="search-outline" size={16} color={Colors.textSecondary} />
+            <Ionicons name="search-outline" size={16} color={t.antTextoSec} />
             <TextInput
               style={styles.buscadorInput}
               value={busqueda}
               onChangeText={setBusqueda}
               placeholder="Buscar por válvula, sensor o persona"
-              placeholderTextColor={Colors.textSecondary}
+              placeholderTextColor={t.antTextoSec}
               accessibilityLabel="Buscar dentro de las notificaciones"
               returnKeyType="search"
             />
@@ -218,7 +226,7 @@ export default function AlertasScreen() {
                 hitSlop={10}
                 accessibilityLabel="Borrar la búsqueda"
               >
-                <Ionicons name="close-circle" size={16} color={Colors.textSecondary} />
+                <Ionicons name="close-circle" size={16} color={t.antTextoSec} />
               </TouchableOpacity>
             )}
           </View>
@@ -290,7 +298,7 @@ export default function AlertasScreen() {
           />
         ) : notifications.length === 0 ? (
           <View style={styles.empty}>
-            <Ionicons name="checkmark-circle-outline" size={44} color={Colors.success} />
+            <Ionicons name="checkmark-circle-outline" size={44} color={t.antExito} />
             <Text style={styles.emptyTitle}>Sin avisos</Text>
             <Text style={styles.emptyText}>
               No se ha registrado ningún aviso en los últimos 3 días. Aquí aparecerán las maniobras
@@ -299,7 +307,7 @@ export default function AlertasScreen() {
           </View>
         ) : visibles.length === 0 ? (
           <View style={styles.empty}>
-            <Ionicons name="search-outline" size={40} color={Colors.textSecondary} />
+            <Ionicons name="search-outline" size={40} color={t.antTextoSec} />
             <Text style={styles.emptyTitle}>Nada con ese filtro</Text>
             <Text style={styles.emptyText}>
               Hay {notifications.length} avisos en los últimos 3 días, pero ninguno coincide con lo
@@ -333,18 +341,18 @@ export default function AlertasScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = estilosConTema((t) => ({
   filtros: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 12 },
-  safe: { flex: 1, backgroundColor: Colors.surface },
+  safe: { flex: 1, backgroundColor: t.antSuperficie },
   content: { padding: 16 },
   head: { marginBottom: 14 },
   buscador: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
-    backgroundColor: Colors.bg,
+    backgroundColor: t.antFondo,
     borderWidth: 1,
-    borderColor: Colors.divider,
+    borderColor: t.antDivisor,
     borderRadius: 10,
     paddingHorizontal: 12,
     // 44 px de alto: se usa de pie y a veces con guantes.
@@ -355,7 +363,7 @@ const styles = StyleSheet.create({
     fontFamily: Fonts.regular,
     flex: 1,
     fontSize: 14,
-    color: Colors.textPrimary,
+    color: t.antTexto,
     paddingVertical: 10,
   },
   pestanias: { gap: 8, paddingBottom: 12 },
@@ -367,55 +375,55 @@ const styles = StyleSheet.create({
     paddingVertical: 9,
     borderRadius: 999,
     borderWidth: 1,
-    borderColor: Colors.divider,
+    borderColor: t.antDivisor,
   },
-  pestaniaActiva: { borderColor: Colors.primary, backgroundColor: Colors.primary + '22' },
-  pestaniaDot: { backgroundColor: Colors.danger },
-  pestaniaTexto: { fontFamily: Fonts.medium, fontSize: 13, color: Colors.textSecondary },
-  pestaniaTextoActiva: { color: Colors.primary },
-  pestaniaNum: { fontFamily: Fonts.medium, fontSize: 12, color: Colors.textSecondary },
+  pestaniaActiva: { borderColor: t.antPrimario, backgroundColor: t.antPrimario + '22' },
+  pestaniaDot: { backgroundColor: t.critico },
+  pestaniaTexto: { fontFamily: Fonts.medium, fontSize: 13, color: t.antTextoSec },
+  pestaniaTextoActiva: { color: t.antPrimario },
+  pestaniaNum: { fontFamily: Fonts.medium, fontSize: 12, color: t.antTextoSec },
   limpiar: { marginTop: 12, paddingHorizontal: 16, paddingVertical: 10 },
-  limpiarTexto: { fontFamily: Fonts.medium, fontSize: 13, color: Colors.primary },
-  heading: { fontFamily: Fonts.semibold, fontSize: 20, color: Colors.textPrimary },
-  sub: { fontFamily: Fonts.regular, fontSize: 13, color: Colors.textSecondary, marginTop: 2 },
+  limpiarTexto: { fontFamily: Fonts.medium, fontSize: 13, color: t.antPrimario },
+  heading: { fontFamily: Fonts.semibold, fontSize: 20, color: t.antTexto },
+  sub: { fontFamily: Fonts.regular, fontSize: 13, color: t.antTextoSec, marginTop: 2 },
   card: {
     flexDirection: 'row',
     alignItems: 'flex-start',
     gap: 10,
-    backgroundColor: Colors.bg,
+    backgroundColor: t.antFondo,
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: Colors.divider,
+    borderColor: t.antDivisor,
     borderLeftWidth: 4,
     padding: 14,
     marginBottom: 10,
   },
   // Un aviso sin ver se distingue por fondo y borde, no solo por el punto: tiene que saltar a la
   // vista en una lista larga.
-  cardNuevo: { backgroundColor: Colors.primary + '0E', borderColor: Colors.primary + '55' },
+  cardNuevo: { backgroundColor: t.antPrimario + '0E', borderColor: t.antPrimario + '55' },
   body: { flex: 1, gap: 3 },
   titleRow: { flexDirection: 'row', alignItems: 'center', gap: 7 },
   dot: { width: 7, height: 7, borderRadius: 4 },
-  title: { fontFamily: Fonts.medium, flex: 1, fontSize: 14, color: Colors.textPrimary },
+  title: { fontFamily: Fonts.medium, flex: 1, fontSize: 14, color: t.antTexto },
   titleNuevo: { fontFamily: Fonts.semibold },
-  message: { fontFamily: Fonts.regular, fontSize: 14, color: Colors.textSecondary, lineHeight: 21 },
-  when: { fontFamily: Fonts.regular, fontSize: 12, color: Colors.textSecondary, marginTop: 2 },
+  message: { fontFamily: Fonts.regular, fontSize: 14, color: t.antTextoSec, lineHeight: 21 },
+  when: { fontFamily: Fonts.regular, fontSize: 12, color: t.antTextoSec, marginTop: 2 },
   empty: { alignItems: 'center', paddingVertical: 56, paddingHorizontal: 24, gap: 8 },
-  emptyTitle: { fontFamily: Fonts.semibold, fontSize: 16, color: Colors.textPrimary },
+  emptyTitle: { fontFamily: Fonts.semibold, fontSize: 16, color: t.antTexto },
   emptyText: {
     fontFamily: Fonts.regular,
     fontSize: 14,
-    color: Colors.textSecondary,
+    color: t.antTextoSec,
     textAlign: 'center',
     lineHeight: 21,
   },
   pie: {
     fontFamily: Fonts.regular,
     fontSize: 12,
-    color: Colors.textSecondary,
+    color: t.antTextoSec,
     textAlign: 'center',
     fontStyle: 'italic',
     marginTop: 8,
     lineHeight: 16,
   },
-});
+}));
