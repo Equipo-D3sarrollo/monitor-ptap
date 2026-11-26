@@ -91,6 +91,8 @@ const useStyles = estilosConTema((t) => ({
   boton: {
     marginTop: 10,
     paddingVertical: 10,
+    minHeight: 44,
+    justifyContent: 'center',
     borderRadius: 8,
     borderWidth: 1,
     borderColor: t.antPrimario,

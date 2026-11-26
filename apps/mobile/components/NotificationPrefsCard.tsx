@@ -190,8 +190,10 @@ const useStyles = estilosConTema((t) => ({
   opciones: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   chip: {
     paddingHorizontal: 12,
-    // 40 px de alto: se toca de pie, delante de un tablero.
+    // 44 px de alto: se toca de pie, delante de un tablero.
     paddingVertical: 10,
+    minHeight: 44,
+    justifyContent: 'center',
     borderRadius: 999,
     borderWidth: 1,
     borderColor: t.antDivisor,

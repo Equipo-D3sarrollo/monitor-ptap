@@ -59,5 +59,14 @@ export function BotonSilencio({
 }
 
 const styles = StyleSheet.create({
-  boton: { padding: 2, opacity: 0.9 },
+  // 44×44 de área táctil (en web `hitSlop` no existe), con margen negativo para que ocupe en la
+  // tarjeta el mismo sitio que el ícono de 15 px de antes.
+  boton: {
+    width: 44,
+    height: 44,
+    margin: -12.5,
+    alignItems: 'center',
+    justifyContent: 'center',
+    opacity: 0.9,
+  },
 });

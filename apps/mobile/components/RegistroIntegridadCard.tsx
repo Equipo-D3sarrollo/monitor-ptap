@@ -129,5 +129,6 @@ const useStyles = estilosConTema((t) => ({
   titulo: { fontSize: 13.5, fontWeight: '700' },
   detalle: { fontSize: 12, lineHeight: 16.5, color: t.antTextoSec },
   // Objetivo táctil real sin robarle sitio al texto: el `hitSlop` hace el resto.
-  boton: { padding: 6, minWidth: 28, alignItems: 'center' },
+  // 44×44 táctil; el margen negativo conserva el sitio que ocupaba (en web `hitSlop` no existe).
+  boton: { width: 44, height: 44, margin: -7, alignItems: 'center', justifyContent: 'center' },
 }));

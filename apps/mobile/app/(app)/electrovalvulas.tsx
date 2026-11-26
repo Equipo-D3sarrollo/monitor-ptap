@@ -342,6 +342,8 @@ const useStyles = estilosConTema((t) => ({
     flexDirection: 'row',
     alignItems: 'flex-start',
     justifyContent: 'space-between',
+    // En celular el resumen quedaba pegado al nombre de la planta.
+    gap: 12,
     marginBottom: 12,
   },
   plantName: { fontSize: 22, lineHeight: 30, fontFamily: Fonts.semibold, color: t.texto },

@@ -1,4 +1,5 @@
-import { View, Text, Switch, Pressable } from 'react-native';
+import { createElement, type ReactElement } from 'react';
+import { View, Text, Switch, Pressable, Platform } from 'react-native';
 import { estilosConTema, useTheme } from '../context/ThemeContext';
 
 /**
@@ -9,6 +10,16 @@ import { estilosConTema, useTheme } from '../context/ThemeContext';
  * borde derecho se falla, y un ajuste que no responde al primer toque se acaba tocando tres veces
  * —dejándolo como estaba—.
  */
+/**
+ * El `Switch` es solo visual: la fila ya es el interruptor con su nombre. En web, react-native-web lo
+ * dibuja con un `<input>` enfocable que el lector de pantalla anunciaba como un segundo interruptor
+ * sin nombre; `inert` lo saca del orden de tabulación y del árbol de accesibilidad. En Android lo
+ * cubre `importantForAccessibility`.
+ */
+function soloVisual(el: ReactElement): ReactElement {
+  return Platform.OS === 'web' ? createElement('div', { inert: true, style: { display: 'contents' } }, el) : el;
+}
+
 export function SwitchRow({
   titulo,
   detalle,
@@ -37,16 +48,19 @@ export function SwitchRow({
         <Text style={styles.titulo}>{titulo}</Text>
         {detalle ? <Text style={styles.detalle}>{detalle}</Text> : null}
       </View>
-      <Switch
-        value={valor}
-        onValueChange={onChange}
-        disabled={disabled}
-        // El interruptor NO captura el toque: la fila entera ya lo maneja, y dejar los dos activos
-        // provocaba dobles disparos que dejaban el valor sin cambiar.
-        pointerEvents="none"
-        trackColor={{ false: t.antDivisor, true: t.antPrimario + '99' }}
-        thumbColor={valor ? t.antPrimario : t.antTextoSec}
-      />
+      {soloVisual(
+        <Switch
+          value={valor}
+          onValueChange={onChange}
+          disabled={disabled}
+          // El interruptor NO captura el toque: la fila entera ya lo maneja, y dejar los dos activos
+          // provocaba dobles disparos que dejaban el valor sin cambiar.
+          pointerEvents="none"
+          importantForAccessibility="no-hide-descendants"
+          trackColor={{ false: t.antDivisor, true: t.antPrimario + '99' }}
+          thumbColor={valor ? t.antPrimario : t.antTextoSec}
+        />,
+      )}
     </Pressable>
   );
 }

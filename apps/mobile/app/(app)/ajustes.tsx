@@ -326,7 +326,7 @@ const useStyles = estilosConTema((t) => ({
   },
   permHeaderSpaced: { marginTop: 16 },
   permRow: { flexDirection: 'row', gap: 8, alignItems: 'flex-start', paddingVertical: 4 },
-  permToggle: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8 },
+  permToggle: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8, minHeight: 44 },
   permSummary: { flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 6, flex: 1 },
   permSummaryText: { fontSize: 13, color: t.antTextoSec, marginRight: 6 },
   permSummaryNum: { fontWeight: '800', color: t.antTexto },

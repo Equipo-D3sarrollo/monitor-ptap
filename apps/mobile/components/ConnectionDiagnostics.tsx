@@ -185,6 +185,7 @@ export function ConnectionDiagnostics() {
         <TouchableOpacity
           onPress={() => void refetch()}
           hitSlop={8}
+          style={styles.iconoTactil}
           accessibilityRole="button"
           accessibilityLabel="Actualizar el historial de conexión"
         >
@@ -316,9 +317,11 @@ const useStyles = estilosConTema((t) => ({
   },
   historyText: { flex: 1, fontSize: 12, color: t.antTexto, lineHeight: 16 },
   routeBtn: {
-    flexDirection: 'row', gap: 8, alignItems: 'center', justifyContent: 'center',
+    flexDirection: 'row', gap: 8, alignItems: 'center', justifyContent: 'center', minHeight: 44,
     borderWidth: 1, borderColor: t.antPrimario, borderRadius: 10, paddingVertical: 10, marginTop: 12,
   },
+  // Ícono suelto con 44×44 de área táctil sin mover el diseño (en web `hitSlop` no existe).
+  iconoTactil: { width: 44, height: 44, margin: -12, alignItems: 'center', justifyContent: 'center' },
   routeBtnText: { color: t.antPrimario, fontSize: 13, fontWeight: '700' },
   // Bloque tipo consola: monoespaciado, una línea por sonda, veredicto resaltado.
   console: { backgroundColor: '#0F172A0A', borderRadius: 8, padding: 10, marginTop: 10, gap: 4 },

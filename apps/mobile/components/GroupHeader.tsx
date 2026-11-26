@@ -102,7 +102,8 @@ function GroupHeaderBase({
 export const GroupHeader = memo(GroupHeaderBase);
 
 const useStyles = estilosConTema((t) => ({
-  header: { paddingHorizontal: 5, paddingVertical: 8, marginTop: 4 },
+  // 44 px: es un objetivo táctil (pliega el grupo).
+  header: { paddingHorizontal: 5, paddingVertical: 8, minHeight: 44, justifyContent: 'center', marginTop: 4 },
   row: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   title: { fontFamily: Fonts.semibold, fontSize: 13, color: t.antTexto, letterSpacing: 0.3 },
   countPill: {
