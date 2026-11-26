@@ -8,7 +8,6 @@ import {
   Modal,
   ScrollView,
   Pressable,
-  StyleSheet,
   ActivityIndicator,
   Animated,
   Easing,
@@ -16,7 +15,6 @@ import {
   Platform,
 } from 'react-native';
 import Ionicons from '../../components/AppIcon';
-import Colors from '../../constants/colors';
 import { Fonts, usePoppins } from '../../constants/fonts';
 import { useAuth } from '../../context/AuthContext';
 import { usePlant } from '../../context/PlantContext';
@@ -24,17 +22,19 @@ import { useUnseenNotifications } from '../../hooks/useNotifications';
 import { NavigationSearch, ProfileButton } from '../../components/NavigationSearch';
 import { NotificationOptIn } from '../../components/NotificationOptIn';
 import { ThemeToggle } from '../../components/ThemeToggle';
+import { StatusBar } from 'expo-status-bar';
 import { usePendingUsers } from '../../hooks/usePendingUsers';
 import { useReducedMotion } from '../../hooks/useReducedMotion';
 import { useWebEscape } from '../../hooks/useWebEscape';
 import { navigationItems } from '../../services/navigation-menu';
 import { ROLE_LABELS, ROLE_COLORS, type AuthUser } from '@ptap/shared';
+import { estilosConTema, useTheme } from '../../context/ThemeContext';
 
-const B = Colors.brand;
 /** Desde este ancho las pestañas pasan a una barra lateral (como el panel de plantas del tablero). */
 const SIDEBAR_MIN_WIDTH = 1024;
 
 function MainScene({ children }: { children: ReactNode }) {
+  const styles = useStyles();
   const focused = useIsFocused();
   // A stable tag preserves tab state when focus changes; inactive scenes cannot receive focus.
   if (Platform.OS === 'web')
@@ -81,6 +81,7 @@ function HeaderFocusGroup({ children }: { children: ReactNode }) {
  * ilegibles y repetían "Aquora"; el logo va en el encabezado con agua del tablero.
  */
 function HeaderTitle() {
+  const styles = useStyles();
   const { selectedPlant } = usePlant();
   const wide = useWindowDimensions().width >= 700;
   return (
@@ -111,6 +112,8 @@ function HeaderTitle() {
  * el `<Clock />` de `tablero.tsx`.
  */
 function AlertBell() {
+  const { t } = useTheme();
+  const styles = useStyles();
   const unseen = useUnseenNotifications();
   return (
     <TouchableOpacity
@@ -125,7 +128,7 @@ function AlertBell() {
       }
     >
       <View>
-        <Ionicons name="notifications-outline" size={24} color={B.text} aria-hidden />
+        <Ionicons name="notifications-outline" size={24} color={t.texto} aria-hidden />
         {unseen > 0 && (
           <View style={styles.notifBadge}>
             <Text style={styles.notifText}>{unseen > 9 ? '9+' : unseen}</Text>
@@ -138,6 +141,8 @@ function AlertBell() {
 
 /** Botón de menú aislado: `usePendingUsers` sondea cada 60 s y no debe repintar la cáscara. */
 function MenuButton({ onPress }: { onPress: () => void }) {
+  const { t } = useTheme();
+  const styles = useStyles();
   const { count } = usePendingUsers();
   return (
     <TouchableOpacity
@@ -154,7 +159,7 @@ function MenuButton({ onPress }: { onPress: () => void }) {
       accessibilityLabel={count > 0 ? `Menú. ${count} cuentas pendientes de aprobar` : 'Menú'}
     >
       <View>
-        <Ionicons name="menu" size={24} color={B.text} />
+        <Ionicons name="menu" size={24} color={t.texto} />
         {/* Punto de aviso: hay cuentas pendientes de aprobar (solo lo ve un admin). */}
         {count > 0 && (
           <View style={styles.menuDot}>
@@ -177,6 +182,8 @@ function MenuModal({
   user: AuthUser | null;
   mode: 'navigation' | 'account';
 }) {
+  const { t } = useTheme();
+  const styles = useStyles();
   const { logout, hasPermission } = useAuth();
   const { count: pendingCount } = usePendingUsers();
 
@@ -189,7 +196,7 @@ function MenuModal({
   const pathname = usePathname();
   useWebEscape(visible, onClose);
 
-  const roleColor = user ? ROLE_COLORS[user.role] : Colors.primary;
+  const roleColor = user ? ROLE_COLORS[user.role] : t.antPrimario;
 
   const reducedMotion = useReducedMotion();
 
@@ -259,9 +266,9 @@ function MenuModal({
                   <Ionicons
                     name={item.icon}
                     size={20}
-                    color={selected ? B.link : B.textSecondary}
+                    color={selected ? t.enlace : t.textoSec}
                   />
-                  <Text style={[styles.drawerItemText, selected && { color: B.link }]}>
+                  <Text style={[styles.drawerItemText, selected && { color: t.enlace }]}>
                     {item.name}
                   </Text>
                   {item.path === '/(app)/usuarios' && pendingCount > 0 && (
@@ -286,7 +293,7 @@ function MenuModal({
                   }}
                   style={({ pressed }) => [styles.drawerItem, pressed && { opacity: 0.75 }]}
                 >
-                  <Ionicons name="settings-outline" size={20} color={B.textSecondary} />
+                  <Ionicons name="settings-outline" size={20} color={t.textoSec} />
                   <Text style={styles.drawerItemText}>Ajustes de usuario</Text>
                 </Pressable>
                 <View style={styles.drawerDivider} />
@@ -296,7 +303,7 @@ function MenuModal({
                   accessibilityRole="button"
                   accessibilityLabel="Cerrar sesión"
                 >
-                  <Ionicons name="log-out-outline" size={20} color={Colors.danger} />
+                  <Ionicons name="log-out-outline" size={20} color={t.critico} />
                   <Text style={styles.drawerLogoutText}>Cerrar sesión</Text>
                 </TouchableOpacity>
               </>
@@ -309,6 +316,8 @@ function MenuModal({
 }
 
 export default function AppLayout() {
+  const { t, nombre } = useTheme();
+  const styles = useStyles();
   const [menuMode, setMenuMode] = useState<'navigation' | 'account' | null>(null);
   const [navigationCollapsed, setNavigationCollapsed] = useState(false);
   const reducedMotion = useReducedMotion();
@@ -340,12 +349,12 @@ export default function AppLayout() {
   // Usuarios…) lo sobrescriben con `headerTitle: 'texto'` y heredan el estilo.
   const HEADER_OPTS = useMemo(
     () => ({
-      headerStyle: { backgroundColor: B.panel, borderBottomWidth: 1, borderBottomColor: B.divider },
+      headerStyle: { backgroundColor: t.panel, borderBottomWidth: 1, borderBottomColor: t.divisor },
       headerShadowVisible: false,
-      headerTintColor: B.text,
+      headerTintColor: t.texto,
       headerTitleAlign: 'left' as const,
       headerTitle: () => <HeaderTitle />,
-      headerTitleStyle: { fontFamily: Fonts.semibold, fontSize: 17, color: B.text },
+      headerTitleStyle: { fontFamily: Fonts.semibold, fontSize: 17, color: t.texto },
       headerLeft: () => (
         <HeaderFocusGroup>
           <MenuButton onPress={() => setMenuMode('navigation')} />
@@ -355,16 +364,14 @@ export default function AppLayout() {
         <HeaderFocusGroup>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, paddingRight: 12 }}>
             <NavigationSearch />
-            {/* La cabecera sigue con la paleta oscura hasta migrar la estructura: el ícono va en
-                el color de texto de esa cabecera. */}
-            <ThemeToggle color={B.text} />
+            <ThemeToggle color={t.texto} />
             <AlertBell />
             <ProfileButton onPress={() => setMenuMode('account')} />
           </View>
         </HeaderFocusGroup>
       ),
     }),
-    [],
+    [t],
   );
 
   // GUARD de sesión para TODAS las rutas de (app). Cubre tres caminos al login:
@@ -376,9 +383,9 @@ export default function AppLayout() {
   if (isLoading || (Platform.OS !== 'web' && !fontsLoaded && !fontError)) {
     return (
       <View
-        style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: B.page }}
+        style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: t.fondo }}
       >
-        <ActivityIndicator size="large" color={B.blue} />
+        <ActivityIndicator size="large" color={t.marca} />
       </View>
     );
   }
@@ -386,6 +393,8 @@ export default function AppLayout() {
 
   return (
     <View style={styles.layout}>
+      {/* Íconos del sistema legibles sobre la cabecera del tema (en web no hace nada). */}
+      <StatusBar style={nombre === 'claro' ? 'dark' : 'light'} />
       {/* La franja de permiso vive AQUÍ, no en Ajustes. El permiso del sistema no se puede pedir
           solo —los navegadores lo rechazan y Android lo cuenta como denegado para siempre—, así que
           hace falta un gesto del usuario; y hasta ahora ese gesto solo era posible si alguien
@@ -400,14 +409,14 @@ export default function AppLayout() {
       <Tabs
         screenLayout={renderMainScene}
         screenOptions={{
-          tabBarActiveTintColor: B.link,
-          tabBarInactiveTintColor: B.textSecondary,
+          tabBarActiveTintColor: t.enlace,
+          tabBarInactiveTintColor: t.textoSec,
           // Escritorio: navegación agrupada bajo la cabecera. Celular: barra inferior.
           tabBarPosition: sidebar ? 'left' : 'bottom',
           tabBarVariant: 'uikit',
           tabBarLabelPosition: sidebar ? 'beside-icon' : 'below-icon',
           tabBarShowLabel: !sidebar || !navigationCollapsed,
-          tabBarActiveBackgroundColor: sidebar ? B.selected : undefined,
+          tabBarActiveBackgroundColor: sidebar ? t.seleccionado : undefined,
           tabBarStyle: isCivil
             ? { display: 'none' }
             : sidebar
@@ -452,7 +461,7 @@ export default function AppLayout() {
               <Ionicons
                 name={focused ? 'grid' : 'grid-outline'}
                 size={size}
-                color={typeof color === 'string' ? color : Colors.primary}
+                color={typeof color === 'string' ? color : t.antPrimario}
               />
             ),
           }}
@@ -469,7 +478,7 @@ export default function AppLayout() {
               <Ionicons
                 name={focused ? 'toggle' : 'toggle-outline'}
                 size={size}
-                color={typeof color === 'string' ? color : Colors.primary}
+                color={typeof color === 'string' ? color : t.antPrimario}
               />
             ),
           }}
@@ -484,7 +493,7 @@ export default function AppLayout() {
               <Ionicons
                 name={focused ? 'document-text' : 'document-text-outline'}
                 size={size}
-                color={typeof color === 'string' ? color : Colors.primary}
+                color={typeof color === 'string' ? color : t.antPrimario}
               />
             ),
           }}
@@ -581,7 +590,7 @@ export default function AppLayout() {
               ],
             }}
           >
-            <Ionicons name="chevron-forward" size={20} color={B.link} />
+            <Ionicons name="chevron-forward" size={20} color={t.enlace} />
           </Animated.View>
         </Pressable>
       )}
@@ -589,7 +598,7 @@ export default function AppLayout() {
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = estilosConTema((t) => ({
   layout: { flex: 1 },
   navigationToggle: {
     position: 'absolute',
@@ -599,39 +608,39 @@ const styles = StyleSheet.create({
     width: 44,
     height: 44,
     borderRadius: 22,
-    backgroundColor: B.panel,
+    backgroundColor: t.panel,
     borderWidth: 1,
-    borderColor: B.divider,
+    borderColor: t.divisor,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  navigationTogglePressed: { backgroundColor: B.selected },
+  navigationTogglePressed: { backgroundColor: t.seleccionado },
   titleRow: { flexDirection: 'row', alignItems: 'center', gap: 6, maxWidth: '100%' },
-  titleBrand: { fontFamily: Fonts.semibold, fontSize: 17, color: B.text },
-  titlePlant: { fontFamily: Fonts.regular, fontSize: 15, color: B.textSecondary, flexShrink: 1 },
+  titleBrand: { fontFamily: Fonts.semibold, fontSize: 17, color: t.texto },
+  titlePlant: { fontFamily: Fonts.regular, fontSize: 15, color: t.textoSec, flexShrink: 1 },
   // Etiquetas junto al icono en escritorio; navegación inferior en móvil.
   rail: {
     width: 220,
     minWidth: 220,
     maxWidth: 220,
-    backgroundColor: B.panel,
+    backgroundColor: t.panel,
     borderRightWidth: 0,
     paddingTop: 80,
     paddingHorizontal: 12,
   },
-  railSurface: { flex: 1, backgroundColor: B.panel },
+  railSurface: { flex: 1, backgroundColor: t.panel },
   railCollapsed: { width: 72, minWidth: 72, maxWidth: 72 },
   railHeading: { height: 64, justifyContent: 'center', paddingHorizontal: 24 },
-  railHeadingText: { fontFamily: Fonts.semibold, fontSize: 14, color: B.textSecondary },
+  railHeadingText: { fontFamily: Fonts.semibold, fontSize: 14, color: t.textoSec },
   railItem: { borderRadius: 10, marginVertical: 4, minHeight: 48, paddingHorizontal: 4 },
   bottomItem: { height: 58 },
   tabTop: { borderTopWidth: 2, borderTopColor: 'transparent' },
-  tabTopActive: { borderTopColor: B.blue },
+  tabTopActive: { borderTopColor: t.marca },
   // Poppins es más alta que la fuente del sistema: con el alto por defecto la etiqueta quedaba
   // aplastada a 9 px y cortada abajo.
   bottomBar: {
-    backgroundColor: B.panel,
-    borderTopColor: B.divider,
+    backgroundColor: t.panel,
+    borderTopColor: t.divisor,
     elevation: 0,
     shadowOpacity: 0,
     height: 66,
@@ -640,17 +649,17 @@ const styles = StyleSheet.create({
   },
   overlay: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.45)',
+    backgroundColor: t.velo,
     flexDirection: 'row',
   },
   drawer: {
     width: 280,
     maxWidth: '100%',
-    backgroundColor: B.panel,
+    backgroundColor: t.panel,
     paddingBottom: 16,
   },
   drawerHeader: {
-    backgroundColor: B.selected,
+    backgroundColor: t.seleccionado,
     paddingTop: 24,
     paddingBottom: 24,
     paddingHorizontal: 20,
@@ -682,7 +691,7 @@ const styles = StyleSheet.create({
   },
   drawerSection: {
     fontFamily: Fonts.medium,
-    color: B.textSecondary,
+    color: t.textoSec,
     fontSize: 12,
     paddingHorizontal: 20,
     paddingTop: 20,
@@ -714,16 +723,16 @@ const styles = StyleSheet.create({
     marginHorizontal: 8,
     borderRadius: 10,
   },
-  drawerItemSelected: { backgroundColor: B.selected },
+  drawerItemSelected: { backgroundColor: t.seleccionado },
   drawerItemText: {
     fontSize: 15,
-    color: B.text,
+    color: t.texto,
     fontFamily: Fonts.medium,
     flexShrink: 1,
   },
   drawerDivider: {
     height: 1,
-    backgroundColor: Colors.divider,
+    backgroundColor: t.antDivisor,
     marginHorizontal: 20,
     marginVertical: 8,
   },
@@ -736,7 +745,7 @@ const styles = StyleSheet.create({
   },
   drawerLogoutText: {
     fontSize: 15,
-    color: Colors.danger,
+    color: t.critico,
     fontWeight: '600',
   },
   notifBadge: {
@@ -756,7 +765,7 @@ const styles = StyleSheet.create({
     position: 'absolute',
     top: -6,
     right: -8,
-    backgroundColor: Colors.danger,
+    backgroundColor: t.critico,
     borderRadius: 8,
     minWidth: 16,
     height: 16,
@@ -766,10 +775,10 @@ const styles = StyleSheet.create({
   },
   pendingPill: {
     marginLeft: 'auto',
-    backgroundColor: Colors.danger,
+    backgroundColor: t.critico,
     borderRadius: 10,
     paddingHorizontal: 8,
     paddingVertical: 2,
   },
   pendingPillText: { color: '#fff', fontSize: 11, fontWeight: '700' },
-});
+}));

@@ -1,8 +1,8 @@
 import { useState } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import { View, Text, TouchableOpacity } from 'react-native';
 import Ionicons from './AppIcon';
-import Colors from '../constants/colors';
 import { useDeviceNotifications } from '../hooks/useDeviceNotifications';
+import { estilosConTema, useTheme } from '../context/ThemeContext';
 
 /**
  * Franja que pide el permiso de notificaciones del sistema.
@@ -20,6 +20,8 @@ import { useDeviceNotifications } from '../hooks/useDeviceNotifications';
  * reactivarlo desde el sistema operativo.
  */
 export function NotificationOptIn() {
+  const { t } = useTheme();
+  const styles = useStyles();
   const { supported, permission, ask } = useDeviceNotifications();
   const [oculto, setOculto] = useState(false);
 
@@ -27,7 +29,7 @@ export function NotificationOptIn() {
 
   return (
     <View style={styles.barra} accessibilityRole="alert">
-      <Ionicons name="notifications-outline" size={20} color={Colors.primary} />
+      <Ionicons name="notifications-outline" size={20} color={t.antPrimario} />
       <View style={styles.texto}>
         <Text style={styles.titulo}>Recibe los avisos aunque la app esté cerrada</Text>
         <Text style={styles.detalle}>
@@ -56,23 +58,24 @@ export function NotificationOptIn() {
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = estilosConTema((t) => ({
   barra: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10,
-    backgroundColor: Colors.primary + '14',
+    backgroundColor: t.antPrimario + '14',
     borderBottomWidth: 1,
-    borderBottomColor: Colors.primary + '33',
+    borderBottomColor: t.antPrimario + '33',
     paddingHorizontal: 14,
     paddingVertical: 10,
   },
   texto: { flex: 1, gap: 2 },
-  titulo: { fontSize: 14, fontWeight: '700', color: Colors.textPrimary },
-  detalle: { fontSize: 12, lineHeight: 16, color: Colors.textSecondary },
+  titulo: { fontSize: 14, fontWeight: '700', color: t.antTexto },
+  detalle: { fontSize: 12, lineHeight: 16, color: t.antTextoSec },
   acciones: { alignItems: 'flex-end', gap: 4 },
   activar: {
-    backgroundColor: Colors.primary,
+    // Texto blanco: sobre `accion` (5,5:1), no sobre el `primary` anterior (3,7:1). Ver D1.
+    backgroundColor: t.accion,
     paddingHorizontal: 14,
     // 44 px de alto: es un objetivo táctil, y se usa con guantes en planta.
     paddingVertical: 11,
@@ -80,6 +83,6 @@ const styles = StyleSheet.create({
     minWidth: 92,
     alignItems: 'center',
   },
-  activarTexto: { fontSize: 14, fontWeight: '700', color: '#fff' },
-  ahoraNo: { fontSize: 11, color: Colors.textSecondary, paddingVertical: 4 },
-});
+  activarTexto: { fontSize: 14, fontWeight: '700', color: t.sobreAccion },
+  ahoraNo: { fontSize: 11, color: t.antTextoSec, paddingVertical: 4 },
+}));

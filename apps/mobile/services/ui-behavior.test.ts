@@ -37,7 +37,7 @@ test('header search opens only the plant selector, returns to the dashboard and 
     './PlantPicker': { PlantSheet: 'PlantSheet' },
     '../context/AuthContext': { useAuth: () => ({ hasPermission: () => dashboard }) },
     '../context/PlantContext': { usePlant: () => ({ canSwitchPlant }) },
-    '../constants/colors': { brand: {} },
+    '../context/ThemeContext': { useTheme: () => ({ t: {} }), estilosConTema: () => () => ({}) },
     '../constants/fonts': { Fonts: {} },
   });
   const trigger = module.NavigationSearch().props.children[0];
