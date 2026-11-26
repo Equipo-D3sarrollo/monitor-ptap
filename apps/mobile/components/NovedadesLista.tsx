@@ -92,7 +92,7 @@ export function NovedadesLista({
 
 const useStyles = estilosConTema((t) => ({
   card: {
-    backgroundColor: t.antFondo,
+    backgroundColor: t.antFondoTarjeta,
     borderRadius: 12,
     borderWidth: 1,
     borderColor: t.antDivisor,

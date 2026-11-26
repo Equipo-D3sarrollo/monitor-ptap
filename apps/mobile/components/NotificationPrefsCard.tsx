@@ -1,12 +1,12 @@
-import { View, Text, Pressable, ActivityIndicator, StyleSheet } from 'react-native';
+import { View, Text, Pressable, ActivityIndicator } from 'react-native';
 import Ionicons from './AppIcon';
-import Colors from '../constants/colors';
 import { SwitchRow } from './SwitchRow';
 import {
   NIVELES_DE_GRAVEDAD,
   TIPOS_DE_AVISO,
   useNotificationPrefs,
 } from '../services/notification-prefs';
+import { estilosConTema, useTheme } from '../context/ThemeContext';
 
 /**
  * Elegir qué SUENA fuera de la aplicación.
@@ -37,6 +37,8 @@ const FRANJAS: { etiqueta: string; desde: string | null; hasta: string | null }[
 ];
 
 export function NotificationPrefsCard() {
+  const { t } = useTheme();
+  const styles = useStyles();
   const { prefs, guardando, error, alternarTipo, fijarGravedad, fijarSilencio, reactivarItems } =
     useNotificationPrefs();
   const activos = TIPOS_DE_AVISO.filter((t) => !prefs.mutedKinds.includes(t.kind)).length;
@@ -45,7 +47,7 @@ export function NotificationPrefsCard() {
     <View style={styles.card}>
       <View style={styles.cabecera}>
         <Text style={styles.titulo}>Qué te suena en el dispositivo</Text>
-        {guardando ? <ActivityIndicator size="small" color={Colors.primary} /> : null}
+        {guardando ? <ActivityIndicator size="small" color={t.antPrimario} /> : null}
       </View>
       <Text style={styles.ayuda}>
         {activos === TIPOS_DE_AVISO.length
@@ -66,7 +68,7 @@ export function NotificationPrefsCard() {
       ))}
 
       <View style={styles.nota}>
-        <Ionicons name="git-commit-outline" size={15} color={Colors.primary} />
+        <Ionicons name="git-commit-outline" size={15} color={t.antPrimario} />
         <Text style={styles.notaTexto}>
           Las maniobras de válvula siempre suenan. Como el equipo no confirma eléctricamente que la
           válvula se movió, saber quién la movió y cuándo es la única constancia que queda.
@@ -120,7 +122,7 @@ export function NotificationPrefsCard() {
         })}
       </View>
       <View style={styles.nota}>
-        <Ionicons name="alert-circle-outline" size={15} color={Colors.warning} />
+        <Ionicons name="alert-circle-outline" size={15} color={t.antAdvertencia} />
         <Text style={styles.notaTexto}>
           Durante el silencio, el teléfono no suena pero los avisos siguen llegando a la bandeja. Lo
           crítico —un tanque rebosando— suena igual.
@@ -139,7 +141,7 @@ export function NotificationPrefsCard() {
           <View style={styles.opciones}>
             {prefs.mutedItems.slice(0, 8).map((clave) => (
               <View key={clave} style={styles.silenciado}>
-                <Ionicons name="notifications-off" size={13} color={Colors.warning} />
+                <Ionicons name="notifications-off" size={13} color={t.antAdvertencia} />
                 {/* La clave es `planta:senal`; se enseña tal cual porque es lo que permite
                     reconocerla, y quien la calló sabe cuál es. */}
                 <Text style={styles.silenciadoTexto}>{clave}</Text>
@@ -163,7 +165,7 @@ export function NotificationPrefsCard() {
 
       {error ? (
         <View style={styles.error}>
-          <Ionicons name="cloud-offline-outline" size={15} color={Colors.danger} />
+          <Ionicons name="cloud-offline-outline" size={15} color={t.critico} />
           <Text style={styles.errorTexto}>{error}</Text>
         </View>
       ) : null}
@@ -171,20 +173,20 @@ export function NotificationPrefsCard() {
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = estilosConTema((t) => ({
   card: {
-    backgroundColor: Colors.bg,
+    backgroundColor: t.antFondoTarjeta,
     borderWidth: 1,
-    borderColor: Colors.divider,
+    borderColor: t.antDivisor,
     borderRadius: 12,
     padding: 14,
     marginTop: 10,
   },
   cabecera: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8 },
-  titulo: { fontSize: 14, fontWeight: '700', color: Colors.textPrimary },
-  subtitulo: { fontSize: 13, fontWeight: '700', color: Colors.textPrimary, marginBottom: 8 },
-  ayuda: { fontSize: 12, lineHeight: 17, color: Colors.textSecondary, marginTop: 4 },
-  separador: { height: 1, backgroundColor: Colors.divider, marginVertical: 14 },
+  titulo: { fontSize: 14, fontWeight: '700', color: t.antTexto },
+  subtitulo: { fontSize: 13, fontWeight: '700', color: t.antTexto, marginBottom: 8 },
+  ayuda: { fontSize: 12, lineHeight: 17, color: t.antTextoSec, marginTop: 4 },
+  separador: { height: 1, backgroundColor: t.antDivisor, marginVertical: 14 },
   opciones: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   chip: {
     paddingHorizontal: 12,
@@ -192,25 +194,25 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     borderRadius: 999,
     borderWidth: 1,
-    borderColor: Colors.divider,
+    borderColor: t.antDivisor,
   },
-  chipActivo: { borderColor: Colors.primary, backgroundColor: Colors.primary + '22' },
-  chipTexto: { fontSize: 12.5, fontWeight: '600', color: Colors.textSecondary },
-  chipTextoActivo: { color: Colors.primary },
+  chipActivo: { borderColor: t.antPrimario, backgroundColor: t.antPrimario + '22' },
+  chipTexto: { fontSize: 12.5, fontWeight: '600', color: t.antTextoSec },
+  chipTextoActivo: { color: t.antPrimario },
   nota: { flexDirection: 'row', alignItems: 'flex-start', gap: 6, marginTop: 10 },
-  notaTexto: { flex: 1, fontSize: 11.5, lineHeight: 16, color: Colors.textSecondary },
+  notaTexto: { flex: 1, fontSize: 11.5, lineHeight: 16, color: t.antTextoSec },
   silenciado: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 5,
-    backgroundColor: Colors.warning + '18',
+    backgroundColor: t.antAdvertencia + '18',
     borderRadius: 8,
     paddingHorizontal: 8,
     paddingVertical: 6,
   },
-  silenciadoTexto: { fontSize: 11.5, color: Colors.textSecondary },
+  silenciadoTexto: { fontSize: 11.5, color: t.antTextoSec },
   reactivar: { marginTop: 10, paddingVertical: 10 },
-  reactivarTexto: { fontSize: 13, fontWeight: '600', color: Colors.primary },
+  reactivarTexto: { fontSize: 13, fontWeight: '600', color: t.antPrimario },
   error: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 10 },
-  errorTexto: { flex: 1, fontSize: 12, color: Colors.danger },
-});
+  errorTexto: { flex: 1, fontSize: 12, color: t.critico },
+}));

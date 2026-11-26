@@ -1,15 +1,16 @@
 import { useMemo, useState } from 'react';
-import { FlatList, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { FlatList, Pressable, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import Ionicons from '../../components/AppIcon';
-import Colors from '../../constants/colors';
 import { Fonts } from '../../constants/fonts';
 import { buscarFaq } from '../../services/faq';
+import { estilosConTema, useTheme } from '../../context/ThemeContext';
 
-const B = Colors.brand;
 
 export default function AyudaScreen() {
+  const { t } = useTheme();
+  const styles = useStyles();
   const [query, setQuery] = useState('');
   const [expanded, setExpanded] = useState<string | null>(null);
   const entries = useMemo(() => buscarFaq(query), [query]);
@@ -30,7 +31,7 @@ export default function AyudaScreen() {
               accessibilityLabel="Volver a Ajustes"
               style={({ pressed }) => [styles.back, pressed && styles.pressed]}
             >
-              <Ionicons name="arrow-back" size={20} color={B.link} />
+              <Ionicons name="arrow-back" size={20} color={t.enlace} />
               <Text style={styles.backText}>Ajustes</Text>
             </Pressable>
             <Text accessibilityRole="header" style={styles.title}>
@@ -61,7 +62,7 @@ export default function AyudaScreen() {
               </Text>
             </View>
             <View style={styles.search}>
-              <Ionicons name="search-outline" size={20} color={B.textSecondary} />
+              <Ionicons name="search-outline" size={20} color={t.textoSec} />
               <TextInput
                 value={query}
                 onChangeText={(value) => {
@@ -69,7 +70,7 @@ export default function AyudaScreen() {
                   setExpanded(null);
                 }}
                 placeholder="Código o problema, por ejemplo NET-02"
-                placeholderTextColor={B.textSecondary}
+                placeholderTextColor={t.textoSec}
                 accessibilityLabel="Buscar en Ayuda por código o problema"
                 autoCapitalize="none"
                 autoCorrect={false}
@@ -83,7 +84,7 @@ export default function AyudaScreen() {
                   accessibilityLabel="Limpiar búsqueda de Ayuda"
                   style={styles.clear}
                 >
-                  <Ionicons name="close-circle-outline" size={22} color={B.link} />
+                  <Ionicons name="close-circle-outline" size={22} color={t.enlace} />
                 </Pressable>
               )}
             </View>
@@ -119,7 +120,7 @@ export default function AyudaScreen() {
                 <Ionicons
                   name={open ? 'chevron-up' : 'chevron-down'}
                   size={20}
-                  color={B.textSecondary}
+                  color={t.textoSec}
                 />
               </Pressable>
               {open && (
@@ -140,8 +141,8 @@ export default function AyudaScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: B.page },
+const useStyles = estilosConTema((t) => ({
+  safe: { flex: 1, backgroundColor: t.fondo },
   content: { width: '100%', maxWidth: 900, alignSelf: 'center', padding: 16, paddingBottom: 32 },
   back: {
     flexDirection: 'row',
@@ -151,60 +152,60 @@ const styles = StyleSheet.create({
     alignSelf: 'flex-start',
     marginBottom: 12,
   },
-  backText: { color: B.link, fontFamily: Fonts.medium, fontSize: 14 },
+  backText: { color: t.enlace, fontFamily: Fonts.medium, fontSize: 14 },
   title: {
-    color: B.text,
+    color: t.texto,
     fontFamily: Fonts.semibold,
     fontSize: 24,
     lineHeight: 34,
     marginBottom: 8,
   },
-  description: { color: B.textSecondary, fontFamily: Fonts.regular, fontSize: 14, lineHeight: 22 },
+  description: { color: t.textoSec, fontFamily: Fonts.regular, fontSize: 14, lineHeight: 22 },
   guide: {
-    backgroundColor: B.panel,
+    backgroundColor: t.panel,
     borderWidth: 1,
-    borderColor: B.cardBorder,
+    borderColor: t.bordeSuave,
     borderRadius: 14,
     padding: 16,
     gap: 10,
     marginTop: 16,
     marginBottom: 16,
   },
-  guideTitle: { color: B.text, fontFamily: Fonts.semibold, fontSize: 16 },
+  guideTitle: { color: t.texto, fontFamily: Fonts.semibold, fontSize: 16 },
   search: {
     minHeight: 48,
     flexDirection: 'row',
     gap: 8,
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: B.searchBorder,
-    backgroundColor: B.card,
+    borderColor: t.bordeControl,
+    backgroundColor: t.superficie,
     borderRadius: 12,
     paddingLeft: 12,
   },
   input: {
     flex: 1,
     minWidth: 0,
-    color: B.text,
+    color: t.texto,
     fontFamily: Fonts.regular,
     fontSize: 14,
     paddingVertical: 12,
   },
   clear: { minHeight: 44, minWidth: 44, alignItems: 'center', justifyContent: 'center' },
-  count: { color: B.textSecondary, fontFamily: Fonts.regular, fontSize: 13, marginVertical: 12 },
+  count: { color: t.textoSec, fontFamily: Fonts.regular, fontSize: 13, marginVertical: 12 },
   card: {
-    backgroundColor: B.card,
+    backgroundColor: t.superficie,
     borderWidth: 1,
-    borderColor: B.cardBorder,
+    borderColor: t.bordeSuave,
     borderRadius: 12,
     marginBottom: 10,
     overflow: 'hidden',
   },
   question: { flexDirection: 'row', alignItems: 'center', gap: 12, padding: 16, minHeight: 64 },
   questionText: { flex: 1, gap: 4 },
-  code: { color: B.link, fontFamily: Fonts.semibold, fontSize: 12 },
-  questionTitle: { color: B.text, fontFamily: Fonts.medium, fontSize: 15, lineHeight: 22 },
-  answer: { borderTopWidth: 1, borderTopColor: B.divider, padding: 16, gap: 8 },
-  label: { color: B.text, fontFamily: Fonts.semibold, fontSize: 13, marginTop: 4 },
-  pressed: { backgroundColor: B.selected },
-});
+  code: { color: t.enlace, fontFamily: Fonts.semibold, fontSize: 12 },
+  questionTitle: { color: t.texto, fontFamily: Fonts.medium, fontSize: 15, lineHeight: 22 },
+  answer: { borderTopWidth: 1, borderTopColor: t.divisor, padding: 16, gap: 8 },
+  label: { color: t.texto, fontFamily: Fonts.semibold, fontSize: 13, marginTop: 4 },
+  pressed: { backgroundColor: t.seleccionado },
+}));

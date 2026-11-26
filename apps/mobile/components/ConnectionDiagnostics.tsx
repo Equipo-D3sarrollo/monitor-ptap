@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { View, Text, TouchableOpacity, ActivityIndicator, StyleSheet, Platform } from 'react-native';
+import { View, Text, TouchableOpacity, ActivityIndicator, Platform } from 'react-native';
 import Ionicons from './AppIcon';
 import { useLocalSearchParams } from 'expo-router';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
@@ -13,7 +13,8 @@ import {
   type RouteProbe,
 } from '../services/api';
 import { exportDiagnosticsReport } from '../services/diagnostics-export';
-import Colors from '../constants/colors';
+import type { Paleta } from '../constants/theme';
+import { estilosConTema, useTheme } from '../context/ThemeContext';
 
 const MONO = Platform.select({ ios: 'Menlo', android: 'monospace', default: 'monospace' });
 
@@ -54,12 +55,14 @@ function ddmmhhmm(iso: string): string {
   return `${p(d.getDate())}/${p(d.getMonth() + 1)} ${p(d.getHours())}:${p(d.getMinutes())}`;
 }
 
-const VERDICT_COLOR: Record<RouteCheckReport['verdict']['where'], string> = {
-  ninguno: Colors.success,
-  servidor: Colors.danger,
-  'ruta-o-planta': Colors.danger,
-  'plc-servicio': Colors.warning,
-};
+function colorVeredicto(t: Paleta): Record<RouteCheckReport['verdict']['where'], string> {
+  return {
+    ninguno: t.antExito,
+    servidor: t.critico,
+    'ruta-o-planta': t.critico,
+    'plc-servicio': t.antAdvertencia,
+  };
+}
 
 function hhmm(iso: string): string {
   const d = new Date(iso);
@@ -67,16 +70,19 @@ function hhmm(iso: string): string {
 }
 
 /** Traduce un evento a una frase que un administrador entienda, sin jerga OPC. */
-function frase(ev: ConnectionEvent): { text: string; color: string; icon: keyof typeof Ionicons.glyphMap } {
+function frase(
+  ev: ConnectionEvent,
+  t: Paleta,
+): { text: string; color: string; icon: keyof typeof Ionicons.glyphMap } {
   const status = ev.detail?.status;
-  if (!status) return { text: 'Evento de conexión', color: Colors.textSecondary, icon: 'ellipse-outline' };
+  if (!status) return { text: 'Evento de conexión', color: t.antTextoSec, icon: 'ellipse-outline' };
   switch (classifyBridge(status)) {
     case 'ok':
-      return { text: 'Conexión con el PLC establecida', color: Colors.success, icon: 'checkmark-circle' };
+      return { text: 'Conexión con el PLC establecida', color: t.antExito, icon: 'checkmark-circle' };
     case 'master_no_data':
-      return { text: 'El PLC dejó de enviar datos', color: Colors.warning, icon: 'alert-circle' };
+      return { text: 'El PLC dejó de enviar datos', color: t.antAdvertencia, icon: 'alert-circle' };
     case 'route':
-      return { text: 'Sin conexión con el PLC (problema de ruta de red)', color: Colors.danger, icon: 'git-network-outline' };
+      return { text: 'Sin conexión con el PLC (problema de ruta de red)', color: t.critico, icon: 'git-network-outline' };
   }
 }
 
@@ -86,6 +92,8 @@ function frase(ev: ConnectionEvent): { text: string; color: string; icon: keyof 
  * (para que un programador lo documente). Los eventos ya viven en el audit_log; esto solo los lee.
  */
 export function ConnectionDiagnostics() {
+  const { t } = useTheme();
+  const styles = useStyles();
   const queryClient = useQueryClient();
   // probarRuta=1: llegó REDIRIGIDO por la notificación (banner PLC-01) → la prueba corre sola.
   const { probarRuta } = useLocalSearchParams<{ probarRuta?: string }>();
@@ -180,19 +188,19 @@ export function ConnectionDiagnostics() {
           accessibilityRole="button"
           accessibilityLabel="Actualizar el historial de conexión"
         >
-          <Ionicons name="refresh-outline" size={18} color={Colors.primary} />
+          <Ionicons name="refresh-outline" size={18} color={t.antPrimario} />
         </TouchableOpacity>
       </View>
 
       {isLoading ? (
-        <ActivityIndicator color={Colors.primary} style={{ marginVertical: 12 }} />
+        <ActivityIndicator color={t.antPrimario} style={{ marginVertical: 12 }} />
       ) : isError ? (
         <Text style={styles.muted}>No se pudo cargar el historial.</Text>
       ) : recent.length === 0 ? (
         <Text style={styles.muted}>Sin eventos de conexión registrados.</Text>
       ) : (
         recent.map((ev, i) => {
-          const f = frase(ev);
+          const f = frase(ev, t);
           return (
             <View key={`${ev.at}-${i}`} style={styles.eventRow}>
               <Ionicons name={f.icon} size={16} color={f.color} />
@@ -214,9 +222,9 @@ export function ConnectionDiagnostics() {
         accessibilityLabel={checkingRoute ? 'Probando la ruta al PLC' : 'Probar ahora la ruta al PLC'}
       >
         {checkingRoute ? (
-          <ActivityIndicator size="small" color={Colors.primary} />
+          <ActivityIndicator size="small" color={t.antPrimario} />
         ) : (
-          <Ionicons name="pulse-outline" size={16} color={Colors.primary} />
+          <Ionicons name="pulse-outline" size={16} color={t.antPrimario} />
         )}
         <Text style={styles.routeBtnText}>
           {checkingRoute ? 'Probando la ruta…' : 'Probar ruta ahora'}
@@ -237,7 +245,7 @@ export function ConnectionDiagnostics() {
               <Ionicons
                 name={p.outcome === 'ok' ? 'checkmark-circle' : 'close-circle'}
                 size={14}
-                color={p.outcome === 'ok' ? Colors.success : Colors.danger}
+                color={p.outcome === 'ok' ? t.antExito : t.critico}
               />
               <Text style={styles.consoleLine}>
                 {probeLabel(p)}: {probeText(p)}
@@ -246,12 +254,12 @@ export function ConnectionDiagnostics() {
           ))}
           {routeCheck.serverPublicIp && (
             <View style={styles.consoleRow}>
-              <Ionicons name="globe-outline" size={14} color={Colors.textSecondary} />
+              <Ionicons name="globe-outline" size={14} color={t.antTextoSec} />
               <Text style={styles.consoleLine}>IP pública del servidor: {routeCheck.serverPublicIp}</Text>
             </View>
           )}
-          <View style={[styles.verdict, { borderLeftColor: VERDICT_COLOR[routeCheck.verdict.where] }]}>
-            <Text style={[styles.verdictCode, { color: VERDICT_COLOR[routeCheck.verdict.where] }]}>
+          <View style={[styles.verdict, { borderLeftColor: colorVeredicto(t)[routeCheck.verdict.where] }]}>
+            <Text style={[styles.verdictCode, { color: colorVeredicto(t)[routeCheck.verdict.where] }]}>
               {routeCheck.verdict.code === '—' ? 'RUTA OK' : routeCheck.verdict.code}
             </Text>
             <Text style={styles.verdictText}>{routeCheck.verdict.message}</Text>
@@ -266,7 +274,7 @@ export function ConnectionDiagnostics() {
           <Ionicons
             name={history.summary.downSince ? 'time-outline' : 'checkmark-done-outline'}
             size={15}
-            color={history.summary.downSince ? Colors.danger : Colors.success}
+            color={history.summary.downSince ? t.critico : t.antExito}
           />
           <Text style={styles.historyText}>
             {history.summary.samples === 0
@@ -283,7 +291,7 @@ export function ConnectionDiagnostics() {
         disabled={exporting || !events?.length}
         activeOpacity={0.85}
       >
-        <Ionicons name="download-outline" size={16} color="#fff" />
+        <Ionicons name="download-outline" size={16} color={t.sobreAccion} />
         <Text style={styles.exportText}>{exporting ? 'Exportando…' : 'Exportar informe (.txt)'}</Text>
       </TouchableOpacity>
       <Text style={styles.hint}>
@@ -294,37 +302,37 @@ export function ConnectionDiagnostics() {
   );
 }
 
-const styles = StyleSheet.create({
-  card: { backgroundColor: Colors.surface, borderRadius: 12, padding: 14, borderWidth: 1, borderColor: '#E5E7EB' },
+const useStyles = estilosConTema((t) => ({
+  card: { backgroundColor: t.antSuperficie, borderRadius: 12, padding: 14, borderWidth: 1, borderColor: t.bordeSuave },
   head: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 },
-  headText: { fontSize: 13, fontWeight: '700', color: Colors.textPrimary },
-  muted: { fontSize: 12.5, color: Colors.textSecondary, marginVertical: 8 },
+  headText: { fontSize: 13, fontWeight: '700', color: t.antTexto },
+  muted: { fontSize: 12.5, color: t.antTextoSec, marginVertical: 8 },
   eventRow: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingVertical: 5 },
-  eventTime: { fontSize: 12, fontWeight: '700', color: Colors.textSecondary, width: 44 },
-  eventText: { flex: 1, fontSize: 12.5, color: Colors.textPrimary },
+  eventTime: { fontSize: 12, fontWeight: '700', color: t.antTextoSec, width: 44 },
+  eventText: { flex: 1, fontSize: 12.5, color: t.antTexto },
   historyRow: {
     flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 10,
-    paddingTop: 10, borderTopWidth: 1, borderTopColor: '#E5E7EB',
+    paddingTop: 10, borderTopWidth: 1, borderTopColor: t.bordeSuave,
   },
-  historyText: { flex: 1, fontSize: 12, color: Colors.textPrimary, lineHeight: 16 },
+  historyText: { flex: 1, fontSize: 12, color: t.antTexto, lineHeight: 16 },
   routeBtn: {
     flexDirection: 'row', gap: 8, alignItems: 'center', justifyContent: 'center',
-    borderWidth: 1, borderColor: Colors.primary, borderRadius: 10, paddingVertical: 10, marginTop: 12,
+    borderWidth: 1, borderColor: t.antPrimario, borderRadius: 10, paddingVertical: 10, marginTop: 12,
   },
-  routeBtnText: { color: Colors.primary, fontSize: 13, fontWeight: '700' },
+  routeBtnText: { color: t.antPrimario, fontSize: 13, fontWeight: '700' },
   // Bloque tipo consola: monoespaciado, una línea por sonda, veredicto resaltado.
   console: { backgroundColor: '#0F172A0A', borderRadius: 8, padding: 10, marginTop: 10, gap: 4 },
-  consoleTitle: { fontFamily: MONO, fontSize: 11, color: Colors.textSecondary, marginBottom: 2 },
+  consoleTitle: { fontFamily: MONO, fontSize: 11, color: t.antTextoSec, marginBottom: 2 },
   consoleRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  consoleLine: { flex: 1, fontFamily: MONO, fontSize: 11.5, color: Colors.textPrimary },
+  consoleLine: { flex: 1, fontFamily: MONO, fontSize: 11.5, color: t.antTexto },
   verdict: { borderLeftWidth: 3, paddingLeft: 8, marginTop: 6, gap: 2 },
   verdictCode: { fontFamily: MONO, fontSize: 11, fontWeight: '700', letterSpacing: 0.5 },
-  verdictText: { fontSize: 12, lineHeight: 17, color: Colors.textPrimary },
+  verdictText: { fontSize: 12, lineHeight: 17, color: t.antTexto },
   exportBtn: {
     flexDirection: 'row', gap: 8, alignItems: 'center', justifyContent: 'center',
-    backgroundColor: Colors.primary, borderRadius: 10, paddingVertical: 11, marginTop: 12,
+    backgroundColor: t.accion, borderRadius: 10, paddingVertical: 11, marginTop: 12, // D1: texto blanco sobre `accion` (5,5:1), no sobre `primary` (3,7:1)
   },
   exportBtnDisabled: { opacity: 0.5 },
-  exportText: { color: '#fff', fontSize: 13, fontWeight: '700' },
-  hint: { fontSize: 11, color: Colors.textSecondary, marginTop: 8, lineHeight: 15, fontStyle: 'italic' },
-});
+  exportText: { color: t.sobreAccion, fontSize: 13, fontWeight: '700' },
+  hint: { fontSize: 11, color: t.antTextoSec, marginTop: 8, lineHeight: 15, fontStyle: 'italic' },
+}));

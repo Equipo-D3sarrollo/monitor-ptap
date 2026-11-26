@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, StyleSheet } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Ionicons from '../../components/AppIcon';
 import { router } from 'expo-router';
@@ -18,7 +18,7 @@ import { NotificationPrefsCard } from '../../components/NotificationPrefsCard';
 import { AppUpdateBanner } from '../../components/AppUpdateBanner';
 import { ThemePreferenceCard } from '../../components/ThemePreferenceCard';
 import { runningVersion } from '../../services/app-release';
-import Colors from '../../constants/colors';
+import { estilosConTema, useTheme } from '../../context/ThemeContext';
 
 /**
  * Ajustes / Configuración. Además de los datos de la cuenta, muestra la MATRIZ DE PERMISOS
@@ -29,9 +29,11 @@ import Colors from '../../constants/colors';
  * Nota: ocultar o mostrar cosas aquí es comodidad de UI. La seguridad la aplica el backend.
  */
 export default function AjustesScreen() {
+  const { t } = useTheme();
+  const styles = useStyles();
   const { user, token, logout, hasPermission } = useAuth();
 
-  const roleColor = user ? ROLE_COLORS[user.role] : Colors.primary;
+  const roleColor = user ? ROLE_COLORS[user.role] : t.antPrimario;
   const allowed = PERMISSIONS.filter((p) => (user ? hasPermission(p) : false));
   const denied = PERMISSIONS.filter((p) => !(user ? hasPermission(p) : false));
   // La matriz completa son ~20 filas planas. Se pliega por defecto: es material de consulta
@@ -104,12 +106,12 @@ export default function AjustesScreen() {
           accessibilityRole="button"
           accessibilityLabel="Abrir Ayuda y problemas frecuentes"
         >
-          <Ionicons name="help-circle-outline" size={22} color={Colors.primary} />
+          <Ionicons name="help-circle-outline" size={22} color={t.antPrimario} />
           <View style={styles.flex}>
             <Text style={styles.linkTitle}>Ayuda y problemas frecuentes</Text>
             <Text style={styles.linkDesc}>Busca un código y conoce qué revisar o a quién avisar</Text>
           </View>
-          <Ionicons name="chevron-forward" size={18} color={Colors.textSecondary} />
+          <Ionicons name="chevron-forward" size={18} color={t.antTextoSec} />
         </TouchableOpacity>
 
         {/* ── Avisos en el dispositivo ───────────────────────────── */}
@@ -129,11 +131,11 @@ export default function AjustesScreen() {
             accessibilityLabel={`Detalle de permisos: puedes ${allowed.length} acciones, no puedes ${denied.length}. ${permsOpen ? 'Plegar' : 'Desplegar'}.`}
           >
             <View style={styles.permSummary}>
-              <Ionicons name="checkmark-circle" size={18} color={Colors.success} />
+              <Ionicons name="checkmark-circle" size={18} color={t.antExito} />
               <Text style={styles.permSummaryText}>
                 <Text style={styles.permSummaryNum}>{allowed.length}</Text> permitidas
               </Text>
-              <Ionicons name="close-circle" size={18} color={Colors.textSecondary} />
+              <Ionicons name="close-circle" size={18} color={t.antTextoSec} />
               <Text style={styles.permSummaryText}>
                 <Text style={styles.permSummaryNum}>{denied.length}</Text> no permitidas
               </Text>
@@ -141,7 +143,7 @@ export default function AjustesScreen() {
             <Ionicons
               name={permsOpen ? 'chevron-up' : 'chevron-down'}
               size={18}
-              color={Colors.textSecondary}
+              color={t.antTextoSec}
             />
           </TouchableOpacity>
 
@@ -152,7 +154,7 @@ export default function AjustesScreen() {
                   <Text style={styles.permHeader}>Puedes</Text>
                   {allowed.map((p) => (
                     <View key={p} style={styles.permRow}>
-                      <Ionicons name="checkmark-circle" size={18} color={Colors.success} />
+                      <Ionicons name="checkmark-circle" size={18} color={t.antExito} />
                       <Text style={styles.permText}>{PERMISSION_LABELS[p]}</Text>
                     </View>
                   ))}
@@ -166,7 +168,7 @@ export default function AjustesScreen() {
                   </Text>
                   {denied.map((p) => (
                     <View key={p} style={styles.permRow}>
-                      <Ionicons name="close-circle" size={18} color={Colors.textSecondary} />
+                      <Ionicons name="close-circle" size={18} color={t.antTextoSec} />
                       <Text style={[styles.permText, styles.permDenied]}>{PERMISSION_LABELS[p]}</Text>
                     </View>
                   ))}
@@ -189,12 +191,12 @@ export default function AjustesScreen() {
               onPress={() => router.push('/(app)/usuarios')}
               activeOpacity={0.8}
             >
-              <Ionicons name="people-outline" size={20} color={Colors.primary} />
+              <Ionicons name="people-outline" size={20} color={t.antPrimario} />
               <View style={styles.flex}>
                 <Text style={styles.linkTitle}>Usuarios</Text>
                 <Text style={styles.linkDesc}>Ver cuentas y asignar roles</Text>
               </View>
-              <Ionicons name="chevron-forward" size={18} color={Colors.textSecondary} />
+              <Ionicons name="chevron-forward" size={18} color={t.antTextoSec} />
             </TouchableOpacity>
           </>
         )}
@@ -212,12 +214,12 @@ export default function AjustesScreen() {
               accessibilityRole="button"
               accessibilityLabel="Abrir revisión de estado por planta"
             >
-              <Ionicons name="clipboard-outline" size={20} color={Colors.primary} />
+              <Ionicons name="clipboard-outline" size={20} color={t.antPrimario} />
               <View style={styles.flex}>
                 <Text style={styles.linkTitle}>Revisión por planta</Text>
                 <Text style={styles.linkDesc}>Red, puente, buffers, señales y anomalías · exportable</Text>
               </View>
-              <Ionicons name="chevron-forward" size={18} color={Colors.textSecondary} />
+              <Ionicons name="chevron-forward" size={18} color={t.antTextoSec} />
             </TouchableOpacity>
 
             {/* Sección propia, y no un botón dentro del diagnóstico: esto no responde "¿está
@@ -228,14 +230,14 @@ export default function AjustesScreen() {
               onPress={() => router.push('/(app)/desarrollador')}
               activeOpacity={0.8}
             >
-              <Ionicons name="terminal-outline" size={20} color={Colors.primary} />
+              <Ionicons name="terminal-outline" size={20} color={t.antPrimario} />
               <View style={styles.flex}>
                 <Text style={styles.linkTitle}>Buffers crudos del PLC</Text>
                 <Text style={styles.linkDesc}>
                   Los arrays como los entrega la planta, y qué señal lee cada índice
                 </Text>
               </View>
-              <Ionicons name="chevron-forward" size={18} color={Colors.textSecondary} />
+              <Ionicons name="chevron-forward" size={18} color={t.antTextoSec} />
             </TouchableOpacity>
             <Text style={styles.hint}>
               Solo lectura, y no dispara ninguna lectura al PLC: sale de la última muestra que
@@ -262,7 +264,7 @@ export default function AjustesScreen() {
         </View>
 
         <TouchableOpacity style={styles.logout} onPress={() => void handleLogout()} activeOpacity={0.8}>
-          <Ionicons name="log-out-outline" size={18} color={Colors.danger} />
+          <Ionicons name="log-out-outline" size={18} color={t.critico} />
           <Text style={styles.logoutText}>Cerrar sesión</Text>
         </TouchableOpacity>
       </ScrollView>
@@ -270,30 +272,30 @@ export default function AjustesScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: Colors.bg },
+const useStyles = estilosConTema((t) => ({
+  safe: { flex: 1, backgroundColor: t.antFondo },
   scroll: { padding: 16, paddingBottom: 32 },
   flex: { flex: 1 },
   sectionTitle: {
     fontSize: 12,
     fontWeight: '700',
-    color: Colors.textSecondary,
+    color: t.antTextoSec,
     textTransform: 'uppercase',
     letterSpacing: 0.6,
     marginTop: 20,
     marginBottom: 8,
   },
   card: {
-    backgroundColor: Colors.surface,
+    backgroundColor: t.antSuperficie,
     borderRadius: 12,
     padding: 14,
     borderWidth: 1,
-    borderColor: '#E5E7EB',
+    borderColor: t.bordeSuave,
   },
   accountHead: { flexDirection: 'row', gap: 12, alignItems: 'center', marginBottom: 4 },
   avatar: { width: 48, height: 48, borderRadius: 24, alignItems: 'center', justifyContent: 'center' },
-  name: { fontSize: 16, fontWeight: '700', color: Colors.textPrimary },
-  meta: { fontSize: 12.5, color: Colors.textSecondary, marginTop: 2 },
+  name: { fontSize: 16, fontWeight: '700', color: t.antTexto },
+  meta: { fontSize: 12.5, color: t.antTextoSec, marginTop: 2 },
   row: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -302,11 +304,11 @@ const styles = StyleSheet.create({
     gap: 12,
     marginTop: 12,
   },
-  rowLabel: { fontSize: 13, color: Colors.textSecondary, flexShrink: 0 },
+  rowLabel: { fontSize: 13, color: t.antTextoSec, flexShrink: 0 },
   rowValue: {
     fontSize: 13,
     fontWeight: '600',
-    color: Colors.textPrimary,
+    color: t.antTexto,
     flexShrink: 1,
     maxWidth: '65%',
     textAlign: 'right',
@@ -314,26 +316,26 @@ const styles = StyleSheet.create({
   mono: { fontSize: 11.5, fontWeight: '400' },
   badge: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 999 },
   badgeText: { fontSize: 11.5, fontWeight: '700' },
-  roleDesc: { fontSize: 11.5, color: Colors.textSecondary, marginTop: 8, lineHeight: 16 },
-  hint: { fontSize: 11.5, color: Colors.textSecondary, marginTop: 8, lineHeight: 16, fontStyle: 'italic' },
+  roleDesc: { fontSize: 11.5, color: t.antTextoSec, marginTop: 8, lineHeight: 16 },
+  hint: { fontSize: 11.5, color: t.antTextoSec, marginTop: 8, lineHeight: 16, fontStyle: 'italic' },
   permHeader: {
     fontSize: 12,
     fontWeight: '700',
-    color: Colors.textPrimary,
+    color: t.antTexto,
     marginBottom: 6,
   },
   permHeaderSpaced: { marginTop: 16 },
   permRow: { flexDirection: 'row', gap: 8, alignItems: 'flex-start', paddingVertical: 4 },
   permToggle: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8 },
   permSummary: { flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 6, flex: 1 },
-  permSummaryText: { fontSize: 13, color: Colors.textSecondary, marginRight: 6 },
-  permSummaryNum: { fontWeight: '800', color: Colors.textPrimary },
-  permList: { marginTop: 14, borderTopWidth: 1, borderTopColor: Colors.divider, paddingTop: 12 },
-  permText: { flex: 1, fontSize: 13, color: Colors.textPrimary, lineHeight: 18 },
-  permDenied: { color: Colors.textSecondary },
+  permSummaryText: { fontSize: 13, color: t.antTextoSec, marginRight: 6 },
+  permSummaryNum: { fontWeight: '800', color: t.antTexto },
+  permList: { marginTop: 14, borderTopWidth: 1, borderTopColor: t.antDivisor, paddingTop: 12 },
+  permText: { flex: 1, fontSize: 13, color: t.antTexto, lineHeight: 18 },
+  permDenied: { color: t.antTextoSec },
   linkCard: { flexDirection: 'row', alignItems: 'center', gap: 12 },
-  linkTitle: { fontSize: 14, fontWeight: '600', color: Colors.textPrimary },
-  linkDesc: { fontSize: 12, color: Colors.textSecondary, marginTop: 2 },
+  linkTitle: { fontSize: 14, fontWeight: '600', color: t.antTexto },
+  linkDesc: { fontSize: 12, color: t.antTextoSec, marginTop: 2 },
   logout: {
     flexDirection: 'row',
     gap: 8,
@@ -343,7 +345,7 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: Colors.danger + '55',
+    borderColor: t.critico + '55',
   },
-  logoutText: { color: Colors.danger, fontSize: 14, fontWeight: '700' },
-});
+  logoutText: { color: t.critico, fontSize: 14, fontWeight: '700' },
+}));

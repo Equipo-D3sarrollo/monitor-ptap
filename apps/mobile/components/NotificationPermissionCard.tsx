@@ -1,10 +1,10 @@
 import { useState } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, Linking, Platform, ActivityIndicator } from 'react-native';
+import { View, Text, TouchableOpacity, Linking, Platform, ActivityIndicator } from 'react-native';
 import Ionicons from './AppIcon';
-import Colors from '../constants/colors';
 import { useDeviceNotifications } from '../hooks/useDeviceNotifications';
 import { textoDePrueba, type EstadoPush } from '../services/push-rules';
 import { toast } from '../services/toast-store';
+import { estilosConTema, useTheme } from '../context/ThemeContext';
 
 /** Qué se le dice a la persona según en qué quedó el push de su teléfono. */
 function textoDeEstado(push: EstadoPush): { titulo: string; texto: string } {
@@ -68,6 +68,8 @@ function textoDeEstado(push: EstadoPush): { titulo: string; texto: string } {
  * Cuando la plataforma no puede, se explica por qué en vez de mostrar un botón que no hará nada.
  */
 export function NotificationPermissionCard() {
+  const { t } = useTheme();
+  const styles = useStyles();
   const { supported, reason, permission, ask, push, probar } = useDeviceNotifications();
   const [probando, setProbando] = useState(false);
 
@@ -89,7 +91,7 @@ export function NotificationPermissionCard() {
   if (!supported) {
     return (
       <View style={[styles.card, styles.cardMuted]}>
-        <Ionicons name="notifications-off-outline" size={20} color={Colors.textSecondary} />
+        <Ionicons name="notifications-off-outline" size={20} color={t.antTextoSec} />
         <View style={styles.body}>
           <Text style={styles.title}>Avisos del sistema no disponibles</Text>
           <Text style={styles.text}>{reason}</Text>
@@ -103,7 +105,7 @@ export function NotificationPermissionCard() {
     const puedeProbar = (Platform.OS === 'android' || Platform.OS === 'web') && push === 'activo';
     return (
       <View style={[styles.card, styles.cardOk]}>
-        <Ionicons name={push === 'activo' ? 'flash' : 'notifications'} size={20} color={Colors.success} />
+        <Ionicons name={push === 'activo' ? 'flash' : 'notifications'} size={20} color={t.antExito} />
         <View style={styles.body}>
           <Text style={styles.title}>{titulo}</Text>
           <Text style={styles.text}>{texto}</Text>
@@ -123,7 +125,7 @@ export function NotificationPermissionCard() {
               accessibilityLabel="Enviar un aviso de prueba a este dispositivo"
             >
               {probando ? (
-                <ActivityIndicator size="small" color={Colors.primary} />
+                <ActivityIndicator size="small" color={t.antPrimario} />
               ) : (
                 <Text style={styles.enlaceTexto}>Enviar aviso de prueba</Text>
               )}
@@ -143,7 +145,7 @@ export function NotificationPermissionCard() {
     const nativo = Platform.OS !== 'web';
     return (
       <View style={[styles.card, styles.cardMuted]}>
-        <Ionicons name="notifications-off-outline" size={20} color={Colors.warning} />
+        <Ionicons name="notifications-off-outline" size={20} color={t.antAdvertencia} />
         <View style={styles.body}>
           <Text style={styles.title}>Avisos bloqueados</Text>
           {nativo ? (
@@ -182,36 +184,36 @@ export function NotificationPermissionCard() {
       accessibilityRole="button"
       accessibilityLabel="Activar los avisos en el panel del dispositivo"
     >
-      <Ionicons name="notifications-outline" size={20} color={Colors.primary} />
+      <Ionicons name="notifications-outline" size={20} color={t.antPrimario} />
       <View style={styles.body}>
         <Text style={styles.title}>Activar avisos en el dispositivo</Text>
         <Text style={styles.text}>
           Para enterarte de un sensor caído sin tener la aplicación abierta. Toca para permitirlo.
         </Text>
       </View>
-      <Ionicons name="chevron-forward" size={16} color={Colors.primary} />
+      <Ionicons name="chevron-forward" size={16} color={t.antPrimario} />
     </TouchableOpacity>
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = estilosConTema((t) => ({
   card: {
     flexDirection: 'row',
     alignItems: 'flex-start',
     gap: 10,
-    backgroundColor: Colors.bg,
+    backgroundColor: t.antFondoTarjeta,
     borderWidth: 1,
-    borderColor: Colors.divider,
+    borderColor: t.antDivisor,
     borderRadius: 12,
     padding: 14,
   },
-  cardAction: { borderColor: Colors.primary + '66', backgroundColor: Colors.primary + '0E' },
-  cardOk: { borderColor: Colors.success + '55' },
+  cardAction: { borderColor: t.antPrimario + '66', backgroundColor: t.antPrimario + '0E' },
+  cardOk: { borderColor: t.antExito + '55' },
   cardMuted: {},
   body: { flex: 1, gap: 3 },
-  title: { fontSize: 14, fontWeight: '700', color: Colors.textPrimary },
-  text: { fontSize: 12.5, color: Colors.textSecondary, lineHeight: 17 },
+  title: { fontSize: 14, fontWeight: '700', color: t.antTexto },
+  text: { fontSize: 12.5, color: t.antTextoSec, lineHeight: 17 },
   // Alto de objetivo táctil holgado: se usa con guantes en planta.
   enlace: { alignSelf: 'flex-start', paddingVertical: 10, marginTop: 2 },
-  enlaceTexto: { fontSize: 14, fontWeight: '700', color: Colors.primary },
-});
+  enlaceTexto: { fontSize: 14, fontWeight: '700', color: t.antPrimario },
+}));

@@ -208,7 +208,7 @@ const useStyles = estilosConTema((t) => ({
     maxWidth: 420,
     maxHeight: '100%',
     flexGrow: 0,
-    backgroundColor: t.antFondo,
+    backgroundColor: t.antFondoTarjeta,
     borderRadius: 16,
     // La sombra se declara distinto por plataforma; en web `elevation` no hace nada.
     ...Platform.select({
@@ -228,7 +228,7 @@ const useStyles = estilosConTema((t) => ({
   },
   title: { flex: 1, fontSize: 16, fontWeight: '800', color: t.antTexto, lineHeight: 21 },
   detalle: {
-    backgroundColor: t.antSuperficie,
+    backgroundColor: t.antSuperficiePagina,
     borderRadius: 10,
     padding: 12,
     gap: 6,
@@ -261,7 +261,7 @@ const useStyles = estilosConTema((t) => ({
     paddingVertical: 12,
     borderRadius: 10,
   },
-  btnVolver: { backgroundColor: t.antSuperficie, borderWidth: 1, borderColor: t.antDivisor },
+  btnVolver: { backgroundColor: t.antSuperficiePagina, borderWidth: 1, borderColor: t.antDivisor },
   btnVolverText: { fontSize: 14, fontWeight: '700', color: t.antTexto },
   btnEspera: { backgroundColor: t.antDivisor },
   btnEsperaText: { color: t.antTextoSec },

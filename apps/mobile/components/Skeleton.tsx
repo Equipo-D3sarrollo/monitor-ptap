@@ -80,7 +80,7 @@ export const ListSkeleton = memo(ListSkeletonBase);
 
 const useStyles = estilosConTema((t) => ({
   block: {
-    backgroundColor: t.antFondo,
+    backgroundColor: t.antFondoTarjeta,
     borderWidth: 1,
     borderColor: t.antDivisor,
     borderRadius: 16,

@@ -65,7 +65,7 @@ const useStyles = estilosConTema((t) => ({
     alignItems: 'center',
     justifyContent: 'center',
     paddingVertical: 10,
-    backgroundColor: t.antSuperficie,
+    backgroundColor: t.antSuperficiePagina,
     borderTopWidth: 1,
     borderTopColor: t.antDivisor,
   },

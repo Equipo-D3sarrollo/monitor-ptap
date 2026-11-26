@@ -89,7 +89,7 @@ const useStyles = estilosConTema((t) => ({
     alignItems: 'center',
     flexWrap: 'wrap',
     gap: 14,
-    backgroundColor: t.antFondo,
+    backgroundColor: t.antFondoTarjeta,
     borderWidth: 1,
     borderColor: t.antDivisor,
     borderRadius: 12,

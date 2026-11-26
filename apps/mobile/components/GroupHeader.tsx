@@ -106,7 +106,7 @@ const useStyles = estilosConTema((t) => ({
   row: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   title: { fontFamily: Fonts.semibold, fontSize: 13, color: t.antTexto, letterSpacing: 0.3 },
   countPill: {
-    backgroundColor: t.antSuperficie,
+    backgroundColor: t.antSuperficiePagina,
     borderRadius: 8,
     paddingHorizontal: 7,
     paddingVertical: 1,

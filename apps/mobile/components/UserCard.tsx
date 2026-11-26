@@ -1,8 +1,8 @@
 import { memo } from 'react';
-import { View, Text, TouchableOpacity, ActivityIndicator, StyleSheet } from 'react-native';
+import { View, Text, TouchableOpacity, ActivityIndicator } from 'react-native';
 import Ionicons from './AppIcon';
 import { ROLES, ROLE_LABELS, ROLE_COLORS, ROLE_DESCRIPTIONS, type Role, type UserSummary } from '@ptap/shared';
-import Colors from '../constants/colors';
+import { estilosConTema, useTheme } from '../context/ThemeContext';
 
 /**
  * Ficha de usuario de la pantalla de administración.
@@ -34,6 +34,8 @@ function UserCardBase({
   onToggleActive,
   onChangeRole,
 }: Props) {
+  const { t } = useTheme();
+  const styles = useStyles();
   // Otro administrador: los admins son mutuamente intocables (el backend lo rechaza).
   const isOtherAdmin = user.role === 'admin' && !isSelf;
   const locked = isSelf || isOtherAdmin; // acciones deshabilitadas
@@ -65,7 +67,7 @@ function UserCardBase({
 
       {isPending && (
         <View style={styles.pendingTag}>
-          <Ionicons name="time-outline" size={14} color={Colors.warning} />
+          <Ionicons name="time-outline" size={14} color={t.antAdvertencia} />
           <Text style={styles.pendingTagText}>
             Pendiente de aprobación — verifica a la persona antes de habilitarla
           </Text>
@@ -78,9 +80,9 @@ function UserCardBase({
         <Ionicons
           name={user.emailVerified ? 'mail-open-outline' : 'mail-unread-outline'}
           size={13}
-          color={user.emailVerified ? Colors.success : Colors.textSecondary}
+          color={user.emailVerified ? t.antExito : t.antTextoSec}
         />
-        <Text style={[styles.verifyTagText, { color: user.emailVerified ? Colors.success : Colors.textSecondary }]}>
+        <Text style={[styles.verifyTagText, { color: user.emailVerified ? t.antExito : t.antTextoSec }]}>
           {user.emailVerified ? 'Correo verificado' : 'Correo sin verificar'}
         </Text>
       </View>
@@ -99,7 +101,7 @@ function UserCardBase({
           accessibilityState={{ disabled: busy || roleLocked, expanded }}
           accessibilityLabel={`Cambiar el rol de ${user.name}`}
         >
-          <Ionicons name="swap-horizontal-outline" size={16} color={Colors.primary} />
+          <Ionicons name="swap-horizontal-outline" size={16} color={t.antPrimario} />
           <Text style={styles.actionText}>Cambiar rol</Text>
         </TouchableOpacity>
 
@@ -121,14 +123,14 @@ function UserCardBase({
                   : 'person-add-outline'
             }
             size={16}
-            color={user.isActive ? Colors.danger : Colors.primary}
+            color={user.isActive ? t.critico : t.antPrimario}
           />
-          <Text style={[styles.actionText, user.isActive && { color: Colors.danger }]}>
+          <Text style={[styles.actionText, user.isActive && { color: t.critico }]}>
             {user.isActive ? 'Desactivar' : isPending ? 'Aprobar' : 'Reactivar'}
           </Text>
         </TouchableOpacity>
 
-        {busy && <ActivityIndicator size="small" color={Colors.primary} />}
+        {busy && <ActivityIndicator size="small" color={t.antPrimario} />}
       </View>
 
       {isSelf && (
@@ -159,7 +161,7 @@ function UserCardBase({
               <Ionicons
                 name={r === user.role ? 'radio-button-on' : 'radio-button-off'}
                 size={18}
-                color={r === user.role ? Colors.primary : Colors.textSecondary}
+                color={r === user.role ? t.antPrimario : t.antTextoSec}
               />
               <View style={styles.flex}>
                 <Text style={styles.roleOptionText}>{ROLE_LABELS[r]}</Text>
@@ -175,22 +177,22 @@ function UserCardBase({
 
 export const UserCard = memo(UserCardBase);
 
-const styles = StyleSheet.create({
+const useStyles = estilosConTema((t) => ({
   card: {
-    backgroundColor: Colors.bg,
+    backgroundColor: t.antFondoTarjeta,
     borderRadius: 14,
     padding: 14,
     marginBottom: 10,
     borderWidth: 1,
-    borderColor: Colors.divider,
+    borderColor: t.antDivisor,
   },
   cardInactive: { opacity: 0.75 },
-  cardPending: { borderColor: Colors.warning, borderWidth: 1.5 },
+  cardPending: { borderColor: t.antAdvertencia, borderWidth: 1.5 },
   cardHead: { flexDirection: 'row', alignItems: 'flex-start', gap: 10 },
   flex: { flex: 1 },
-  name: { fontSize: 15, fontWeight: '700', color: Colors.textPrimary },
-  selfTag: { fontSize: 12, fontWeight: '600', color: Colors.textSecondary },
-  meta: { fontSize: 12, color: Colors.textSecondary, marginTop: 1 },
+  name: { fontSize: 15, fontWeight: '700', color: t.antTexto },
+  selfTag: { fontSize: 12, fontWeight: '600', color: t.antTextoSec },
+  meta: { fontSize: 12, color: t.antTextoSec, marginTop: 1 },
   roleBadge: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 10 },
   roleBadgeText: { fontSize: 11, fontWeight: '700' },
   pendingTag: {
@@ -198,15 +200,15 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 6,
     marginTop: 10,
-    backgroundColor: Colors.warning + '12',
+    backgroundColor: t.antAdvertencia + '12',
     borderRadius: 8,
     paddingHorizontal: 8,
     paddingVertical: 6,
   },
-  pendingTagText: { flex: 1, fontSize: 11.5, color: Colors.warning, fontWeight: '600' },
+  pendingTagText: { flex: 1, fontSize: 11.5, color: t.antAdvertencia, fontWeight: '600' },
   verifyTag: { flexDirection: 'row', alignItems: 'center', gap: 5, marginTop: 8 },
   verifyTagText: { fontSize: 11, fontWeight: '600' },
-  inactiveTag: { fontSize: 11.5, color: Colors.textSecondary, marginTop: 8, fontStyle: 'italic' },
+  inactiveTag: { fontSize: 11.5, color: t.antTextoSec, marginTop: 8, fontStyle: 'italic' },
   actions: { flexDirection: 'row', alignItems: 'center', gap: 10, marginTop: 12 },
   action: {
     flexDirection: 'row',
@@ -215,21 +217,21 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
     paddingVertical: 7,
     borderRadius: 9,
-    backgroundColor: Colors.surface,
+    backgroundColor: t.antSuperficiePagina,
     borderWidth: 1,
-    borderColor: Colors.divider,
+    borderColor: t.antDivisor,
   },
   actionDisabled: { opacity: 0.4 },
-  actionText: { fontSize: 12.5, fontWeight: '700', color: Colors.primary },
-  selfHint: { fontSize: 11, color: Colors.textSecondary, marginTop: 8, fontStyle: 'italic' },
+  actionText: { fontSize: 12.5, fontWeight: '700', color: t.antPrimario },
+  selfHint: { fontSize: 11, color: t.antTextoSec, marginTop: 8, fontStyle: 'italic' },
   rolePicker: {
     marginTop: 12,
     borderTopWidth: 1,
-    borderTopColor: Colors.divider,
+    borderTopColor: t.antDivisor,
     paddingTop: 10,
     gap: 4,
   },
   roleOption: { flexDirection: 'row', alignItems: 'flex-start', gap: 10, paddingVertical: 7 },
-  roleOptionText: { fontSize: 13.5, fontWeight: '700', color: Colors.textPrimary },
-  roleOptionDesc: { fontSize: 11.5, color: Colors.textSecondary, marginTop: 1 },
-});
+  roleOptionText: { fontSize: 13.5, fontWeight: '700', color: t.antTexto },
+  roleOptionDesc: { fontSize: 11.5, color: t.antTextoSec, marginTop: 1 },
+}));

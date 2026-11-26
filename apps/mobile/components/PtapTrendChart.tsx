@@ -1,6 +1,6 @@
 import React, { useMemo } from 'react';
-import { View, Text, StyleSheet } from 'react-native';
-import Colors from '../constants/colors';
+import { View, Text } from 'react-native';
+import { estilosConTema, useTheme } from '../context/ThemeContext';
 
 export interface DataPoint {
   value: number;
@@ -37,9 +37,12 @@ export function PtapTrendChart({
   unit = '',
   threshold,
   thresholdLabel,
-  accentColor = Colors.primary,
+  accentColor,
   height = 90,
 }: Props) {
+  const { t } = useTheme();
+  const styles = useStyles();
+  const acento = accentColor ?? t.antPrimario;
   const points: number[] = useMemo(() => {
     if (!data || data.length === 0) return [];
     return data.map((d) => (typeof d === 'number' ? d : d.value)).filter((v) => typeof v === 'number' && !isNaN(v));
@@ -132,10 +135,10 @@ export function PtapTrendChart({
                     {
                       height: `${hPct}%`,
                       backgroundColor: exceedsThreshold
-                        ? Colors.danger
+                        ? t.critico
                         : isLatest
-                          ? accentColor
-                          : accentColor + '70',
+                          ? acento
+                          : acento + '70',
                     },
                   ]}
                 />
@@ -170,13 +173,13 @@ export function PtapTrendChart({
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = estilosConTema((t) => ({
   card: {
-    backgroundColor: Colors.bg,
+    backgroundColor: t.antFondoTarjeta,
     borderRadius: 12,
     padding: 12,
     borderWidth: 1,
-    borderColor: Colors.divider,
+    borderColor: t.antDivisor,
     marginVertical: 6,
   },
   header: {
@@ -188,7 +191,7 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 13,
     fontWeight: '700',
-    color: Colors.textPrimary,
+    color: t.antTexto,
   },
   trendWrap: {
     flexDirection: 'row',
@@ -202,22 +205,22 @@ const styles = StyleSheet.create({
     borderRadius: 6,
   },
   trendUp: {
-    backgroundColor: Colors.warning + '1A',
-    color: Colors.warning,
+    backgroundColor: t.antAdvertencia + '1A',
+    color: t.antAdvertencia,
   },
   trendDown: {
-    backgroundColor: Colors.primary + '1A',
-    color: Colors.primary,
+    backgroundColor: t.antPrimario + '1A',
+    color: t.antPrimario,
   },
   trendStable: {
-    backgroundColor: Colors.divider,
-    color: Colors.textSecondary,
+    backgroundColor: t.antDivisor,
+    color: t.antTextoSec,
   },
   chartArea: {
     width: '100%',
     position: 'relative',
     justifyContent: 'flex-end',
-    backgroundColor: Colors.surface,
+    backgroundColor: t.antSuperficiePagina,
     borderRadius: 8,
     padding: 4,
     overflow: 'hidden',
@@ -225,12 +228,12 @@ const styles = StyleSheet.create({
   container: {
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: Colors.surface,
+    backgroundColor: t.antSuperficiePagina,
     borderRadius: 8,
   },
   emptyText: {
     fontSize: 12,
-    color: Colors.textSecondary,
+    color: t.antTextoSec,
     fontStyle: 'italic',
   },
   thresholdLine: {
@@ -238,7 +241,7 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     borderTopWidth: 1,
-    borderTopColor: Colors.danger,
+    borderTopColor: t.critico,
     borderStyle: 'dashed',
     zIndex: 10,
     paddingLeft: 4,
@@ -246,7 +249,7 @@ const styles = StyleSheet.create({
   thresholdText: {
     fontSize: 9,
     fontWeight: '700',
-    color: Colors.danger,
+    color: t.critico,
     marginTop: -12,
   },
   barsContainer: {
@@ -273,7 +276,7 @@ const styles = StyleSheet.create({
     marginTop: 8,
     paddingTop: 6,
     borderTopWidth: 1,
-    borderTopColor: Colors.divider,
+    borderTopColor: t.antDivisor,
   },
   statItem: {
     alignItems: 'center',
@@ -281,11 +284,11 @@ const styles = StyleSheet.create({
   statLabel: {
     fontSize: 10,
     fontWeight: '700',
-    color: Colors.textSecondary,
+    color: t.antTextoSec,
   },
   statValue: {
     fontSize: 11.5,
     fontWeight: '700',
-    color: Colors.textPrimary,
+    color: t.antTexto,
   },
-});
+}));

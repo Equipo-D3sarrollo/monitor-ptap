@@ -1,15 +1,17 @@
-import { View, Text, StyleSheet, ScrollView } from 'react-native';
+import { View, Text, ScrollView } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Ionicons from '../../components/AppIcon';
 import { useBasicStatus } from '../../hooks/useBasicStatus';
 import { PLANTS } from '../../context/PlantContext';
 import { useAuth } from '../../context/AuthContext';
-import Colors from '../../constants/colors';
 // El veredicto «¿el sistema funciona?» vive en el servicio, junto al badge del tablero: las dos
 // pantallas tienen que decir lo mismo de la misma planta, también si está en integración.
 import { systemHealth } from '../../services/plant-status';
+import { estilosConTema, useTheme } from '../../context/ThemeContext';
 
 export default function EstadoScreen() {
+  const { t } = useTheme();
+  const styles = useStyles();
   const { user } = useAuth();
   const plantId = user?.plant ?? 'montebello';
   const plantName = PLANTS.find((p) => p.id === plantId)?.name ?? plantId;
@@ -22,10 +24,10 @@ export default function EstadoScreen() {
 
   const water =
     status?.waterAvailable === true
-      ? { icon: 'water' as const, color: Colors.primaryLight, title: 'Agua disponible', desc: 'Los tanques de la planta tienen nivel suficiente.' }
+      ? { icon: 'water' as const, color: t.antPrimarioClaro, title: 'Agua disponible', desc: 'Los tanques de la planta tienen nivel suficiente.' }
       : status?.waterAvailable === false
-        ? { icon: 'water-outline' as const, color: Colors.warning, title: 'Nivel bajo de agua', desc: 'Los tanques están por debajo del nivel mínimo.' }
-        : { icon: 'help-circle-outline' as const, color: Colors.neutral, title: 'Sin datos de tanques', desc: 'Esta planta aún no tiene señales de tanque mapeadas.' };
+        ? { icon: 'water-outline' as const, color: t.antAdvertencia, title: 'Nivel bajo de agua', desc: 'Los tanques están por debajo del nivel mínimo.' }
+        : { icon: 'help-circle-outline' as const, color: t.antNeutro, title: 'Sin datos de tanques', desc: 'Esta planta aún no tiene señales de tanque mapeadas.' };
 
   return (
     <SafeAreaView style={styles.safe} edges={['bottom']}>
@@ -50,7 +52,7 @@ export default function EstadoScreen() {
         </View>
 
         <View style={styles.infoBox}>
-          <Ionicons name="information-circle-outline" size={18} color={Colors.textSecondary} />
+          <Ionicons name="information-circle-outline" size={18} color={t.antTextoSec} />
           <Text style={styles.infoText}>
             Acceso con vista básica. Contacte a un operador para información detallada.
           </Text>
@@ -60,28 +62,28 @@ export default function EstadoScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: Colors.surface },
+const useStyles = estilosConTema((t) => ({
+  safe: { flex: 1, backgroundColor: t.antSuperficiePagina },
   content: { padding: 20 },
   heading: {
     fontSize: 20,
     fontWeight: '800',
-    color: Colors.textPrimary,
+    color: t.antTexto,
     marginBottom: 4,
   },
   subheading: {
     fontSize: 14,
-    color: Colors.textSecondary,
+    color: t.antTextoSec,
     marginBottom: 24,
   },
   card: {
-    backgroundColor: Colors.bg,
+    backgroundColor: t.antFondoTarjeta,
     borderRadius: 18,
     padding: 24,
     alignItems: 'center',
     marginBottom: 16,
     borderWidth: 1,
-    borderColor: '#E5E7EB',
+    borderColor: t.bordeSuave,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.06,
@@ -99,29 +101,29 @@ const styles = StyleSheet.create({
   statusTitle: {
     fontSize: 18,
     fontWeight: '700',
-    color: Colors.textPrimary,
+    color: t.antTexto,
     marginBottom: 8,
   },
   statusDesc: {
     fontSize: 14,
-    color: Colors.textSecondary,
+    color: t.antTextoSec,
     textAlign: 'center',
     lineHeight: 20,
   },
   infoBox: {
     flexDirection: 'row',
     alignItems: 'flex-start',
-    backgroundColor: Colors.bg,
+    backgroundColor: t.antFondo,
     borderRadius: 12,
     padding: 14,
     gap: 8,
     borderWidth: 1,
-    borderColor: '#E5E7EB',
+    borderColor: t.bordeSuave,
   },
   infoText: {
     flex: 1,
     fontSize: 13,
-    color: Colors.textSecondary,
+    color: t.antTextoSec,
     lineHeight: 18,
   },
-});
+}));

@@ -1,5 +1,5 @@
 import { useCallback, useMemo, useState } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, StyleSheet, RefreshControl, Platform } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, RefreshControl, Platform } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Ionicons from '../../components/AppIcon';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
@@ -20,7 +20,7 @@ import { SenalDetalle } from '../../components/SenalDetalle';
 import { EditarSenalDialog } from '../../components/EditarSenalDialog';
 import { ProbarCanalDialog } from '../../components/ProbarCanalDialog';
 import { valorEnIndice } from '../../services/mapping-edit-form';
-import Colors from '../../constants/colors';
+import { estilosConTema, useTheme } from '../../context/ThemeContext';
 
 /**
  * Modo desarrollador — los buffers crudos de una planta, al estilo de UA Expert, y el editor del
@@ -74,6 +74,8 @@ function Canal({
   onRevertir: (senal: SenalEditable) => void;
   onProbar: (senal: SenalEditable) => void;
 }) {
+  const { t } = useTheme();
+  const styles = useStyles();
   return (
     <View>
       <View style={styles.fila}>
@@ -101,9 +103,9 @@ function Canal({
             <Text style={styles.aviso}>el mapeo declara este índice y la muestra no lo trae</Text>
           ) : null}
         </View>
-        {c.outOfRange ? <Ionicons name="warning" size={14} color={Colors.warning} /> : null}
-        {editable?.override ? <Ionicons name="create" size={13} color={Colors.warning} /> : null}
-        {c.locked ? <Ionicons name="lock-closed" size={13} color={Colors.textSecondary} /> : null}
+        {c.outOfRange ? <Ionicons name="warning" size={14} color={t.antAdvertencia} /> : null}
+        {editable?.override ? <Ionicons name="create" size={13} color={t.antAdvertencia} /> : null}
+        {c.locked ? <Ionicons name="lock-closed" size={13} color={t.antTextoSec} /> : null}
 
         {/* El botón de ampliar. Solo en índices mapeados: en uno sin mapear no hay atributo que
             explicar ni señal que editar. */}
@@ -116,7 +118,7 @@ function Canal({
             accessibilityState={{ expanded: expandido }}
             accessibilityLabel={`${expandido ? 'Ocultar' : 'Ver'} de dónde sale ${c.domainKey ?? ''} y a qué atributo corresponde`}
           >
-            <Ionicons name={expandido ? 'chevron-up' : 'chevron-down'} size={18} color={Colors.primary} />
+            <Ionicons name={expandido ? 'chevron-up' : 'chevron-down'} size={18} color={t.antPrimario} />
           </TouchableOpacity>
         ) : (
           <View style={styles.ampliarHueco} />
@@ -158,6 +160,7 @@ function Buffer({
   onRevertir: (senal: SenalEditable) => void;
   onProbar: (senal: SenalEditable) => void;
 }) {
+  const styles = useStyles();
   const sinMuestras = b.receivedLength === null;
   const desajuste = !sinMuestras && b.declaredLength !== null && b.receivedLength !== b.declaredLength;
 
@@ -245,6 +248,8 @@ function Buffer({
 }
 
 export default function DesarrolladorScreen() {
+  const { t } = useTheme();
+  const styles = useStyles();
   const { hasPermission } = useAuth();
   const { selectedPlant, canSwitchPlant } = usePlant();
   const queryClient = useQueryClient();
@@ -316,7 +321,7 @@ export default function DesarrolladorScreen() {
     return (
       <SafeAreaView style={styles.safe} edges={['bottom']}>
         <View style={styles.denegado}>
-          <Ionicons name="lock-closed-outline" size={40} color={Colors.textSecondary} />
+          <Ionicons name="lock-closed-outline" size={40} color={t.antTextoSec} />
           <Text style={styles.denegadoTitulo}>Solo para administradores</Text>
           <Text style={styles.denegadoTexto}>
             Esta pantalla muestra y edita la configuración interna del puente OPC UA. El servidor la
@@ -337,7 +342,7 @@ export default function DesarrolladorScreen() {
             onRefresh={() => {
               void refetch();
             }}
-            tintColor={Colors.primary}
+            tintColor={t.antPrimario}
           />
         }
       >
@@ -374,13 +379,13 @@ export default function DesarrolladorScreen() {
 
         {ultimoCambio ? (
           <View style={styles.exito}>
-            <Ionicons name="checkmark-circle" size={16} color={Colors.success} />
+            <Ionicons name="checkmark-circle" size={16} color={t.antExito} />
             <Text style={styles.exitoTexto}>{ultimoCambio} Ya está aplicado, sin reiniciar el servidor.</Text>
           </View>
         ) : null}
         {errorCambio ? (
           <View style={styles.fallo}>
-            <Ionicons name="alert-circle" size={16} color={Colors.danger} />
+            <Ionicons name="alert-circle" size={16} color={t.critico} />
             <Text style={styles.falloTexto}>{errorCambio}</Text>
           </View>
         ) : null}
@@ -396,7 +401,7 @@ export default function DesarrolladorScreen() {
           />
         ) : !data || data.buffers.length === 0 ? (
           <View style={styles.denegado}>
-            <Ionicons name="help-circle-outline" size={40} color={Colors.textSecondary} />
+            <Ionicons name="help-circle-outline" size={40} color={t.antTextoSec} />
             <Text style={styles.denegadoTitulo}>Esta planta no tiene buffers mapeados</Text>
             <Text style={styles.denegadoTexto}>
               No hay ningún NodeId declarado para {data?.displayName ?? plantId} en el mapeo.
@@ -406,24 +411,24 @@ export default function DesarrolladorScreen() {
           <>
             <View style={styles.leyenda}>
               <View style={styles.leyendaFila}>
-                <Ionicons name="warning" size={13} color={Colors.warning} />
+                <Ionicons name="warning" size={13} color={t.antAdvertencia} />
                 <Text style={styles.leyendaTexto}>el valor cae fuera del rango declarado</Text>
               </View>
               <View style={styles.leyendaFila}>
-                <Ionicons name="create" size={13} color={Colors.warning} />
+                <Ionicons name="create" size={13} color={t.antAdvertencia} />
                 <Text style={styles.leyendaTexto}>
                   el mapeo de esa señal se corrigió desde la app: se puede ver quién y revertirlo
                 </Text>
               </View>
               <View style={styles.leyendaFila}>
-                <Ionicons name="lock-closed" size={13} color={Colors.textSecondary} />
+                <Ionicons name="lock-closed" size={13} color={t.antTextoSec} />
                 <Text style={styles.leyendaTexto}>
                   señal de válvula: el mapeo de lo escribible exige documento de la planta y no se
                   edita desde la app
                 </Text>
               </View>
               <View style={styles.leyendaFila}>
-                <Ionicons name="eye-off-outline" size={13} color={Colors.textSecondary} />
+                <Ionicons name="eye-off-outline" size={13} color={t.antTextoSec} />
                 <Text style={styles.leyendaTexto}>
                   se ocultan los índices en cero que nadie lee; un índice mapeado se muestra aunque
                   valga 0, porque eso también es información
@@ -497,127 +502,127 @@ export default function DesarrolladorScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: Colors.surface },
+const useStyles = estilosConTema((t) => ({
+  safe: { flex: 1, backgroundColor: t.antSuperficiePagina },
   contenido: { padding: 16, paddingBottom: 32 },
-  titulo: { fontSize: 20, fontWeight: '800', color: Colors.textPrimary },
-  subtitulo: { fontSize: 12.5, color: Colors.textSecondary, marginTop: 4, lineHeight: 18 },
+  titulo: { fontSize: 20, fontWeight: '800', color: t.antTexto },
+  subtitulo: { fontSize: 12.5, color: t.antTextoSec, marginTop: 4, lineHeight: 18 },
   plantas: { gap: 8, paddingVertical: 12 },
   plantaChip: {
     paddingHorizontal: 12,
     paddingVertical: 9,
     borderRadius: 999,
     borderWidth: 1,
-    borderColor: Colors.divider,
+    borderColor: t.antDivisor,
   },
-  plantaChipActiva: { borderColor: Colors.primary, backgroundColor: Colors.primary + '22' },
-  plantaTexto: { fontSize: 12.5, fontWeight: '600', color: Colors.textSecondary },
-  plantaTextoActiva: { color: Colors.primary },
-  plantaFija: { fontSize: 14, fontWeight: '700', color: Colors.textPrimary, marginVertical: 12 },
+  plantaChipActiva: { borderColor: t.antPrimario, backgroundColor: t.antPrimario + '22' },
+  plantaTexto: { fontSize: 12.5, fontWeight: '600', color: t.antTextoSec },
+  plantaTextoActiva: { color: t.antPrimario },
+  plantaFija: { fontSize: 14, fontWeight: '700', color: t.antTexto, marginVertical: 12 },
   exito: {
     flexDirection: 'row',
     gap: 8,
     alignItems: 'flex-start',
     borderWidth: 1,
-    borderColor: Colors.success + '66',
-    backgroundColor: Colors.success + '15',
+    borderColor: t.antExito + '66',
+    backgroundColor: t.antExito + '15',
     borderRadius: 10,
     padding: 12,
     marginBottom: 10,
   },
-  exitoTexto: { flex: 1, fontSize: 12, color: Colors.textPrimary, lineHeight: 17 },
+  exitoTexto: { flex: 1, fontSize: 12, color: t.antTexto, lineHeight: 17 },
   fallo: {
     flexDirection: 'row',
     gap: 8,
     alignItems: 'flex-start',
     borderWidth: 1,
-    borderColor: Colors.danger + '77',
-    backgroundColor: Colors.danger + '15',
+    borderColor: t.critico + '77',
+    backgroundColor: t.critico + '15',
     borderRadius: 10,
     padding: 12,
     marginBottom: 10,
   },
-  falloTexto: { flex: 1, fontSize: 12, color: Colors.textPrimary, lineHeight: 17 },
+  falloTexto: { flex: 1, fontSize: 12, color: t.antTexto, lineHeight: 17 },
   leyenda: {
     gap: 6,
-    backgroundColor: Colors.bg,
+    backgroundColor: t.antFondo,
     borderRadius: 10,
     borderWidth: 1,
-    borderColor: Colors.divider,
+    borderColor: t.antDivisor,
     padding: 12,
     marginBottom: 12,
   },
   leyendaFila: { flexDirection: 'row', alignItems: 'flex-start', gap: 8 },
-  leyendaTexto: { flex: 1, fontSize: 11.5, color: Colors.textSecondary, lineHeight: 16 },
+  leyendaTexto: { flex: 1, fontSize: 11.5, color: t.antTextoSec, lineHeight: 16 },
   tarjeta: {
-    backgroundColor: Colors.bg,
+    backgroundColor: t.antFondoTarjeta,
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: Colors.divider,
+    borderColor: t.antDivisor,
     padding: 12,
     marginBottom: 12,
     gap: 6,
   },
   cabecera: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  browseName: { flex: 1, fontFamily: mono, fontSize: 13, fontWeight: '700', color: Colors.textPrimary },
-  chipCanal: { backgroundColor: Colors.primary + '22', borderRadius: 6, paddingHorizontal: 7, paddingVertical: 2 },
-  chipCanalTexto: { fontFamily: mono, fontSize: 10.5, color: Colors.primary, fontWeight: '700' },
-  nodeId: { fontFamily: mono, fontSize: 10.5, color: Colors.textSecondary, lineHeight: 15 },
+  browseName: { flex: 1, fontFamily: mono, fontSize: 13, fontWeight: '700', color: t.antTexto },
+  chipCanal: { backgroundColor: t.antPrimario + '22', borderRadius: 6, paddingHorizontal: 7, paddingVertical: 2 },
+  chipCanalTexto: { fontFamily: mono, fontSize: 10.5, color: t.antPrimario, fontWeight: '700' },
+  nodeId: { fontFamily: mono, fontSize: 10.5, color: t.antTextoSec, lineHeight: 15 },
   meta: { flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 6 },
-  tipo: { fontFamily: mono, fontSize: 11, color: Colors.accentOutlet, fontWeight: '700' },
+  tipo: { fontFamily: mono, fontSize: 11, color: t.antAcento, fontWeight: '700' },
   chip: { borderRadius: 6, paddingHorizontal: 7, paddingVertical: 2, borderWidth: 1 },
-  chipMal: { borderColor: Colors.danger + '77', backgroundColor: Colors.danger + '18' },
-  chipOjo: { borderColor: Colors.warning + '77', backgroundColor: Colors.warning + '18' },
-  chipTexto: { fontSize: 10.5, color: Colors.textPrimary, fontWeight: '600' },
-  sello: { fontSize: 10.5, color: Colors.textSecondary, fontStyle: 'italic', marginLeft: 'auto' },
+  chipMal: { borderColor: t.critico + '77', backgroundColor: t.critico + '18' },
+  chipOjo: { borderColor: t.antAdvertencia + '77', backgroundColor: t.antAdvertencia + '18' },
+  chipTexto: { fontSize: 10.5, color: t.antTexto, fontWeight: '600' },
+  sello: { fontSize: 10.5, color: t.antTextoSec, fontStyle: 'italic', marginLeft: 'auto' },
   fila: {
     flexDirection: 'row',
     alignItems: 'flex-start',
     gap: 8,
     paddingVertical: 5,
     borderTopWidth: 1,
-    borderTopColor: Colors.divider,
+    borderTopColor: t.antDivisor,
   },
-  indice: { fontFamily: mono, fontSize: 11.5, color: Colors.textSecondary },
+  indice: { fontFamily: mono, fontSize: 11.5, color: t.antTextoSec },
   // Ancho fijo para que la columna de valores quede alineada y un 409,50 salte a la vista entre
   // números de dos cifras.
   valor: {
     fontFamily: mono,
     fontSize: 12.5,
     fontWeight: '700',
-    color: Colors.textPrimary,
+    color: t.antTexto,
     minWidth: 62,
     textAlign: 'right',
   },
-  valorMal: { color: Colors.warning },
-  valorAusente: { color: Colors.textSecondary },
+  valorMal: { color: t.antAdvertencia },
+  valorAusente: { color: t.antTextoSec },
   filaInfo: { flex: 1, gap: 1 },
-  domainKey: { fontFamily: mono, fontSize: 11.5, color: Colors.accentOutlet },
-  unidad: { color: Colors.textSecondary },
-  etiqueta: { fontSize: 11.5, color: Colors.textSecondary },
-  aviso: { fontSize: 10.5, color: Colors.warning, fontStyle: 'italic' },
-  sinMapear: { fontSize: 11.5, color: Colors.textSecondary, fontStyle: 'italic' },
+  domainKey: { fontFamily: mono, fontSize: 11.5, color: t.antAcento },
+  unidad: { color: t.antTextoSec },
+  etiqueta: { fontSize: 11.5, color: t.antTextoSec },
+  aviso: { fontSize: 10.5, color: t.antAdvertencia, fontStyle: 'italic' },
+  sinMapear: { fontSize: 11.5, color: t.antTextoSec, fontStyle: 'italic' },
   // El botón de ampliar y su hueco miden lo mismo: así la columna de valores no se desalinea entre
   // una fila mapeada y una sin mapear.
   ampliar: { width: 24, alignItems: 'flex-end' },
   ampliarHueco: { width: 24 },
-  vacio: { fontSize: 11.5, color: Colors.textSecondary, lineHeight: 16, fontStyle: 'italic' },
+  vacio: { fontSize: 11.5, color: t.antTextoSec, lineHeight: 16, fontStyle: 'italic' },
   ocultos: {
     fontSize: 10.5,
-    color: Colors.textSecondary,
+    color: t.antTextoSec,
     fontStyle: 'italic',
     lineHeight: 15,
     marginTop: 2,
   },
   denegado: { alignItems: 'center', paddingVertical: 56, paddingHorizontal: 24, gap: 8 },
-  denegadoTitulo: { fontSize: 16, fontWeight: '700', color: Colors.textPrimary, textAlign: 'center' },
-  denegadoTexto: { fontSize: 13, color: Colors.textSecondary, textAlign: 'center', lineHeight: 19 },
+  denegadoTitulo: { fontSize: 16, fontWeight: '700', color: t.antTexto, textAlign: 'center' },
+  denegadoTexto: { fontSize: 13, color: t.antTextoSec, textAlign: 'center', lineHeight: 19 },
   pie: {
     fontSize: 11.5,
-    color: Colors.textSecondary,
+    color: t.antTextoSec,
     textAlign: 'center',
     fontStyle: 'italic',
     marginTop: 8,
     lineHeight: 16,
   },
-});
+}));

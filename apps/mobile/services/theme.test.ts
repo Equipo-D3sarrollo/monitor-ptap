@@ -41,6 +41,9 @@ test('tema oscuro: es EXACTAMENTE la identidad de siempre (no se mueve un píxel
   // Paleta anterior: intacta en oscuro.
   assert.equal(o.antFondo, Colors.bg);
   assert.equal(o.antSuperficie, Colors.surface);
+  // Las variantes por uso solo cambian el CLARO.
+  assert.equal(o.antFondoTarjeta, Colors.bg);
+  assert.equal(o.antSuperficiePagina, Colors.surface);
   assert.equal(o.antTextoSec, Colors.textSecondary);
   assert.equal(o.antPrimario, Colors.primary);
   assert.equal(o.destello, 'rgba(36,145,204,0.2)');
@@ -90,6 +93,7 @@ const PARES: [keyof Paleta, keyof Paleta, number][] = [
   ['antTextoSec', 'antSuperficie', 4.5],
   ['antTextoSec', 'antFondo', 4.5],
   ['antPeligro', 'antSuperficie', 3],
+  ['antAcento', 'antFondo', 4.5],
 ];
 
 for (const nombre of ['oscuro', 'claro'] as NombreTema[]) {

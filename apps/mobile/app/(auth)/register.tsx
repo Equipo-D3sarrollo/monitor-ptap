@@ -8,23 +8,26 @@ import {
   Platform,
   ScrollView,
   ActivityIndicator,
-  StyleSheet,
-} from 'react-native';
+  } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Ionicons from '../../components/AppIcon';
 import { router } from 'expo-router';
 import { apiRegister } from '../../services/auth';
 import { PLANTS } from '../../context/PlantContext';
 import { toast } from '../../services/toast-store';
-import Colors from '../../constants/colors';
+import type { Paleta } from '../../constants/theme';
+import { estilosConTema, useTheme } from '../../context/ThemeContext';
 
 /**
  * Medidor de seguridad de la contraseña (0..4) para feedback visual. Cuenta: longitud ≥8,
  * mayúscula+minúscula, dígito, símbolo (y sube un punto si es larga ≥12). Las MISMAS reglas
  * mínimas las exige el backend; esto solo orienta al usuario.
  */
-function passwordStrength(pw: string): { score: number; label: string; color: string } {
-  if (!pw) return { score: 0, label: '', color: Colors.divider };
+function passwordStrength(
+  pw: string,
+  t: Paleta,
+): { score: number; label: string; color: string } {
+  if (!pw) return { score: 0, label: '', color: t.antDivisor };
   let score = 0;
   if (pw.length >= 8) score++;
   if (/[a-z]/.test(pw) && /[A-Z]/.test(pw)) score++;
@@ -33,7 +36,7 @@ function passwordStrength(pw: string): { score: number; label: string; color: st
   if (pw.length >= 12 && score >= 3) score = 4;
   score = Math.min(4, score);
   const label = score <= 1 ? 'Débil' : score === 2 ? 'Media' : score === 3 ? 'Buena' : 'Fuerte';
-  const color = score <= 1 ? Colors.danger : score === 2 ? Colors.warning : Colors.success;
+  const color = score <= 1 ? t.critico : score === 2 ? t.antAdvertencia : t.antExito;
   return { score, label, color };
 }
 
@@ -47,6 +50,8 @@ function passwordStrength(pw: string): { score: number; label: string; color: st
  * Normalización: correo → minúsculas; nombre → MAYÚSCULAS; celular → 10 dígitos.
  */
 export default function RegisterScreen() {
+  const { t } = useTheme();
+  const styles = useStyles();
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [emailConfirm, setEmailConfirm] = useState('');
@@ -61,7 +66,7 @@ export default function RegisterScreen() {
   const submitting = useRef(false);
 
   const plantLabel = PLANTS.find((p) => p.id === plant)?.name ?? plant;
-  const strength = passwordStrength(password);
+  const strength = passwordStrength(password, t);
 
   // Primer filtro en cliente (el backend es la validación autoritativa). Mismas reglas.
   function validate(): string | null {
@@ -124,7 +129,7 @@ export default function RegisterScreen() {
           </View>
 
           <View style={styles.notice}>
-            <Ionicons name="information-circle-outline" size={18} color={Colors.primary} />
+            <Ionicons name="information-circle-outline" size={18} color={t.antPrimario} />
             <Text style={styles.noticeText}>
               Tu cuenta queda <Text style={styles.noticeStrong}>pendiente de aprobación</Text>: un
               administrador la habilita antes de que puedas entrar. Se crea como{' '}
@@ -139,7 +144,7 @@ export default function RegisterScreen() {
             value={name}
             onChangeText={(t) => setName(t.toUpperCase())}
             placeholder="TU NOMBRE"
-            placeholderTextColor={Colors.textSecondary}
+            placeholderTextColor={t.antTextoSec}
             autoCapitalize="characters"
             maxLength={120}
           />
@@ -150,7 +155,7 @@ export default function RegisterScreen() {
             value={email}
             onChangeText={(t) => setEmail(t.toLowerCase())}
             placeholder="tucorreo@ejemplo.com"
-            placeholderTextColor={Colors.textSecondary}
+            placeholderTextColor={t.antTextoSec}
             autoCapitalize="none"
             autoCorrect={false}
             keyboardType="email-address"
@@ -163,7 +168,7 @@ export default function RegisterScreen() {
             value={emailConfirm}
             onChangeText={(t) => setEmailConfirm(t.toLowerCase())}
             placeholder="Escríbelo de nuevo"
-            placeholderTextColor={Colors.textSecondary}
+            placeholderTextColor={t.antTextoSec}
             autoCapitalize="none"
             autoCorrect={false}
             keyboardType="email-address"
@@ -179,7 +184,7 @@ export default function RegisterScreen() {
             value={phone}
             onChangeText={(t) => setPhone(t.replace(/\D/g, ''))}
             placeholder="10 dígitos (ej. 3001234567)"
-            placeholderTextColor={Colors.textSecondary}
+            placeholderTextColor={t.antTextoSec}
             keyboardType="number-pad"
             maxLength={10}
           />
@@ -187,7 +192,7 @@ export default function RegisterScreen() {
           <Text style={styles.label}>Planta</Text>
           <TouchableOpacity style={styles.select} onPress={() => setShowPlantPicker((v) => !v)} activeOpacity={0.8}>
             <Text style={styles.inputText}>{plantLabel}</Text>
-            <Ionicons name={showPlantPicker ? 'chevron-up' : 'chevron-down'} size={18} color={Colors.textSecondary} />
+            <Ionicons name={showPlantPicker ? 'chevron-up' : 'chevron-down'} size={18} color={t.antTextoSec} />
           </TouchableOpacity>
           {showPlantPicker && (
             <View style={styles.picker}>
@@ -203,7 +208,7 @@ export default function RegisterScreen() {
                   <Ionicons
                     name={p.id === plant ? 'radio-button-on' : 'radio-button-off'}
                     size={18}
-                    color={p.id === plant ? Colors.primary : Colors.textSecondary}
+                    color={p.id === plant ? t.antPrimario : t.antTextoSec}
                   />
                   <Text style={styles.pickerText}>{p.name}</Text>
                 </TouchableOpacity>
@@ -218,7 +223,7 @@ export default function RegisterScreen() {
               value={password}
               onChangeText={setPassword}
               placeholder="Mín. 8: mayúscula, minúscula, número y símbolo"
-              placeholderTextColor={Colors.textSecondary}
+              placeholderTextColor={t.antTextoSec}
               secureTextEntry={!showPassword}
               autoCapitalize="none"
               autoCorrect={false}
@@ -231,7 +236,7 @@ export default function RegisterScreen() {
               accessibilityRole="button"
               accessibilityLabel={showPassword ? 'Ocultar la contraseña' : 'Mostrar la contraseña'}
             >
-              <Ionicons name={showPassword ? 'eye-off-outline' : 'eye-outline'} size={20} color={Colors.textSecondary} />
+              <Ionicons name={showPassword ? 'eye-off-outline' : 'eye-outline'} size={20} color={t.antTextoSec} />
             </TouchableOpacity>
           </View>
           {/* Medidor de seguridad */}
@@ -243,7 +248,7 @@ export default function RegisterScreen() {
                     key={i}
                     style={[
                       styles.strengthSeg,
-                      { backgroundColor: i < strength.score ? strength.color : Colors.divider },
+                      { backgroundColor: i < strength.score ? strength.color : t.antDivisor },
                     ]}
                   />
                 ))}
@@ -261,7 +266,7 @@ export default function RegisterScreen() {
               onSubmitEditing={handleRegister}
               onChangeText={setPasswordConfirm}
               placeholder="Escríbela de nuevo"
-              placeholderTextColor={Colors.textSecondary}
+              placeholderTextColor={t.antTextoSec}
               secureTextEntry={!showPassword}
               autoCapitalize="none"
               autoCorrect={false}
@@ -291,7 +296,7 @@ export default function RegisterScreen() {
             disabled={isLoading}
             activeOpacity={0.85}
           >
-            {isLoading ? <ActivityIndicator color="#fff" /> : <Text style={styles.btnPrimaryText}>Crear cuenta</Text>}
+            {isLoading ? <ActivityIndicator color={t.sobreAccion} /> : <Text style={styles.btnPrimaryText}>Crear cuenta</Text>}
           </TouchableOpacity>
 
           <TouchableOpacity style={styles.linkBtn} onPress={() => router.replace('/(auth)/login')} activeOpacity={0.7}>
@@ -303,62 +308,62 @@ export default function RegisterScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: Colors.bg },
+const useStyles = estilosConTema((t) => ({
+  safe: { flex: 1, backgroundColor: t.antFondo },
   flex: { flex: 1 },
   scroll: { flexGrow: 1, justifyContent: 'center', paddingHorizontal: 24, paddingVertical: 40 },
   hero: { alignItems: 'center', marginBottom: 20 },
-  title: { fontSize: 26, fontWeight: '800', color: Colors.primary, letterSpacing: 0.5 },
-  subtitle: { fontSize: 14, color: Colors.textSecondary, marginTop: 4 },
+  title: { fontSize: 26, fontWeight: '800', color: t.antPrimario, letterSpacing: 0.5 },
+  subtitle: { fontSize: 14, color: t.antTextoSec, marginTop: 4 },
   notice: {
     flexDirection: 'row',
     gap: 8,
     alignItems: 'flex-start',
-    backgroundColor: Colors.primary + '12',
+    backgroundColor: t.antPrimario + '12',
     borderRadius: 10,
     padding: 12,
     marginBottom: 20,
   },
-  noticeText: { flex: 1, fontSize: 12.5, lineHeight: 18, color: Colors.textSecondary },
-  noticeStrong: { fontWeight: '700', color: Colors.textPrimary },
-  label: { fontSize: 13, fontWeight: '600', color: Colors.textPrimary, marginBottom: 8, marginTop: 12 },
+  noticeText: { flex: 1, fontSize: 12.5, lineHeight: 18, color: t.antTextoSec },
+  noticeStrong: { fontWeight: '700', color: t.antTexto },
+  label: { fontSize: 13, fontWeight: '600', color: t.antTexto, marginBottom: 8, marginTop: 12 },
   input: {
-    backgroundColor: Colors.surface,
+    backgroundColor: t.antSuperficie,
     borderRadius: 10,
     paddingHorizontal: 14,
     paddingVertical: 12,
     fontSize: 15,
-    color: Colors.textPrimary,
+    color: t.antTexto,
     borderWidth: 1,
-    borderColor: '#E5E7EB',
+    borderColor: t.bordeSuave,
   },
-  inputText: { fontSize: 15, color: Colors.textPrimary },
+  inputText: { fontSize: 15, color: t.antTexto },
   select: {
-    backgroundColor: Colors.surface,
+    backgroundColor: t.antSuperficie,
     borderRadius: 10,
     paddingHorizontal: 14,
     paddingVertical: 12,
     borderWidth: 1,
-    borderColor: '#E5E7EB',
+    borderColor: t.bordeSuave,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
   },
   picker: {
-    backgroundColor: Colors.surface,
+    backgroundColor: t.antSuperficie,
     borderRadius: 10,
     borderWidth: 1,
-    borderColor: '#E5E7EB',
+    borderColor: t.bordeSuave,
     marginTop: 6,
     overflow: 'hidden',
   },
   pickerItem: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingHorizontal: 14, paddingVertical: 11 },
-  pickerText: { fontSize: 14, color: Colors.textPrimary },
+  pickerText: { fontSize: 14, color: t.antTexto },
   passwordRow: { position: 'relative', justifyContent: 'center' },
   passwordInput: { paddingRight: 44 },
   eye: { position: 'absolute', right: 12 },
-  hint: { fontSize: 11.5, color: Colors.textSecondary, marginTop: 6, lineHeight: 16 },
-  errorHint: { fontSize: 11.5, color: Colors.danger, marginTop: 6 },
+  hint: { fontSize: 11.5, color: t.antTextoSec, marginTop: 6, lineHeight: 16 },
+  errorHint: { fontSize: 11.5, color: t.critico, marginTop: 6 },
   strengthWrap: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 8 },
   strengthBar: { flexDirection: 'row', gap: 4, flex: 1 },
   strengthSeg: { flex: 1, height: 5, borderRadius: 3 },
@@ -366,14 +371,14 @@ const styles = StyleSheet.create({
   // Honeypot: fuera de la vista (no display:none, que algunos bots ignoran).
   honeypot: { position: 'absolute', width: 1, height: 1, opacity: 0, left: -9999, top: -9999 },
   btnPrimary: {
-    backgroundColor: Colors.primary,
+    backgroundColor: t.accion, // D1: texto blanco sobre `accion` (5,5:1), no sobre `primary` (3,7:1)
     borderRadius: 12,
     paddingVertical: 15,
     alignItems: 'center',
     marginTop: 24,
   },
   btnDisabled: { opacity: 0.6 },
-  btnPrimaryText: { color: '#fff', fontSize: 15, fontWeight: '700' },
+  btnPrimaryText: { color: t.sobreAccion, fontSize: 15, fontWeight: '700' },
   linkBtn: { alignItems: 'center', marginTop: 16 },
-  linkText: { color: Colors.primary, fontSize: 14, fontWeight: '600' },
-});
+  linkText: { color: t.antPrimario, fontSize: 14, fontWeight: '600' },
+}));

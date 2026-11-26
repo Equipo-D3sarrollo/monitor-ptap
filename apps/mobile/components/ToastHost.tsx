@@ -1,8 +1,9 @@
 import { useSyncExternalStore } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import { View, Text, TouchableOpacity } from 'react-native';
 import Ionicons from './AppIcon';
-import Colors from '../constants/colors';
 import { dismissToast, getToasts, subscribeToasts, type ToastKind } from '../services/toast-store';
+import type { Paleta } from '../constants/theme';
+import { estilosConTema, useTheme } from '../context/ThemeContext';
 
 /**
  * Pila de avisos no bloqueantes. Se monta UNA vez en la cáscara de `(app)`.
@@ -10,13 +11,19 @@ import { dismissToast, getToasts, subscribeToasts, type ToastKind } from '../ser
  * Vive fuera del flujo (`position: absolute`) para no empujar el contenido, y sobre la barra de
  * pestañas. Cada aviso se puede cerrar a mano sin esperar a que expire.
  */
-const TONE: Record<ToastKind, { color: string; icon: keyof typeof Ionicons.glyphMap }> = {
-  success: { color: Colors.success, icon: 'checkmark-circle' },
-  error: { color: Colors.danger, icon: 'alert-circle' },
-  info: { color: Colors.primary, icon: 'information-circle' },
-};
+function tonoDe(t: Paleta): Record<ToastKind, { color: string; icon: keyof typeof Ionicons.glyphMap }> {
+  return {
+    success: { color: t.antExito, icon: 'checkmark-circle' },
+    error: { color: t.critico, icon: 'alert-circle' },
+    info: { color: t.antPrimario, icon: 'information-circle' },
+  };
+}
 
 export function ToastHost() {
+  // `tema` y no `t`: dentro del map cada aviso se llama `t`.
+  const { t: tema } = useTheme();
+  const styles = useStyles();
+  const TONE = tonoDe(tema);
   const toasts = useSyncExternalStore(subscribeToasts, getToasts, getToasts);
 
   if (toasts.length === 0) return null;
@@ -46,7 +53,7 @@ export function ToastHost() {
                 </Text>
               ) : null}
             </View>
-            <Ionicons name="close" size={14} color={Colors.textSecondary} />
+            <Ionicons name="close" size={14} color={tema.antTextoSec} />
           </TouchableOpacity>
         );
       })}
@@ -54,7 +61,7 @@ export function ToastHost() {
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = estilosConTema((t) => ({
   host: {
     position: 'absolute',
     left: 12,
@@ -67,9 +74,9 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'flex-start',
     gap: 10,
-    backgroundColor: Colors.bg,
+    backgroundColor: t.antFondoTarjeta,
     borderWidth: 1,
-    borderColor: Colors.divider,
+    borderColor: t.antDivisor,
     borderLeftWidth: 4,
     borderRadius: 12,
     paddingHorizontal: 12,
@@ -82,6 +89,6 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 3 },
   },
   texts: { flex: 1, gap: 2 },
-  title: { fontSize: 13, fontWeight: '700', color: Colors.textPrimary },
-  message: { fontSize: 12, lineHeight: 16, color: Colors.textSecondary },
-});
+  title: { fontSize: 13, fontWeight: '700', color: t.antTexto },
+  message: { fontSize: 12, lineHeight: 16, color: t.antTextoSec },
+}));

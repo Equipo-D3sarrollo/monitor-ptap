@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { RefreshControl, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { RefreshControl, ScrollView, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useQuery } from '@tanstack/react-query';
 import { PlantSelector } from '../../components/PlantSelector';
@@ -10,19 +10,24 @@ import { usePlant } from '../../context/PlantContext';
 import { fetchPlantReport } from '../../services/api';
 import { exportPlantDiagnosticsReport } from '../../services/diagnostics-export';
 import { plantReportSections } from '../../services/plant-report';
-import Colors from '../../constants/colors';
 import { Fonts } from '../../constants/fonts';
+import type { Paleta } from '../../constants/theme';
+import { estilosConTema, useTheme } from '../../context/ThemeContext';
 
-const B = Colors.brand;
 
-const STATES = {
-  ok: { label: 'Correcto', color: B.green },
-  warning: { label: 'Revisar', color: Colors.warning },
-  error: { label: 'Fallo', color: B.dangerText },
-  unknown: { label: 'Sin evidencia', color: B.textSecondary },
-};
+function estadosDe(t: Paleta) {
+  return {
+    ok: { label: 'Correcto', color: t.enVivo },
+    warning: { label: 'Revisar', color: t.antAdvertencia },
+    error: { label: 'Fallo', color: t.criticoTexto },
+    unknown: { label: 'Sin evidencia', color: t.textoSec },
+  };
+}
 
 export default function RevisionScreen() {
+  const { t } = useTheme();
+  const styles = useStyles();
+  const STATES = estadosDe(t);
   const { hasPermission, user } = useAuth();
   const { selectedPlant } = usePlant();
   const allowed = hasPermission('system_config');
@@ -55,7 +60,7 @@ export default function RevisionScreen() {
     <SafeAreaView style={styles.safe} edges={['bottom']}>
       <PlantSelector />
       <ScrollView contentContainerStyle={styles.content} refreshControl={
-        <RefreshControl refreshing={query.isRefetching} onRefresh={() => void query.refetch()} tintColor={B.action} />
+        <RefreshControl refreshing={query.isRefetching} onRefresh={() => void query.refetch()} tintColor={t.accion} />
       }>
         <Text style={styles.title}>Revisión · {selectedPlant.name}</Text>
         <Text style={styles.detail}>Red, puente, buffers, señales y anomalías. La red y el puente son compartidos por todas las plantas. Esta consulta usa la cache del servidor y no lee directamente el PLC.</Text>
@@ -84,18 +89,18 @@ export default function RevisionScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: B.page },
+const useStyles = estilosConTema((t) => ({
+  safe: { flex: 1, backgroundColor: t.fondo },
   content: { padding: 16, gap: 12, paddingBottom: 32 },
-  title: { fontSize: 20, fontFamily: Fonts.semibold, color: B.text },
-  sectionTitle: { fontSize: 16, fontFamily: Fonts.semibold, color: B.text },
-  card: { backgroundColor: B.card, borderColor: B.cardBorder, borderWidth: 1, borderRadius: 12, padding: 16, gap: 12 },
-  item: { borderTopWidth: 1, borderTopColor: B.cardBorder, paddingTop: 10, gap: 4 },
-  label: { fontSize: 14, fontFamily: Fonts.semibold, color: B.text },
+  title: { fontSize: 20, fontFamily: Fonts.semibold, color: t.texto },
+  sectionTitle: { fontSize: 16, fontFamily: Fonts.semibold, color: t.texto },
+  card: { backgroundColor: t.superficie, borderColor: t.bordeSuave, borderWidth: 1, borderRadius: 12, padding: 16, gap: 12 },
+  item: { borderTopWidth: 1, borderTopColor: t.bordeSuave, paddingTop: 10, gap: 4 },
+  label: { fontSize: 14, fontFamily: Fonts.semibold, color: t.texto },
   status: { fontSize: 12, fontFamily: Fonts.semibold },
-  detail: { fontSize: 13, lineHeight: 19, fontFamily: Fonts.regular, color: B.textSecondary },
-  time: { fontSize: 11, fontFamily: Fonts.regular, color: B.textSecondary },
-  button: { alignSelf: 'flex-start', backgroundColor: B.action, padding: 12, minHeight: 44, borderRadius: 8 },
-  buttonText: { color: B.white, fontFamily: Fonts.semibold },
-  error: { color: B.dangerText, fontSize: 13 },
-});
+  detail: { fontSize: 13, lineHeight: 19, fontFamily: Fonts.regular, color: t.textoSec },
+  time: { fontSize: 11, fontFamily: Fonts.regular, color: t.textoSec },
+  button: { alignSelf: 'flex-start', backgroundColor: t.accion, padding: 12, minHeight: 44, borderRadius: 8 },
+  buttonText: { color: t.sobreAccion, fontFamily: Fonts.semibold },
+  error: { color: t.criticoTexto, fontSize: 13 },
+}));

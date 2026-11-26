@@ -7,7 +7,6 @@ import {
   ScrollView,
   TextInput,
   TouchableOpacity,
-  StyleSheet,
   Platform,
   ActivityIndicator,
 } from 'react-native';
@@ -33,7 +32,7 @@ import {
   type BorradorMando,
 } from '../services/mapping-mando-form';
 import { formatValorCrudo } from '../services/opc-raw';
-import Colors from '../constants/colors';
+import { estilosConTema, useTheme } from '../context/ThemeContext';
 
 /**
  * Editar una señal del mapeo, en dos pasos: **se escribe y después se REVISA.**
@@ -70,6 +69,8 @@ export function EditarSenalDialog({
   onCerrar: () => void;
   onGuardada: (senal: SenalEditable) => void;
 }) {
+  const { t } = useTheme();
+  const styles = useStyles();
   const actual = useMemo(() => valoresDe(senal), [senal]);
   const [borrador, setBorrador] = useState<Borrador>(() => borradorDesde(actual));
   // El mando solo existe en válvulas. `null` en una señal de lectura, y entonces la sección no se
@@ -157,7 +158,7 @@ export function EditarSenalDialog({
               </Text>
             </View>
             <TouchableOpacity onPress={onCerrar} hitSlop={10} accessibilityLabel="Cerrar">
-              <Ionicons name="close" size={22} color={Colors.textSecondary} />
+              <Ionicons name="close" size={22} color={t.antTextoSec} />
             </TouchableOpacity>
           </View>
 
@@ -193,7 +194,7 @@ export function EditarSenalDialog({
                         onChangeText={(t) => set(def.campo, t)}
                         keyboardType={def.tipo === 'texto' ? 'default' : 'numbers-and-punctuation'}
                         placeholder={def.tipo === 'texto' ? 'sin unidad' : 'vacío = sin límite'}
-                        placeholderTextColor={Colors.textSecondary}
+                        placeholderTextColor={t.antTextoSec}
                         accessibilityLabel={`${def.etiqueta} (${def.ingles})`}
                         autoCapitalize="none"
                         autoCorrect={false}
@@ -217,7 +218,7 @@ export function EditarSenalDialog({
 
                     {senal.mando.compuesta ? (
                       <View style={styles.avisoCompuesta}>
-                        <Ionicons name="lock-closed" size={14} color={Colors.textSecondary} />
+                        <Ionicons name="lock-closed" size={14} color={t.antTextoSec} />
                         <Text style={styles.avisoCompuestaTexto}>
                           Orden compuesta: escribe varias posiciones en secuencia. Sus verbos y su
                           índice no se editan aquí — el orden de esos pasos es lo que impide
@@ -255,7 +256,7 @@ export function EditarSenalDialog({
                                 value={fila.verbo}
                                 onChangeText={(t) => setVerbo(i, 'verbo', t)}
                                 placeholder="close"
-                                placeholderTextColor={Colors.textSecondary}
+                                placeholderTextColor={t.antTextoSec}
                                 accessibilityLabel={`Nombre del verbo ${i + 1}`}
                                 autoCapitalize="none"
                                 autoCorrect={false}
@@ -265,7 +266,7 @@ export function EditarSenalDialog({
                                 value={fila.valor}
                                 onChangeText={(t) => setVerbo(i, 'valor', t)}
                                 placeholder="8192"
-                                placeholderTextColor={Colors.textSecondary}
+                                placeholderTextColor={t.antTextoSec}
                                 keyboardType="numbers-and-punctuation"
                                 accessibilityLabel={`Valor del verbo ${fila.verbo || i + 1}`}
                                 autoCapitalize="none"
@@ -279,7 +280,7 @@ export function EditarSenalDialog({
                                 style={styles.verboQuitar}
                                 accessibilityLabel={`Quitar el verbo ${fila.verbo || i + 1}`}
                               >
-                                <Ionicons name="close-circle" size={20} color={Colors.textSecondary} />
+                                <Ionicons name="close-circle" size={20} color={t.antTextoSec} />
                               </TouchableOpacity>
                             </View>
                           ))}
@@ -289,7 +290,7 @@ export function EditarSenalDialog({
                             activeOpacity={0.8}
                             accessibilityLabel="Añadir un verbo de mando"
                           >
-                            <Ionicons name="add" size={16} color={Colors.primary} />
+                            <Ionicons name="add" size={16} color={t.antPrimario} />
                             <Text style={styles.anadirVerboTexto}>Añadir verbo</Text>
                           </TouchableOpacity>
                           <Text style={mando.errores.comandos ? styles.campoError : styles.campoAyuda}>
@@ -332,7 +333,7 @@ export function EditarSenalDialog({
                           value={borradorMando.stateOpen}
                           onChangeText={(t) => setMando({ stateOpen: t })}
                           placeholder="abierta"
-                          placeholderTextColor={Colors.textSecondary}
+                          placeholderTextColor={t.antTextoSec}
                           keyboardType="numbers-and-punctuation"
                           accessibilityLabel="Valor que significa abierta (stateEncoding.open)"
                         />
@@ -341,7 +342,7 @@ export function EditarSenalDialog({
                           value={borradorMando.stateClosed}
                           onChangeText={(t) => setMando({ stateClosed: t })}
                           placeholder="cerrada"
-                          placeholderTextColor={Colors.textSecondary}
+                          placeholderTextColor={t.antTextoSec}
                           keyboardType="numbers-and-punctuation"
                           accessibilityLabel="Valor que significa cerrada (stateEncoding.closed)"
                         />
@@ -370,7 +371,7 @@ export function EditarSenalDialog({
                     </Text>
                     <View style={styles.cambioValores}>
                       <Text style={styles.cambioDe}>{c.de}</Text>
-                      <Ionicons name="arrow-forward" size={13} color={Colors.textSecondary} />
+                      <Ionicons name="arrow-forward" size={13} color={t.antTextoSec} />
                       <Text style={styles.cambioA}>{c.a}</Text>
                     </View>
                   </View>
@@ -397,7 +398,7 @@ export function EditarSenalDialog({
 
                 {cambiaElMando ? (
                   <View style={styles.avisoMando}>
-                    <Ionicons name="warning" size={18} color={Colors.danger} />
+                    <Ionicons name="warning" size={18} color={t.critico} />
                     <Text style={styles.avisoMandoTexto}>
                       Estás cambiando <Text style={styles.avisoMandoFuerte}>por dónde y con qué valor
                       se manda esta válvula</Text>. Ese valor no queda verificado por guardarlo: hace
@@ -408,7 +409,7 @@ export function EditarSenalDialog({
                 ) : null}
 
                 <View style={styles.avisoConfianza}>
-                  <Ionicons name="information-circle-outline" size={16} color={Colors.warning} />
+                  <Ionicons name="information-circle-outline" size={16} color={t.antAdvertencia} />
                   <Text style={styles.avisoConfianzaTexto}>
                     La señal pasará a <Text style={styles.mono}>inferred</Text>: detrás de este índice
                     queda una decisión tuya, no un documento de la planta. Queda registrado con tu
@@ -418,7 +419,7 @@ export function EditarSenalDialog({
 
                 {errorServidor ? (
                   <View style={styles.errorServidor}>
-                    <Ionicons name="alert-circle" size={16} color={Colors.danger} />
+                    <Ionicons name="alert-circle" size={16} color={t.critico} />
                     <Text style={styles.errorServidorTexto}>{errorServidor}</Text>
                   </View>
                 ) : null}
@@ -462,7 +463,7 @@ export function EditarSenalDialog({
                   accessibilityLabel="Guardar y aplicar la corrección"
                 >
                   {guardando ? (
-                    <ActivityIndicator size="small" color="#fff" />
+                    <ActivityIndicator size="small" color={t.sobreAccion} />
                   ) : (
                     <Text style={styles.botonPrimarioTexto}>Guardar y aplicar</Text>
                   )}
@@ -477,6 +478,7 @@ export function EditarSenalDialog({
 }
 
 function Chip({ texto, activo, onPress }: { texto: string; activo: boolean; onPress: () => void }) {
+  const styles = useStyles();
   return (
     <TouchableOpacity
       style={[styles.chip, activo && styles.chipActivo]}
@@ -499,13 +501,13 @@ function primarioDelCanal(buffers: { browseName: string; declaredLength: number 
   return mejor?.browseName ?? null;
 }
 
-const styles = StyleSheet.create({
+const useStyles = estilosConTema((t) => ({
   overlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.55)', justifyContent: 'center', padding: 16 },
   hoja: {
-    backgroundColor: Colors.bg,
+    backgroundColor: t.antFondoTarjeta,
     borderRadius: 14,
     borderWidth: 1,
-    borderColor: Colors.divider,
+    borderColor: t.antDivisor,
     maxHeight: '88%',
     overflow: 'hidden',
   },
@@ -516,65 +518,65 @@ const styles = StyleSheet.create({
     gap: 10,
     padding: 14,
     borderBottomWidth: 1,
-    borderBottomColor: Colors.divider,
+    borderBottomColor: t.antDivisor,
   },
-  titulo: { fontSize: 16, fontWeight: '800', color: Colors.textPrimary },
-  subtitulo: { fontFamily: mono, fontSize: 11.5, color: Colors.accentOutlet, marginTop: 2 },
+  titulo: { fontSize: 16, fontWeight: '800', color: t.antTexto },
+  subtitulo: { fontFamily: mono, fontSize: 11.5, color: t.antAcento, marginTop: 2 },
   cuerpo: { padding: 14, gap: 12 },
   campo: { gap: 5 },
-  campoEtiqueta: { fontSize: 12.5, fontWeight: '700', color: Colors.textPrimary },
-  campoIngles: { fontFamily: mono, fontSize: 11, fontWeight: '400', color: Colors.textSecondary },
+  campoEtiqueta: { fontSize: 12.5, fontWeight: '700', color: t.antTexto },
+  campoIngles: { fontFamily: mono, fontSize: 11, fontWeight: '400', color: t.antTextoSec },
   input: {
     borderWidth: 1,
-    borderColor: Colors.divider,
+    borderColor: t.antDivisor,
     borderRadius: 8,
-    backgroundColor: Colors.surface,
+    backgroundColor: t.antSuperficie,
     paddingHorizontal: 12,
     minHeight: 44,
     fontFamily: mono,
     fontSize: 13.5,
-    color: Colors.textPrimary,
+    color: t.antTexto,
   },
-  inputMal: { borderColor: Colors.danger + '99' },
-  campoAyuda: { fontSize: 11, color: Colors.textSecondary, lineHeight: 15 },
-  campoError: { fontSize: 11, color: Colors.danger, lineHeight: 15, fontWeight: '600' },
+  inputMal: { borderColor: t.critico + '99' },
+  campoAyuda: { fontSize: 11, color: t.antTextoSec, lineHeight: 15 },
+  campoError: { fontSize: 11, color: t.critico, lineHeight: 15, fontWeight: '600' },
   chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
   chip: {
     borderRadius: 999,
     borderWidth: 1,
-    borderColor: Colors.divider,
+    borderColor: t.antDivisor,
     paddingHorizontal: 11,
     paddingVertical: 9,
   },
-  chipActivo: { borderColor: Colors.primary, backgroundColor: Colors.primary + '22' },
-  chipTexto: { fontFamily: mono, fontSize: 11, color: Colors.textSecondary },
-  chipTextoActivo: { color: Colors.primary, fontWeight: '700' },
-  nota: { fontSize: 11, color: Colors.textSecondary, lineHeight: 16, fontStyle: 'italic' },
-  separador: { height: 1, backgroundColor: Colors.divider, marginVertical: 4 },
+  chipActivo: { borderColor: t.antPrimario, backgroundColor: t.antPrimario + '22' },
+  chipTexto: { fontFamily: mono, fontSize: 11, color: t.antTextoSec },
+  chipTextoActivo: { color: t.antPrimario, fontWeight: '700' },
+  nota: { fontSize: 11, color: t.antTextoSec, lineHeight: 16, fontStyle: 'italic' },
+  separador: { height: 1, backgroundColor: t.antDivisor, marginVertical: 4 },
   seccionMando: {
     fontSize: 11,
     fontWeight: '800',
-    color: Colors.accentOutlet,
+    color: t.antAcento,
     textTransform: 'uppercase',
     letterSpacing: 0.6,
   },
-  notaMando: { fontSize: 11.5, color: Colors.textSecondary, lineHeight: 16, marginBottom: 4 },
+  notaMando: { fontSize: 11.5, color: t.antTextoSec, lineHeight: 16, marginBottom: 4 },
   avisoCompuesta: {
     flexDirection: 'row',
     gap: 8,
     alignItems: 'flex-start',
     borderWidth: 1,
-    borderColor: Colors.divider,
+    borderColor: t.antDivisor,
     borderRadius: 8,
     padding: 10,
   },
-  avisoCompuestaTexto: { flex: 1, fontSize: 11, color: Colors.textSecondary, lineHeight: 15 },
+  avisoCompuestaTexto: { flex: 1, fontSize: 11, color: t.antTextoSec, lineHeight: 15 },
   verboFila: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   verboNombre: { flex: 1.4 },
   verboValor: { flex: 1 },
   verboQuitar: { width: 26, alignItems: 'center' },
   anadirVerbo: { flexDirection: 'row', alignItems: 'center', gap: 5, paddingVertical: 8 },
-  anadirVerboTexto: { fontSize: 12.5, fontWeight: '700', color: Colors.primary },
+  anadirVerboTexto: { fontSize: 12.5, fontWeight: '700', color: t.antPrimario },
   estadoFila: { flexDirection: 'row', gap: 8 },
   estadoInput: { flex: 1 },
   avisoMando: {
@@ -582,71 +584,72 @@ const styles = StyleSheet.create({
     gap: 8,
     alignItems: 'flex-start',
     borderWidth: 1,
-    borderColor: Colors.danger + '88',
-    backgroundColor: Colors.danger + '18',
+    borderColor: t.critico + '88',
+    backgroundColor: t.critico + '18',
     borderRadius: 8,
     padding: 11,
   },
-  avisoMandoTexto: { flex: 1, fontSize: 12, color: Colors.textPrimary, lineHeight: 17 },
+  avisoMandoTexto: { flex: 1, fontSize: 12, color: t.antTexto, lineHeight: 17 },
   avisoMandoFuerte: { fontWeight: '800' },
   cambio: {
     borderWidth: 1,
-    borderColor: Colors.divider,
+    borderColor: t.antDivisor,
     borderRadius: 8,
     padding: 10,
     gap: 4,
-    backgroundColor: Colors.surface,
+    backgroundColor: t.antSuperficiePagina,
   },
-  cambioCampo: { fontSize: 12.5, fontWeight: '700', color: Colors.textPrimary },
+  cambioCampo: { fontSize: 12.5, fontWeight: '700', color: t.antTexto },
   cambioValores: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  cambioDe: { fontFamily: mono, fontSize: 13, color: Colors.textSecondary, textDecorationLine: 'line-through' },
-  cambioA: { fontFamily: mono, fontSize: 14, fontWeight: '800', color: Colors.success },
+  cambioDe: { fontFamily: mono, fontSize: 13, color: t.antTextoSec, textDecorationLine: 'line-through' },
+  cambioA: { fontFamily: mono, fontSize: 14, fontWeight: '800', color: t.antExito },
   destino: {
     borderWidth: 1,
-    borderColor: Colors.primary + '55',
-    backgroundColor: Colors.primary + '0E',
+    borderColor: t.antPrimario + '55',
+    backgroundColor: t.antPrimario + '0E',
     borderRadius: 8,
     padding: 12,
     gap: 3,
   },
-  destinoTitulo: { fontSize: 11, fontWeight: '700', color: Colors.primary, textTransform: 'uppercase', letterSpacing: 0.5 },
-  destinoRuta: { fontFamily: mono, fontSize: 11.5, color: Colors.textSecondary },
-  destinoValor: { fontFamily: mono, fontSize: 20, fontWeight: '800', color: Colors.textPrimary },
-  destinoAviso: { fontSize: 11.5, color: Colors.warning, lineHeight: 16 },
+  destinoTitulo: { fontSize: 11, fontWeight: '700', color: t.antPrimario, textTransform: 'uppercase', letterSpacing: 0.5 },
+  destinoRuta: { fontFamily: mono, fontSize: 11.5, color: t.antTextoSec },
+  destinoValor: { fontFamily: mono, fontSize: 20, fontWeight: '800', color: t.antTexto },
+  destinoAviso: { fontSize: 11.5, color: t.antAdvertencia, lineHeight: 16 },
   avisoConfianza: { flexDirection: 'row', gap: 8, alignItems: 'flex-start' },
-  avisoConfianzaTexto: { flex: 1, fontSize: 11.5, color: Colors.textSecondary, lineHeight: 16 },
-  mono: { fontFamily: mono, color: Colors.warning },
+  avisoConfianzaTexto: { flex: 1, fontSize: 11.5, color: t.antTextoSec, lineHeight: 16 },
+  mono: { fontFamily: mono, color: t.antAdvertencia },
   errorServidor: {
     flexDirection: 'row',
     gap: 8,
     alignItems: 'flex-start',
     borderWidth: 1,
-    borderColor: Colors.danger + '77',
-    backgroundColor: Colors.danger + '15',
+    borderColor: t.critico + '77',
+    backgroundColor: t.critico + '15',
     borderRadius: 8,
     padding: 10,
   },
-  errorServidorTexto: { flex: 1, fontSize: 12, color: Colors.textPrimary, lineHeight: 17 },
+  errorServidorTexto: { flex: 1, fontSize: 12, color: t.antTexto, lineHeight: 17 },
   pie: {
     flexDirection: 'row',
     justifyContent: 'flex-end',
     gap: 8,
     padding: 12,
     borderTopWidth: 1,
-    borderTopColor: Colors.divider,
+    borderTopColor: t.antDivisor,
   },
   botonPlano: {
     borderRadius: 8,
     borderWidth: 1,
-    borderColor: Colors.divider,
+    borderColor: t.antDivisor,
     paddingHorizontal: 14,
     minHeight: 44,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  botonPlanoTexto: { color: Colors.textSecondary, fontSize: 13, fontWeight: '600' },
+  botonPlanoTexto: { color: t.antTextoSec, fontSize: 13, fontWeight: '600' },
   botonPrimario: {
-    backgroundColor: Colors.primary,
+    // Texto blanco: sobre `accion` (5,5:1), no sobre el `primary` anterior (3,7:1). Ver D1.
+    backgroundColor: t.accion,
     borderRadius: 8,
     paddingHorizontal: 18,
     minHeight: 44,
@@ -655,5 +658,5 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   botonApagado: { opacity: 0.45 },
-  botonPrimarioTexto: { color: '#fff', fontSize: 13.5, fontWeight: '800' },
-});
+  botonPrimarioTexto: { color: t.sobreAccion, fontSize: 13.5, fontWeight: '800' },
+}));

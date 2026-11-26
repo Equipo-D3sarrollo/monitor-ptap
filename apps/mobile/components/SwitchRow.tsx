@@ -1,5 +1,5 @@
-import { View, Text, Switch, Pressable, StyleSheet } from 'react-native';
-import Colors from '../constants/colors';
+import { View, Text, Switch, Pressable } from 'react-native';
+import { estilosConTema, useTheme } from '../context/ThemeContext';
 
 /**
  * Fila con interruptor: título, explicación y `Switch`.
@@ -22,6 +22,8 @@ export function SwitchRow({
   onChange: (v: boolean) => void;
   disabled?: boolean;
 }) {
+  const { t } = useTheme();
+  const styles = useStyles();
   return (
     <Pressable
       style={({ pressed }) => [styles.fila, pressed && !disabled && styles.pulsada]}
@@ -42,14 +44,14 @@ export function SwitchRow({
         // El interruptor NO captura el toque: la fila entera ya lo maneja, y dejar los dos activos
         // provocaba dobles disparos que dejaban el valor sin cambiar.
         pointerEvents="none"
-        trackColor={{ false: Colors.divider, true: Colors.primary + '99' }}
-        thumbColor={valor ? Colors.primary : Colors.textSecondary}
+        trackColor={{ false: t.antDivisor, true: t.antPrimario + '99' }}
+        thumbColor={valor ? t.antPrimario : t.antTextoSec}
       />
     </Pressable>
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = estilosConTema((t) => ({
   fila: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -60,6 +62,6 @@ const styles = StyleSheet.create({
   },
   pulsada: { opacity: 0.6 },
   texto: { flex: 1, gap: 2 },
-  titulo: { fontSize: 14, fontWeight: '600', color: Colors.textPrimary },
-  detalle: { fontSize: 12, lineHeight: 16, color: Colors.textSecondary },
-});
+  titulo: { fontSize: 14, fontWeight: '600', color: t.antTexto },
+  detalle: { fontSize: 12, lineHeight: 16, color: t.antTextoSec },
+}));

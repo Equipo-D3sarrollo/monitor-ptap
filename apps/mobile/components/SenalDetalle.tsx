@@ -1,10 +1,10 @@
 import { useState } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, Platform, ActivityIndicator } from 'react-native';
+import { View, Text, TouchableOpacity, Platform, ActivityIndicator } from 'react-native';
 import Ionicons from './AppIcon';
 import type { SenalEditable } from '../services/mapping-edit';
 import { comandosComoTexto } from '../services/mapping-mando-form';
 import { formatWhen } from '../services/notifications';
-import Colors from '../constants/colors';
+import { estilosConTema, useTheme } from '../context/ThemeContext';
 
 /**
  * Lo que hay detrás de una fila de la tabla de buffers crudos: **de dónde sale ese número y a qué
@@ -22,6 +22,7 @@ import Colors from '../constants/colors';
 const mono = Platform.select({ ios: 'Menlo', android: 'monospace', default: 'monospace' });
 
 function Dato({ etiqueta, valor, ingles }: { etiqueta: string; valor: string; ingles?: string }) {
+  const styles = useStyles();
   return (
     <View style={styles.dato}>
       <Text style={styles.datoEtiqueta}>
@@ -55,6 +56,8 @@ export function SenalDetalle({
   /** Abre el probador apuntado al canal de mando de esta válvula. Ausente = no se ofrece. */
   onProbar?: () => void;
 }) {
+  const { t } = useTheme();
+  const styles = useStyles();
   // La reversión pide confirmación en el sitio, sin diálogo: deshace un cambio de configuración
   // real y un toque accidental en una lista larga no debería poder hacerlo.
   const [confirmando, setConfirmando] = useState(false);
@@ -70,7 +73,7 @@ export function SenalDetalle({
         </View>
         {senal.override ? (
           <View style={styles.chipOverride}>
-            <Ionicons name="create-outline" size={11} color={Colors.warning} />
+            <Ionicons name="create-outline" size={11} color={t.antAdvertencia} />
             <Text style={styles.chipOverrideTexto}>corregida</Text>
           </View>
         ) : null}
@@ -114,7 +117,7 @@ export function SenalDetalle({
               alguien lea el valor como un hecho verificado. */}
           {senal.confidence !== 'confirmed' ? (
             <View style={styles.avisoMando}>
-              <Ionicons name="alert-circle-outline" size={14} color={Colors.warning} />
+              <Ionicons name="alert-circle-outline" size={14} color={t.antAdvertencia} />
               <Text style={styles.avisoMandoTexto}>
                 Esta codificación no está confirmada por documento de la planta. Compruébala con el
                 probador antes de fiarte de ella.
@@ -145,13 +148,13 @@ export function SenalDetalle({
 
       {senal.bloqueada ? (
         <View style={styles.bloqueada}>
-          <Ionicons name="lock-closed" size={13} color={Colors.textSecondary} />
+          <Ionicons name="lock-closed" size={13} color={t.antTextoSec} />
           <Text style={styles.bloqueadaTexto}>{senal.bloqueada}</Text>
         </View>
       ) : puedeEditar ? (
         <View style={styles.acciones}>
           <TouchableOpacity style={styles.botonPrimario} onPress={onEditar} activeOpacity={0.8}>
-            <Ionicons name="create-outline" size={16} color="#fff" />
+            <Ionicons name="create-outline" size={16} color={t.sobreAccion} />
             <Text style={styles.botonPrimarioTexto}>Editar</Text>
           </TouchableOpacity>
 
@@ -160,7 +163,7 @@ export function SenalDetalle({
               para explorar el terreno. */}
           {senal.mando && onProbar ? (
             <TouchableOpacity style={styles.botonPlano} onPress={onProbar} activeOpacity={0.8}>
-              <Ionicons name="pulse-outline" size={15} color={Colors.accentOutlet} />
+              <Ionicons name="pulse-outline" size={15} color={t.antAcento} />
               <Text style={[styles.botonPlanoTexto, styles.botonProbar]}>Probar canal</Text>
             </TouchableOpacity>
           ) : null}
@@ -178,7 +181,7 @@ export function SenalDetalle({
                   disabled={revirtiendo}
                 >
                   {revirtiendo ? (
-                    <ActivityIndicator size="small" color={Colors.danger} />
+                    <ActivityIndicator size="small" color={t.critico} />
                   ) : (
                     <Text style={styles.botonPeligroTexto}>Sí, revertir</Text>
                   )}
@@ -189,7 +192,7 @@ export function SenalDetalle({
               </>
             ) : (
               <TouchableOpacity style={styles.botonPlano} onPress={() => setConfirmando(true)} activeOpacity={0.8}>
-                <Ionicons name="arrow-undo-outline" size={15} color={Colors.textSecondary} />
+                <Ionicons name="arrow-undo-outline" size={15} color={t.antTextoSec} />
                 <Text style={styles.botonPlanoTexto}>Volver al original</Text>
               </TouchableOpacity>
             )
@@ -200,12 +203,12 @@ export function SenalDetalle({
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = estilosConTema((t, nombre) => ({
   panel: {
-    backgroundColor: Colors.surface,
+    backgroundColor: t.antSuperficiePagina,
     borderRadius: 10,
     borderWidth: 1,
-    borderColor: Colors.divider,
+    borderColor: t.antDivisor,
     padding: 12,
     marginTop: 6,
     marginBottom: 4,
@@ -213,8 +216,8 @@ const styles = StyleSheet.create({
   },
   flex: { flex: 1 },
   cabecera: { flexDirection: 'row', alignItems: 'flex-start', gap: 8, marginBottom: 4 },
-  nombreIngles: { fontFamily: mono, fontSize: 14, fontWeight: '800', color: Colors.accentOutlet },
-  etiqueta: { fontSize: 12, color: Colors.textSecondary, marginTop: 1 },
+  nombreIngles: { fontFamily: mono, fontSize: 14, fontWeight: '800', color: t.antAcento },
+  etiqueta: { fontSize: 12, color: t.antTextoSec, marginTop: 1 },
   chipOverride: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -223,37 +226,37 @@ const styles = StyleSheet.create({
     paddingHorizontal: 7,
     paddingVertical: 2,
     borderWidth: 1,
-    borderColor: Colors.warning + '77',
-    backgroundColor: Colors.warning + '18',
+    borderColor: t.antAdvertencia + '77',
+    backgroundColor: t.antAdvertencia + '18',
   },
-  chipOverrideTexto: { fontSize: 10, color: Colors.warning, fontWeight: '700' },
+  chipOverrideTexto: { fontSize: 10, color: t.antAdvertencia, fontWeight: '700' },
   seccion: {
     fontSize: 10.5,
     fontWeight: '700',
-    color: Colors.textSecondary,
+    color: t.antTextoSec,
     textTransform: 'uppercase',
     letterSpacing: 0.6,
     marginTop: 10,
     marginBottom: 4,
   },
   dato: { flexDirection: 'row', alignItems: 'flex-start', gap: 10, paddingVertical: 3 },
-  datoEtiqueta: { flex: 1, fontSize: 11.5, color: Colors.textSecondary },
-  datoIngles: { fontFamily: mono, fontSize: 10.5, color: Colors.textSecondary },
-  datoValor: { flex: 1.2, fontFamily: mono, fontSize: 11.5, color: Colors.textPrimary, textAlign: 'right' },
-  overrideTexto: { fontSize: 11.5, color: Colors.textSecondary, lineHeight: 16 },
+  datoEtiqueta: { flex: 1, fontSize: 11.5, color: t.antTextoSec },
+  datoIngles: { fontFamily: mono, fontSize: 10.5, color: t.antTextoSec },
+  datoValor: { flex: 1.2, fontFamily: mono, fontSize: 11.5, color: t.antTexto, textAlign: 'right' },
+  overrideTexto: { fontSize: 11.5, color: t.antTextoSec, lineHeight: 16 },
   avisoMando: {
     flexDirection: 'row',
     gap: 7,
     alignItems: 'flex-start',
     marginTop: 8,
     borderWidth: 1,
-    borderColor: Colors.warning + '66',
-    backgroundColor: Colors.warning + '15',
+    borderColor: t.antAdvertencia + '66',
+    backgroundColor: t.antAdvertencia + '15',
     borderRadius: 8,
     padding: 9,
   },
-  avisoMandoTexto: { flex: 1, fontSize: 11, color: Colors.textPrimary, lineHeight: 15 },
-  botonProbar: { color: Colors.accentOutlet },
+  avisoMandoTexto: { flex: 1, fontSize: 11, color: t.antTexto, lineHeight: 15 },
+  botonProbar: { color: t.antAcento },
   bloqueada: {
     flexDirection: 'row',
     gap: 8,
@@ -261,9 +264,9 @@ const styles = StyleSheet.create({
     marginTop: 10,
     paddingTop: 10,
     borderTopWidth: 1,
-    borderTopColor: Colors.divider,
+    borderTopColor: t.antDivisor,
   },
-  bloqueadaTexto: { flex: 1, fontSize: 11.5, color: Colors.textSecondary, lineHeight: 16 },
+  bloqueadaTexto: { flex: 1, fontSize: 11.5, color: t.antTextoSec, lineHeight: 16 },
   acciones: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -272,41 +275,41 @@ const styles = StyleSheet.create({
     marginTop: 12,
     paddingTop: 10,
     borderTopWidth: 1,
-    borderTopColor: Colors.divider,
+    borderTopColor: t.antDivisor,
   },
   botonPrimario: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-    backgroundColor: Colors.primary,
+    backgroundColor: t.accion, // D1: texto blanco sobre `accion` (5,5:1), no sobre `primary` (3,7:1)
     borderRadius: 8,
     paddingHorizontal: 14,
     // 44 px de alto: se usa de pie y a veces con guantes.
     minHeight: 44,
     justifyContent: 'center',
   },
-  botonPrimarioTexto: { color: '#fff', fontSize: 13, fontWeight: '700' },
+  botonPrimarioTexto: { color: t.sobreAccion, fontSize: 13, fontWeight: '700' },
   botonPlano: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
     borderRadius: 8,
     borderWidth: 1,
-    borderColor: Colors.divider,
+    borderColor: t.antDivisor,
     paddingHorizontal: 12,
     minHeight: 44,
     justifyContent: 'center',
   },
-  botonPlanoTexto: { color: Colors.textSecondary, fontSize: 13, fontWeight: '600' },
+  botonPlanoTexto: { color: t.antTextoSec, fontSize: 13, fontWeight: '600' },
   botonPeligro: {
     borderRadius: 8,
     borderWidth: 1,
-    borderColor: Colors.danger + '77',
-    backgroundColor: Colors.danger + '18',
+    borderColor: t.critico + '77',
+    backgroundColor: t.critico + '18',
     paddingHorizontal: 14,
     minHeight: 44,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  botonPeligroTexto: { color: Colors.danger, fontSize: 13, fontWeight: '700' },
-});
+  botonPeligroTexto: { color: t.critico, fontSize: 13, fontWeight: '700' },
+}));

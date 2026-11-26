@@ -110,7 +110,7 @@ const useStyles = estilosConTema((t) => ({
     width: '100%',
     maxWidth: 420,
     maxHeight: '80%',
-    backgroundColor: t.antFondo,
+    backgroundColor: t.antFondoTarjeta,
     borderRadius: 16,
     padding: 18,
     gap: 14,

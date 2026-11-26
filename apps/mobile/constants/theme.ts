@@ -61,8 +61,15 @@ export interface Paleta {
    * Paleta ANTERIOR (`Colors.bg`, `Colors.surface`…), que aún usan varias piezas. En oscuro conserva
    * su valor exacto; en claro se unifica con los tokens de arriba (decisión del PASO 0).
    */
+  /**
+   * `bg` y `surface` no tienen el mismo papel en todas las pantallas (en Alertas `surface` es la
+   * página; en Ajustes es la tarjeta). El valor claro se elige por USO: página y huecos interiores
+   * en gris papel; tarjetas, diálogos y campos en blanco. En oscuro las dos variantes son idénticas.
+   */
   antFondo: string;
+  antFondoTarjeta: string;
   antSuperficie: string;
+  antSuperficiePagina: string;
   antTexto: string;
   antTextoSec: string;
   antDivisor: string;
@@ -72,6 +79,8 @@ export interface Paleta {
   antAdvertencia: string;
   antPeligro: string;
   antNeutro: string;
+  /** `Colors.accentOutlet`: acento de las herramientas de desarrollador. */
+  antAcento: string;
   velo: string;
   destello: string;
   /** Destello más suave para el tanque, que ya tiene mucho color propio. */
@@ -120,7 +129,9 @@ export const TEMAS: Record<NombreTema, Paleta> = {
     agua: Colors.login.waveMid,
     aguaSuperficie: B.blue,
     antFondo: Colors.bg,
+    antFondoTarjeta: Colors.bg,
     antSuperficie: Colors.surface,
+    antSuperficiePagina: Colors.surface,
     antTexto: Colors.textPrimary,
     antTextoSec: Colors.textSecondary,
     antDivisor: Colors.divider,
@@ -130,6 +141,7 @@ export const TEMAS: Record<NombreTema, Paleta> = {
     antAdvertencia: Colors.warning,
     antPeligro: Colors.danger,
     antNeutro: Colors.neutral,
+    antAcento: Colors.accentOutlet,
     velo: 'rgba(2,8,14,0.7)',
     destello: 'rgba(36,145,204,0.2)',
     destelloTanque: 'rgba(36,145,204,0.12)',
@@ -170,11 +182,10 @@ export const TEMAS: Record<NombreTema, Paleta> = {
     foco: '#0B6AA2',
     agua: '#12608F',
     aguaSuperficie: '#2491CC',
-    // En la paleta anterior los nombres van al revés de su uso: `surface` (#0B0F19, el más oscuro)
-    // es el fondo de página y `bg` (#171C28) la tarjeta. Por eso en claro surface → gris papel y
-    // bg → blanco, como en el resto del tema.
-    antFondo: '#FFFFFF',
-    antSuperficie: '#F2F5F7',
+    antFondo: '#F2F5F7',
+    antFondoTarjeta: '#FFFFFF',
+    antSuperficie: '#FFFFFF',
+    antSuperficiePagina: '#F2F5F7',
     antTexto: '#0E1C28',
     antTextoSec: '#475867',
     antDivisor: '#DCE3E9',
@@ -184,6 +195,7 @@ export const TEMAS: Record<NombreTema, Paleta> = {
     antAdvertencia: '#8A6500',
     antPeligro: '#C62828',
     antNeutro: '#626A71',
+    antAcento: '#0A6EA6',
     velo: 'rgba(14,28,40,0.45)',
     destello: 'rgba(36,145,204,0.16)',
     destelloTanque: 'rgba(36,145,204,0.1)',

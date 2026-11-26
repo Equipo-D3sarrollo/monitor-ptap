@@ -7,7 +7,6 @@ import {
   ScrollView,
   TextInput,
   TouchableOpacity,
-  StyleSheet,
   Platform,
   ActivityIndicator,
 } from 'react-native';
@@ -21,7 +20,7 @@ import {
 } from '../services/channel-probe';
 import { formatValorCrudo } from '../services/opc-raw';
 import { parsearValorComando } from '../services/mapping-mando-form';
-import Colors from '../constants/colors';
+import { estilosConTema, useTheme } from '../context/ThemeContext';
 
 /**
  * Probar un canal del PLC: escribir un valor, sostenerlo y ver qué se mueve.
@@ -43,6 +42,8 @@ const mono = Platform.select({ ios: 'Menlo', android: 'monospace', default: 'mon
 type Paso = 'formulario' | 'confirmar' | 'resultado';
 
 function Cambio({ c }: { c: CambioObservado }) {
+  const { t } = useTheme();
+  const styles = useStyles();
   return (
     <View style={styles.cambio}>
       <Text style={styles.cambioRuta}>
@@ -51,7 +52,7 @@ function Cambio({ c }: { c: CambioObservado }) {
       </Text>
       <View style={styles.cambioValores}>
         <Text style={styles.cambioDe}>{formatValorCrudo(c.de)}</Text>
-        <Ionicons name="arrow-forward" size={13} color={Colors.textSecondary} />
+        <Ionicons name="arrow-forward" size={13} color={t.antTextoSec} />
         <Text style={styles.cambioA}>{formatValorCrudo(c.a)}</Text>
       </View>
     </View>
@@ -77,6 +78,8 @@ export function ProbarCanalDialog({
   valorActual: number | boolean | null;
   onCerrar: () => void;
 }) {
+  const { t } = useTheme();
+  const styles = useStyles();
   const [valor, setValor] = useState('');
   const [holdMs, setHoldMs] = useState<number>(300);
   const [paso, setPaso] = useState<Paso>('formulario');
@@ -113,7 +116,7 @@ export function ProbarCanalDialog({
               </Text>
             </View>
             <TouchableOpacity onPress={onCerrar} hitSlop={10} accessibilityLabel="Cerrar">
-              <Ionicons name="close" size={22} color={Colors.textSecondary} />
+              <Ionicons name="close" size={22} color={t.antTextoSec} />
             </TouchableOpacity>
           </View>
 
@@ -133,7 +136,7 @@ export function ProbarCanalDialog({
                     value={valor}
                     onChangeText={setValor}
                     placeholder="4096"
-                    placeholderTextColor={Colors.textSecondary}
+                    placeholderTextColor={t.antTextoSec}
                     keyboardType="numbers-and-punctuation"
                     accessibilityLabel="Valor a escribir en el canal"
                     autoCapitalize="none"
@@ -173,7 +176,7 @@ export function ProbarCanalDialog({
             ) : paso === 'confirmar' ? (
               <>
                 <View style={styles.peligro}>
-                  <Ionicons name="warning" size={20} color={Colors.danger} />
+                  <Ionicons name="warning" size={20} color={t.critico} />
                   <Text style={styles.peligroTexto}>
                     Esto <Text style={styles.fuerte}>escribe de verdad en el PLC</Text> y puede mover
                     equipo. Hazlo solo dentro de una ventana acordada y con alguien mirando la
@@ -209,7 +212,7 @@ export function ProbarCanalDialog({
               <>
                 {!resultado.released ? (
                   <View style={styles.peligro}>
-                    <Ionicons name="alert-circle" size={20} color={Colors.danger} />
+                    <Ionicons name="alert-circle" size={20} color={t.critico} />
                     <Text style={styles.peligroTexto}>
                       <Text style={styles.fuerte}>La salida NO volvió a su valor anterior.</Text>{' '}
                       {resultado.reason ?? ''} Atiende la planta: puede haber algo energizado.
@@ -217,14 +220,14 @@ export function ProbarCanalDialog({
                   </View>
                 ) : resultado.status === 'done' ? (
                   <View style={styles.exito}>
-                    <Ionicons name="checkmark-circle" size={18} color={Colors.success} />
+                    <Ionicons name="checkmark-circle" size={18} color={t.antExito} />
                     <Text style={styles.exitoTexto}>
                       Escrito y soltado. La salida volvió a {formatValorCrudo(resultado.releasedValue)}.
                     </Text>
                   </View>
                 ) : (
                   <View style={styles.rechazo}>
-                    <Ionicons name="close-circle" size={18} color={Colors.warning} />
+                    <Ionicons name="close-circle" size={18} color={t.antAdvertencia} />
                     <Text style={styles.rechazoTexto}>{resultado.reason ?? 'No se pudo hacer la prueba.'}</Text>
                   </View>
                 )}
@@ -306,7 +309,7 @@ export function ProbarCanalDialog({
                   accessibilityLabel="Escribir en el PLC y soltar"
                 >
                   {enCurso ? (
-                    <ActivityIndicator size="small" color="#fff" />
+                    <ActivityIndicator size="small" color={t.sobreAccion} />
                   ) : (
                     <Text style={styles.botonPrimarioTexto}>Escribir y soltar</Text>
                   )}
@@ -336,13 +339,13 @@ export function ProbarCanalDialog({
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = estilosConTema((t) => ({
   overlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'center', padding: 16 },
   hoja: {
-    backgroundColor: Colors.bg,
+    backgroundColor: t.antFondoTarjeta,
     borderRadius: 14,
     borderWidth: 1,
-    borderColor: Colors.divider,
+    borderColor: t.antDivisor,
     maxHeight: '88%',
     overflow: 'hidden',
   },
@@ -353,134 +356,135 @@ const styles = StyleSheet.create({
     gap: 10,
     padding: 14,
     borderBottomWidth: 1,
-    borderBottomColor: Colors.divider,
+    borderBottomColor: t.antDivisor,
   },
-  titulo: { fontSize: 16, fontWeight: '800', color: Colors.textPrimary },
-  subtitulo: { fontFamily: mono, fontSize: 11.5, color: Colors.accentOutlet, marginTop: 2 },
+  titulo: { fontSize: 16, fontWeight: '800', color: t.antTexto },
+  subtitulo: { fontFamily: mono, fontSize: 11.5, color: t.antAcento, marginTop: 2 },
   cuerpo: { padding: 14, gap: 12 },
   actual: {
     borderWidth: 1,
-    borderColor: Colors.divider,
+    borderColor: t.antDivisor,
     borderRadius: 10,
     padding: 12,
     alignItems: 'center',
     gap: 2,
   },
-  actualEtiqueta: { fontSize: 11, color: Colors.textSecondary, textTransform: 'uppercase', letterSpacing: 0.5 },
-  actualValor: { fontFamily: mono, fontSize: 24, fontWeight: '800', color: Colors.textPrimary },
-  actualNota: { fontSize: 11, color: Colors.textSecondary, fontStyle: 'italic' },
+  actualEtiqueta: { fontSize: 11, color: t.antTextoSec, textTransform: 'uppercase', letterSpacing: 0.5 },
+  actualValor: { fontFamily: mono, fontSize: 24, fontWeight: '800', color: t.antTexto },
+  actualNota: { fontSize: 11, color: t.antTextoSec, fontStyle: 'italic' },
   campo: { gap: 5 },
-  campoEtiqueta: { fontSize: 12.5, fontWeight: '700', color: Colors.textPrimary },
+  campoEtiqueta: { fontSize: 12.5, fontWeight: '700', color: t.antTexto },
   input: {
     borderWidth: 1,
-    borderColor: Colors.divider,
+    borderColor: t.antDivisor,
     borderRadius: 8,
-    backgroundColor: Colors.surface,
+    backgroundColor: t.antSuperficie,
     paddingHorizontal: 12,
     minHeight: 44,
     fontFamily: mono,
     fontSize: 15,
-    color: Colors.textPrimary,
+    color: t.antTexto,
   },
-  inputMal: { borderColor: Colors.danger + '99' },
-  campoAyuda: { fontSize: 11, color: Colors.textSecondary, lineHeight: 15 },
-  campoError: { fontSize: 11, color: Colors.danger, lineHeight: 15, fontWeight: '600' },
+  inputMal: { borderColor: t.critico + '99' },
+  campoAyuda: { fontSize: 11, color: t.antTextoSec, lineHeight: 15 },
+  campoError: { fontSize: 11, color: t.critico, lineHeight: 15, fontWeight: '600' },
   chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
-  chip: { borderRadius: 999, borderWidth: 1, borderColor: Colors.divider, paddingHorizontal: 13, paddingVertical: 10 },
-  chipActivo: { borderColor: Colors.primary, backgroundColor: Colors.primary + '22' },
-  chipTexto: { fontFamily: mono, fontSize: 12, color: Colors.textSecondary },
-  chipTextoActivo: { color: Colors.primary, fontWeight: '700' },
+  chip: { borderRadius: 999, borderWidth: 1, borderColor: t.antDivisor, paddingHorizontal: 13, paddingVertical: 10 },
+  chipActivo: { borderColor: t.antPrimario, backgroundColor: t.antPrimario + '22' },
+  chipTexto: { fontFamily: mono, fontSize: 12, color: t.antTextoSec },
+  chipTextoActivo: { color: t.antPrimario, fontWeight: '700' },
   peligro: {
     flexDirection: 'row',
     gap: 9,
     alignItems: 'flex-start',
     borderWidth: 1,
-    borderColor: Colors.danger + '99',
-    backgroundColor: Colors.danger + '1A',
+    borderColor: t.critico + '99',
+    backgroundColor: t.critico + '1A',
     borderRadius: 10,
     padding: 12,
   },
-  peligroTexto: { flex: 1, fontSize: 12.5, color: Colors.textPrimary, lineHeight: 18 },
+  peligroTexto: { flex: 1, fontSize: 12.5, color: t.antTexto, lineHeight: 18 },
   fuerte: { fontWeight: '800' },
   resumen: {
     borderWidth: 1,
-    borderColor: Colors.divider,
+    borderColor: t.antDivisor,
     borderRadius: 10,
     padding: 12,
     gap: 6,
-    backgroundColor: Colors.surface,
+    backgroundColor: t.antSuperficiePagina,
   },
-  resumenLinea: { fontSize: 12.5, color: Colors.textSecondary, lineHeight: 18 },
-  resumenFuerte: { fontFamily: mono, fontWeight: '800', color: Colors.textPrimary },
-  mono: { fontFamily: mono, color: Colors.accentOutlet },
-  nota: { fontSize: 11, color: Colors.textSecondary, lineHeight: 16, fontStyle: 'italic' },
+  resumenLinea: { fontSize: 12.5, color: t.antTextoSec, lineHeight: 18 },
+  resumenFuerte: { fontFamily: mono, fontWeight: '800', color: t.antTexto },
+  mono: { fontFamily: mono, color: t.antAcento },
+  nota: { fontSize: 11, color: t.antTextoSec, lineHeight: 16, fontStyle: 'italic' },
   exito: {
     flexDirection: 'row',
     gap: 8,
     alignItems: 'flex-start',
     borderWidth: 1,
-    borderColor: Colors.success + '66',
-    backgroundColor: Colors.success + '15',
+    borderColor: t.antExito + '66',
+    backgroundColor: t.antExito + '15',
     borderRadius: 10,
     padding: 11,
   },
-  exitoTexto: { flex: 1, fontSize: 12.5, color: Colors.textPrimary, lineHeight: 17 },
+  exitoTexto: { flex: 1, fontSize: 12.5, color: t.antTexto, lineHeight: 17 },
   rechazo: {
     flexDirection: 'row',
     gap: 8,
     alignItems: 'flex-start',
     borderWidth: 1,
-    borderColor: Colors.warning + '77',
-    backgroundColor: Colors.warning + '15',
+    borderColor: t.antAdvertencia + '77',
+    backgroundColor: t.antAdvertencia + '15',
     borderRadius: 10,
     padding: 11,
   },
-  rechazoTexto: { flex: 1, fontSize: 12.5, color: Colors.textPrimary, lineHeight: 17 },
+  rechazoTexto: { flex: 1, fontSize: 12.5, color: t.antTexto, lineHeight: 17 },
   filaDato: { flexDirection: 'row', alignItems: 'center', gap: 10 },
-  datoEtiqueta: { flex: 1, fontSize: 12, color: Colors.textSecondary },
-  datoValor: { fontFamily: mono, fontSize: 13, fontWeight: '700', color: Colors.textPrimary },
+  datoEtiqueta: { flex: 1, fontSize: 12, color: t.antTextoSec },
+  datoValor: { fontFamily: mono, fontSize: 13, fontWeight: '700', color: t.antTexto },
   seccion: {
     fontSize: 11,
     fontWeight: '800',
-    color: Colors.textSecondary,
+    color: t.antTextoSec,
     textTransform: 'uppercase',
     letterSpacing: 0.6,
     marginTop: 6,
   },
   cambio: {
     borderWidth: 1,
-    borderColor: Colors.divider,
+    borderColor: t.antDivisor,
     borderRadius: 8,
     padding: 10,
     gap: 3,
-    backgroundColor: Colors.surface,
+    backgroundColor: t.antSuperficiePagina,
   },
-  cambioRuta: { fontFamily: mono, fontSize: 11.5, color: Colors.textSecondary },
-  cambioSenal: { color: Colors.accentOutlet },
+  cambioRuta: { fontFamily: mono, fontSize: 11.5, color: t.antTextoSec },
+  cambioSenal: { color: t.antAcento },
   cambioValores: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  cambioDe: { fontFamily: mono, fontSize: 13, color: Colors.textSecondary, textDecorationLine: 'line-through' },
-  cambioA: { fontFamily: mono, fontSize: 14, fontWeight: '800', color: Colors.success },
-  vacio: { fontSize: 12, color: Colors.textSecondary, lineHeight: 17, fontStyle: 'italic' },
+  cambioDe: { fontFamily: mono, fontSize: 13, color: t.antTextoSec, textDecorationLine: 'line-through' },
+  cambioA: { fontFamily: mono, fontSize: 14, fontWeight: '800', color: t.antExito },
+  vacio: { fontSize: 12, color: t.antTextoSec, lineHeight: 17, fontStyle: 'italic' },
   pie: {
     flexDirection: 'row',
     justifyContent: 'flex-end',
     gap: 8,
     padding: 12,
     borderTopWidth: 1,
-    borderTopColor: Colors.divider,
+    borderTopColor: t.antDivisor,
   },
   botonPlano: {
     borderRadius: 8,
     borderWidth: 1,
-    borderColor: Colors.divider,
+    borderColor: t.antDivisor,
     paddingHorizontal: 14,
     minHeight: 44,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  botonPlanoTexto: { color: Colors.textSecondary, fontSize: 13, fontWeight: '600' },
+  botonPlanoTexto: { color: t.antTextoSec, fontSize: 13, fontWeight: '600' },
   botonPrimario: {
-    backgroundColor: Colors.primary,
+    // Texto blanco: sobre `accion` (5,5:1), no sobre el `primary` anterior (3,7:1). Ver D1.
+    backgroundColor: t.accion,
     borderRadius: 8,
     paddingHorizontal: 18,
     minHeight: 44,
@@ -490,7 +494,7 @@ const styles = StyleSheet.create({
   },
   // El botón que de verdad escribe en el PLC va en rojo: no puede parecerse a «Aceptar».
   botonPeligro: {
-    backgroundColor: Colors.danger,
+    backgroundColor: t.critico,
     borderRadius: 8,
     paddingHorizontal: 18,
     minHeight: 44,
@@ -499,5 +503,5 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   botonApagado: { opacity: 0.45 },
-  botonPrimarioTexto: { color: '#fff', fontSize: 13.5, fontWeight: '800' },
-});
+  botonPrimarioTexto: { color: t.sobreAccion, fontSize: 13.5, fontWeight: '800' },
+}));

@@ -6,7 +6,6 @@ import {
   FlatList,
   TouchableOpacity,
   ActivityIndicator,
-  StyleSheet,
   RefreshControl,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -16,7 +15,7 @@ import { fetchUsers, setUserActive, updateUserRole } from '../../services/users'
 import { useAuth } from '../../context/AuthContext';
 import { toast } from '../../services/toast-store';
 import { UserCard } from '../../components/UserCard';
-import Colors from '../../constants/colors';
+import { estilosConTema, useTheme } from '../../context/ThemeContext';
 
 /** Filtro por estado. `pendientes` (is_active=0) es la bandeja de entrada del admin. */
 type StatusFilter = 'todos' | 'pendientes' | 'activos';
@@ -48,6 +47,8 @@ const PAGE_SIZE = 50;
  * porque son las cuentas que esperan una decisión.
  */
 export default function UsuariosScreen() {
+  const { t } = useTheme();
+  const styles = useStyles();
   const { user: current, hasPermission } = useAuth();
   const [users, setUsers] = useState<UserSummary[]>([]);
   const [loading, setLoading] = useState(true);
@@ -180,7 +181,7 @@ export default function UsuariosScreen() {
     return (
       <SafeAreaView style={styles.safe}>
         <View style={styles.center}>
-          <Ionicons name="lock-closed-outline" size={40} color={Colors.textSecondary} />
+          <Ionicons name="lock-closed-outline" size={40} color={t.antTextoSec} />
           <Text style={styles.deniedTitle}>Acceso restringido</Text>
           <Text style={styles.deniedBody}>La gestión de usuarios es exclusiva del Administrador.</Text>
         </View>
@@ -191,7 +192,7 @@ export default function UsuariosScreen() {
   if (loading) {
     return (
       <SafeAreaView style={styles.safe}>
-        <View style={styles.center}><ActivityIndicator size="large" color={Colors.primary} /></View>
+        <View style={styles.center}><ActivityIndicator size="large" color={t.antPrimario} /></View>
       </SafeAreaView>
     );
   }
@@ -200,7 +201,7 @@ export default function UsuariosScreen() {
     <SafeAreaView style={styles.safe} edges={['bottom']}>
       {error && (
         <View style={styles.errorBox}>
-          <Ionicons name="alert-circle-outline" size={18} color={Colors.danger} />
+          <Ionicons name="alert-circle-outline" size={18} color={t.critico} />
           <Text style={styles.errorText}>{error}</Text>
         </View>
       )}
@@ -216,7 +217,7 @@ export default function UsuariosScreen() {
         onEndReached={loadMore}
         onEndReachedThreshold={0.4}
         ListFooterComponent={
-          loadingMore ? <ActivityIndicator size="small" color={Colors.primary} style={styles.footerLoader} /> : undefined
+          loadingMore ? <ActivityIndicator size="small" color={t.antPrimario} style={styles.footerLoader} /> : undefined
         }
         ListEmptyComponent={
           <Text style={styles.empty}>
@@ -234,13 +235,13 @@ export default function UsuariosScreen() {
             </Text>
 
             <View style={styles.searchBox}>
-              <Ionicons name="search-outline" size={17} color={Colors.textSecondary} />
+              <Ionicons name="search-outline" size={17} color={t.antTextoSec} />
               <TextInput
                 style={styles.searchInput}
                 value={search}
                 onChangeText={setSearch}
                 placeholder="Buscar por nombre, correo o teléfono"
-                placeholderTextColor={Colors.textSecondary}
+                placeholderTextColor={t.antTextoSec}
                 autoCapitalize="none"
                 autoCorrect={false}
               />
@@ -251,7 +252,7 @@ export default function UsuariosScreen() {
                   accessibilityRole="button"
                   accessibilityLabel="Limpiar la búsqueda"
                 >
-                  <Ionicons name="close-circle" size={17} color={Colors.textSecondary} />
+                  <Ionicons name="close-circle" size={17} color={t.antTextoSec} />
                 </TouchableOpacity>
               )}
             </View>
@@ -296,37 +297,37 @@ export default function UsuariosScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: Colors.bg },
+const useStyles = estilosConTema((t) => ({
+  safe: { flex: 1, backgroundColor: t.antFondo },
   flex: { flex: 1 },
   center: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 32, gap: 10 },
-  deniedTitle: { fontSize: 18, fontWeight: '700', color: Colors.textPrimary },
-  deniedBody: { fontSize: 14, color: Colors.textSecondary, textAlign: 'center' },
+  deniedTitle: { fontSize: 18, fontWeight: '700', color: t.antTexto },
+  deniedBody: { fontSize: 14, color: t.antTextoSec, textAlign: 'center' },
   list: { padding: 16, gap: 12 },
   footerLoader: { marginVertical: 16 },
   header: { gap: 10, marginBottom: 4 },
-  intro: { fontSize: 12.5, lineHeight: 18, color: Colors.textSecondary },
-  bold: { fontWeight: '700', color: Colors.textPrimary },
-  empty: { fontSize: 13, color: Colors.textSecondary, textAlign: 'center', paddingVertical: 28 },
+  intro: { fontSize: 12.5, lineHeight: 18, color: t.antTextoSec },
+  bold: { fontWeight: '700', color: t.antTexto },
+  empty: { fontSize: 13, color: t.antTextoSec, textAlign: 'center', paddingVertical: 28 },
   searchBox: {
     flexDirection: 'row', alignItems: 'center', gap: 8,
-    backgroundColor: Colors.surface, borderRadius: 10, paddingHorizontal: 12, paddingVertical: 10,
-    borderWidth: 1, borderColor: Colors.divider,
+    backgroundColor: t.antSuperficie, borderRadius: 10, paddingHorizontal: 12, paddingVertical: 10,
+    borderWidth: 1, borderColor: t.antDivisor,
   },
-  searchInput: { flex: 1, minWidth: 0, fontSize: 14, color: Colors.textPrimary },
+  searchInput: { flex: 1, minWidth: 0, fontSize: 14, color: t.antTexto },
   chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   chip: {
     paddingHorizontal: 12, paddingVertical: 6, borderRadius: 999,
-    borderWidth: 1, borderColor: Colors.divider, backgroundColor: Colors.surface,
+    borderWidth: 1, borderColor: t.antDivisor, backgroundColor: t.antSuperficie,
   },
-  chipOn: { backgroundColor: Colors.primary, borderColor: Colors.primary },
-  chipText: { fontSize: 12.5, fontWeight: '600', color: Colors.textSecondary },
-  chipTextOn: { color: '#fff' },
+  chipOn: { backgroundColor: t.accion, borderColor: t.accion }, // D1: texto blanco sobre `accion` (5,5:1), no sobre `primary` (3,7:1)
+  chipText: { fontSize: 12.5, fontWeight: '600', color: t.antTextoSec },
+  chipTextOn: { color: t.sobreAccion },
   errorBox: {
     flexDirection: 'row', gap: 8, alignItems: 'center',
-    backgroundColor: Colors.danger + '15', padding: 12, margin: 16, borderRadius: 10,
+    backgroundColor: t.critico + '15', padding: 12, margin: 16, borderRadius: 10,
   },
-  errorText: { flex: 1, color: Colors.danger, fontSize: 13 },
+  errorText: { flex: 1, color: t.critico, fontSize: 13 },
   // Los estilos de la ficha de usuario viven ahora en `components/UserCard.tsx`, junto al markup
   // que los usa. Se borraron de aquí porque habían quedado huérfanos y, peor, divergidos.
-});
+}));

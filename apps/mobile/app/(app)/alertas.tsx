@@ -343,14 +343,14 @@ export default function AlertasScreen() {
 
 const useStyles = estilosConTema((t) => ({
   filtros: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 12 },
-  safe: { flex: 1, backgroundColor: t.antSuperficie },
+  safe: { flex: 1, backgroundColor: t.antSuperficiePagina },
   content: { padding: 16 },
   head: { marginBottom: 14 },
   buscador: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
-    backgroundColor: t.antFondo,
+    backgroundColor: t.antFondoTarjeta,
     borderWidth: 1,
     borderColor: t.antDivisor,
     borderRadius: 10,
@@ -390,7 +390,7 @@ const useStyles = estilosConTema((t) => ({
     flexDirection: 'row',
     alignItems: 'flex-start',
     gap: 10,
-    backgroundColor: t.antFondo,
+    backgroundColor: t.antFondoTarjeta,
     borderRadius: 12,
     borderWidth: 1,
     borderColor: t.antDivisor,
